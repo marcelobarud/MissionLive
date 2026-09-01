@@ -85,6 +85,24 @@ As primitives ficam em `apps/web/src/design-system.tsx` e são estilizadas no fi
 
 Wrappers de domínio existentes, como `StatusChip` e `ContextBadge`, devem compor essas primitives em vez de recriar estilos locais.
 
+## Feedback e overlays
+
+Os overlays compartilhados ficam em `apps/web/src/feedback.tsx` e são montados globalmente por `FeedbackProvider` em `apps/web/src/main.tsx`:
+
+- `Dialog`: base semântica para conteúdo modal, com backdrop, `role="dialog"`, `aria-modal`, título/descrição associados e fechamento por ESC;
+- `ConfirmDialog`: confirmação para ações destrutivas ou sensíveis, com variante semântica, cancelamento explícito e foco restaurado;
+- `PromptDialog`: formulário curto para substituir prompts nativos, suportando campos de texto, data e textarea, validação e prevenção de submissão vazia;
+- `Toast` e `ToastViewport`: feedback breve de sucesso, informação, atenção ou erro, com `aria-live`, fechamento manual e expiração automática;
+- `FeedbackBanner`: mensagem persistente próxima ao contexto da ação para estados de erro, atenção ou informação.
+
+### Regras
+
+- Não usar `window.alert`, `window.confirm`, `window.prompt` ou equivalentes para feedback pertencente à aplicação.
+- Interfaces do navegador/SO que pertencem à plataforma, como Web Share, seletor de arquivos, permissões e OAuth, permanecem nativas.
+- Toda ação destrutiva ou alteração sensível deve explicar o impacto e usar `ConfirmDialog` antes da chamada assíncrona.
+- O dialog deve ter foco inicial útil, manter TAB dentro da superfície, fechar com ESC quando permitido e devolver o foco ao controle que o abriu.
+- Toast não substitui erro específico de campo; erros de validação continuam próximos ao input e mensagens de API podem usar o contexto da tela.
+
 ## Iconografia
 
 `@tabler/icons-react` é a biblioteca oficial de ícones do frontend. Os imports são explícitos para preservar tree-shaking; não misturar bibliotecas de ícones sem decisão documentada.

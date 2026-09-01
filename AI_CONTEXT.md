@@ -673,6 +673,8 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - tokens visuais centralizados em `apps/web/src/styles.css`, documentados em `docs/design/DESIGN_SYSTEM.md`, usando a paleta azul aprovada, escala de espaçamento, raios, alturas, foco, estados semânticos e reduced motion;
 - shell com acesso explícito ao perfil e logout separado, CTA único para criação de equipe, empty state de modelos, navegação mensal do calendário e badge de notificações não lidas.
 - `@tabler/icons-react` (`3.46.0`) é a biblioteca oficial de ícones do frontend; usar imports explícitos, família outline, `currentColor`, tamanhos padronizados e `aria-label` obrigatório em icon buttons.
+- `apps/web/src/feedback.tsx` concentra `FeedbackProvider`, dialogs assíncronos de confirmação/prompt, `Toast`, `ToastViewport` e `FeedbackBanner`; os fluxos da interface não usam mais `window.alert`, `window.confirm` ou `window.prompt`.
+- dialogs compartilhados usam tokens do Design System, semântica `role="dialog"`, `aria-modal`, título/descrição associados, foco inicial, ciclo de foco por teclado, ESC e restauração do foco anterior; ações assíncronas mantêm seus erros no contexto da tela ou em toast.
 
 ### Diferenças conhecidas entre o alvo da V1 e a interface atual
 
