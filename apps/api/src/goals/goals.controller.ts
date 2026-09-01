@@ -11,7 +11,8 @@ export class GoalsController {
   @Post() create(@Req() req: AuthenticatedRequest, @Body() dto: CreateGoalDto) { return this.goals.create(req.user.id, dto); }
   @Get(':goalId') get(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string) { return this.goals.get(req.user.id, goalId); }
   @Patch(':goalId') update(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string, @Body() dto: UpdateGoalDto) { return this.goals.update(req.user.id, goalId, dto); }
-  @Delete(':goalId') remove(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string) { return this.goals.remove(req.user.id, goalId); }
+  @Delete(':goalId') remove(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string) { return this.goals.hardDelete(req.user.id, goalId); }
+  @Patch(':goalId/cancel') cancel(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string) { return this.goals.cancel(req.user.id, goalId); }
   @Patch(':goalId/archive') archive(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string) { return this.goals.archive(req.user.id, goalId); }
   @Post(':goalId/override') override(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string, @Body() dto: OverrideGoalDto) { return this.goals.override(req.user.id, goalId, dto); }
   @Get(':goalId/rhythm') rhythm(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string) { return this.goals.rhythm(req.user.id, goalId); }
