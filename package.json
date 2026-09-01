@@ -1,0 +1,19 @@
+{
+  "name": "missionlive",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": ["apps/web", "apps/api"],
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace @missionlive/api\" \"npm run dev --workspace @missionlive/web\"",
+    "build": "npm run build --workspace @missionlive/api && npm run build --workspace @missionlive/web",
+    "lint": "npm run lint --workspace @missionlive/api && npm run lint --workspace @missionlive/web",
+    "typecheck": "npm run typecheck --workspace @missionlive/api && npm run typecheck --workspace @missionlive/web",
+    "test": "npm run test --workspace @missionlive/api && npm run test --workspace @missionlive/web",
+    "db:migrate": "npm run db:migrate --workspace @missionlive/api",
+    "db:seed": "npm run db:seed --workspace @missionlive/api"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": { "node": ">=20" }
+}
