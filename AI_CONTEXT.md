@@ -655,6 +655,7 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - comentários textuais por meta e reações limitadas a 👏, ❤️, 🎉 e 💪, com autorização de membership, moderação contextual, limite de tamanho, rate limit e sem HTML arbitrário;
 - templates oficiais e pessoais, uso com revisão explícita das datas, duplicação sem progresso/membros/convites/comentários/atividade/conclusão;
 - calendário/timeline com inícios, prazos e reminders escopados e indicador de ritmo derivado, sem percentual persistido;
+- onboarding curto e pulável, perfil com timezone/preferências, consulta/revogação de sessões e notificações internas com leitura e deep links protegidos;
 - ValidationPipe global, Helmet, CORS configurável, filtro global de erros e validação de `SESSION_SECRET` no startup.
 
 ### Frontend web disponível
@@ -665,13 +666,14 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - listagem, criação básica e criação transacional de equipe com primeira meta/steps, detalhe, edição, gerenciamento de roles/membros e convite de equipe;
 - preview e aceite de convite em `/invite/<token>`;
 - recuperação e redefinição de senha em desenvolvimento;
+- páginas de modelos, calendário/timeline e indicador de ritmo no detalhe da meta;
+- onboarding pulável, perfil/preferências, sessões e notificações internas com deep links;
 - navegação responsiva mobile-first com estados de loading, erro e vazio.
 
 ### Diferenças conhecidas entre o alvo da V1 e a interface atual
 
-- a interface web ainda não possui edição/cancelamento de membros de meta nem listagem persistida de convites já criados após recarregar a página;
-- algumas operações administrativas avançadas permanecem limitadas à API; recuperação de senha usa token local no desenvolvimento e ainda não possui entrega de e-mail em produção;
-- onboarding, perfil/preferências e notificações internas ainda não foram implementados;
+- a interface web ainda não possui edição/cancelamento de membros de meta nem listagem persistida de convites já criados após recarregar a página; o gerenciamento avançado continua disponível na API;
+- recuperação de senha usa token local no desenvolvimento e ainda não possui entrega de e-mail em produção;
 - compartilhamento usa Web Share API quando disponível, com cópia para clipboard e atalhos de e-mail/WhatsApp/Telegram como fallback.
 
 Essas diferenças são limitações de superfície da interface, não autorização implícita: o backend continua sendo a autoridade para escopo, roles e alterações sensíveis.

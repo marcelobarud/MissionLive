@@ -1,6 +1,6 @@
 const API_URL = 'http://localhost:3000';
 
-export type User = { id: string; email: string; name: string; avatarUrl?: string | null; timezone?: string };
+export type User = { id: string; email: string; name: string; avatarUrl?: string | null; timezone?: string; onboardingCompletedAt?: string | null; preferences?: Record<string, boolean | string | number> };
 export type Category = { id: string; name: string };
 export type Step = { id: string; title: string; description?: string | null; position: number; progresses?: { userId: string; completed: boolean }[] };
 export type ProgressSummary = { completedSteps: number; totalSteps: number; participantCount: number; completedParticipants: number };
@@ -15,6 +15,7 @@ export type Comment = { id: string; body: string; createdAt: string; updatedAt: 
 export type GoalTemplate = { id: string; name: string; description?: string | null; isOfficial: boolean; tags?: string[]; steps: string[] };
 export type Rhythm = { applicable: boolean; state: string; reason?: string; timePercent?: number; progressPercent?: number; delta?: number };
 export type CalendarData = { from: string; to: string; goals: Goal[]; reminders: { id: string; remindAt: string; goal: { id: string; name: string } }[] };
+export type Notification = { id: string; type: string; title: string; body: string; goalId?: string | null; teamId?: string | null; readAt?: string | null; createdAt: string };
 
 async function request<T>(path: string, init: RequestInit = {}) {
   const response = await fetch(`${API_URL}${path}`, { ...init, credentials: 'include', headers: { 'content-type': 'application/json', ...(init.headers ?? {}) } });
@@ -72,4 +73,12 @@ export const api = {
   useTemplate: (id: string, body: { startDate: string; endDate?: string }) => request<Goal>(`/templates/${id}/use`, json(body)),
   calendar: (from?: string, to?: string) => request<CalendarData>(`/calendar?from=${encodeURIComponent(from ?? '')}&to=${encodeURIComponent(to ?? '')}`),
   rhythm: (goalId: string) => request<Rhythm>(`/goals/${goalId}/rhythm`),
+  updateProfile: (body: { name?: string; avatarUrl?: string; timezone?: string; preferences?: Record<string, boolean | string | number> }) => request<User>('/auth/profile', { method: 'PATCH', body: JSON.stringify(body) }),
+  completeOnboarding: () => request<User>('/auth/onboarding/complete', json({})),
+  sessions: () => request<{ id: string; createdAt: string; expiresAt: string; current: boolean }[]>('/auth/sessions'),
+  revokeOtherSessions: () => request<{ revoked: boolean }>('/auth/sessions/revoke-others', json({})),
+  notifications: () => request<Notification[]>('/notifications'),
+  unreadNotifications: () => request<{ count: number }>('/notifications/unread-count'),
+  readNotification: (id: string) => request<Notification>(`/notifications/${id}/read`, { method: 'PATCH' }),
+  readAllNotifications: () => request<{ read: boolean }>('/notifications/read-all', json({})),
 };

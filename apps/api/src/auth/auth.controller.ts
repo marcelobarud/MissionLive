@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, HttpStatus, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, HttpStatus, Patch, Post, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Response } from 'express';
 import { AuthGuard } from './auth.guard';
@@ -6,6 +6,7 @@ import { AuthService } from './auth.service';
 import { ForgotPasswordDto, LoginDto, RegisterDto, ResetPasswordDto, TokenDto } from './auth.dto';
 import { AuthenticatedRequest } from './auth.types';
 import { GoogleOAuthService } from './google-oauth.service';
+import { UpdateProfileDto } from './profile.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -15,6 +16,10 @@ export class AuthController {
   @Post('login') @HttpCode(HttpStatus.OK) async login(@Body() dto: LoginDto, @Res({ passthrough: true }) response: Response) { const result = await this.auth.login(dto); this.setCookie(response, result.token, result.expiresAt); return { user: result.user, expiresAt: result.expiresAt }; }
   @Post('logout') @UseGuards(AuthGuard) @HttpCode(HttpStatus.NO_CONTENT) async logout(@Req() request: AuthenticatedRequest, @Res({ passthrough: true }) response: Response) { await this.auth.logout(request.sessionId); response.clearCookie(this.config.get('SESSION_COOKIE_NAME') ?? 'missionlive_session', { httpOnly: true, sameSite: 'lax', path: '/' }); }
   @Get('me') @UseGuards(AuthGuard) me(@Req() request: AuthenticatedRequest) { return { user: request.user }; }
+  @Patch('profile') @UseGuards(AuthGuard) profile(@Req() request: AuthenticatedRequest, @Body() dto: UpdateProfileDto) { return this.auth.updateProfile(request.user.id, dto); }
+  @Post('onboarding/complete') @UseGuards(AuthGuard) onboarding(@Req() request: AuthenticatedRequest) { return this.auth.completeOnboarding(request.user.id); }
+  @Get('sessions') @UseGuards(AuthGuard) sessions(@Req() request: AuthenticatedRequest) { return this.auth.sessions(request.user.id, request.sessionId); }
+  @Post('sessions/revoke-others') @UseGuards(AuthGuard) revokeOtherSessions(@Req() request: AuthenticatedRequest) { return this.auth.revokeOtherSessions(request.user.id, request.sessionId); }
   @Post('verify-email') @HttpCode(HttpStatus.OK) verify(@Body() dto: TokenDto) { return this.auth.verifyEmail(dto.token); }
   @Post('forgot-password') @HttpCode(HttpStatus.ACCEPTED) forgot(@Body() dto: ForgotPasswordDto) { return this.auth.requestPasswordReset(dto.email); }
   @Post('reset-password') reset(@Body() dto: ResetPasswordDto) { return this.auth.resetPassword(dto); }

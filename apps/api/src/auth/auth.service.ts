@@ -11,7 +11,7 @@ export class AuthService {
   private readonly loginAttempts = new Map<string, { count: number; resetAt: number }>();
   constructor(private readonly prisma: PrismaService, private readonly config: ConfigService) {}
 
-  private publicUser(user: { id: string; email: string; name: string; timezone?: string }): AuthUser { return { id: user.id, email: user.email, name: user.name, timezone: user.timezone }; }
+  private publicUser(user: { id: string; email: string; name: string; avatarUrl?: string | null; timezone?: string; onboardingCompletedAt?: Date | null; preferencesJson?: string }): AuthUser { return { id: user.id, email: user.email, name: user.name, avatarUrl: user.avatarUrl, timezone: user.timezone, onboardingCompletedAt: user.onboardingCompletedAt?.toISOString() ?? null, preferences: JSON.parse(user.preferencesJson ?? '{}') }; }
   private localToken(token: string) { return this.config.get('NODE_ENV') !== 'production' ? token : undefined; }
 
   async register(dto: RegisterDto) {
@@ -42,6 +42,13 @@ export class AuthService {
   }
 
   async logout(sessionId: string) { await this.prisma.session.update({ where: { id: sessionId }, data: { revokedAt: new Date() } }); }
+  async updateProfile(userId: string, dto: import('./profile.dto').UpdateProfileDto) {
+    const current = await this.prisma.user.findUnique({ where: { id: userId } }); if (!current) throw new UnauthorizedException('User not found.');
+    const user = await this.prisma.user.update({ where: { id: userId }, data: { name: dto.name?.trim(), avatarUrl: dto.avatarUrl, timezone: dto.timezone?.trim(), preferencesJson: dto.preferences ? JSON.stringify(dto.preferences) : undefined } }); return this.publicUser(user);
+  }
+  async completeOnboarding(userId: string) { const user = await this.prisma.user.update({ where: { id: userId }, data: { onboardingCompletedAt: new Date() } }); return this.publicUser(user); }
+  async sessions(userId: string, currentSessionId: string) { return this.prisma.session.findMany({ where: { userId, revokedAt: null }, select: { id: true, createdAt: true, expiresAt: true }, orderBy: { createdAt: 'desc' } }).then((items) => items.map((item) => ({ ...item, current: item.id === currentSessionId }))); }
+  async revokeOtherSessions(userId: string, currentSessionId: string) { await this.prisma.session.updateMany({ where: { userId, revokedAt: null, id: { not: currentSessionId } }, data: { revokedAt: new Date() } }); return { revoked: true }; }
   async verifyEmail(token: string) {
     const record = await this.prisma.authToken.findFirst({ where: { type: 'email_verification', tokenHash: hashToken(token), consumedAt: null, expiresAt: { gt: new Date() } } });
     if (!record) throw new UnauthorizedException('Verification token is invalid or expired.');

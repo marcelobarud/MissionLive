@@ -455,6 +455,8 @@ Comparar:
 
 ## Fase 31 — Onboarding
 
+**Status:** CONCLUÍDA — prompt curto, pulável e não bloqueante, com prioridade preservada para links de convite.
+
 ### Objetivo
 Levar usuário novo ao primeiro valor rapidamente.
 
@@ -477,6 +479,8 @@ Onboarding:
 
 ## Fase 32 — Perfil e preferências
 
+**Status:** CONCLUÍDA — edição de nome/timezone/preferências, avatar preparado, listagem de sessões e revogação de outras sessões.
+
 ### Perfil
 - nome;
 - avatar quando viável;
@@ -498,6 +502,8 @@ Timezone deve alimentar reminders/calendário.
 ---
 
 ## Fase 33 — Notificações internas
+
+**Status:** CONCLUÍDA — notificações persistidas por usuário, badge/listagem, leitura individual/coletiva e deep links revalidados pelas rotas protegidas.
 
 ### Eventos
 - convite;
