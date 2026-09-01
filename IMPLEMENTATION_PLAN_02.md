@@ -530,6 +530,8 @@ Notificação não concede acesso. Deep link sempre revalida autorização.
 
 ## Fase 34 — Integração, hardening e refinamento
 
+**Status:** CONCLUÍDA — fluxos revisados, queries de comentários sem N+1, escopos preservados, migrations aplicadas, teste negativo de feed e validações completas executadas.
+
 ### Revisar fluxos
 - onboarding;
 - meta individual;
@@ -571,6 +573,8 @@ Segurança:
 ---
 
 ## Fase 35 — Fechamento do Plano 02
+
+**Status:** CONCLUÍDA — documentação mestre, README, limitações, backlog e relatório de fechamento atualizados.
 
 ### Entregas
 Atualizar:
