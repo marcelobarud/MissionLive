@@ -18,7 +18,9 @@ Princípios:
 | Fase | Status |
 |---|---|
 | 0 — Bootstrap documental e repositório | CONCLUÍDA |
-| 1–18 | PENDENTE |
+| 1 — Persistência e fundação NestJS | CONCLUÍDA |
+| 2 — Shell frontend mobile-first | EM ANDAMENTO |
+| 3–18 | PENDENTE |
 
 ---
 
@@ -53,6 +55,8 @@ Criar a base de trabalho do projeto.
 
 ## Fase 1 — Decisão de persistência e fundação NestJS
 
+**Status:** CONCLUÍDA — Prisma, schema/migration SQLite, seed e fundação NestJS validados.
+
 ### Objetivo
 Definir camada de banco e preparar migrations SQLite/PostgreSQL.
 
@@ -81,6 +85,8 @@ Definir camada de banco e preparar migrations SQLite/PostgreSQL.
 ---
 
 ## Fase 2 — Shell frontend mobile-first
+
+**Status:** EM ANDAMENTO — navegação e shell mobile-first em implementação.
 
 ### Objetivo
 Criar a fundação visual e de navegação.
