@@ -642,11 +642,11 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 
 ### API/backend disponível
 
-- autenticação local com cadastro, verificação de e-mail, login, logout, sessões em cookie HttpOnly e recuperação de senha por token local;
+- autenticação local com cadastro, verificação de e-mail, login, logout, sessões em cookie HttpOnly e recuperação de senha por token exposto apenas no desenvolvimento;
 - adaptador Google OAuth configurável com state assinado e PKCE, ainda sem execução real por falta de credenciais;
 - CRUD de metas com escopo por owner, membership direta ou membership de equipe;
 - categorias, categoria personalizada, tags, datas e status no backend;
-- steps, reordenação, progresso próprio, conclusão automática e owner override auditado;
+- steps, reordenação, progresso próprio, conclusão automática, arquivamento e owner override auditado;
 - convites de metas/equipes com token hash, expiração de 24 horas, aceite explícito, revogação e limite de três convidados em meta compartilhada;
 - equipes, memberships, roles e autorização no backend;
 - dashboard escopado e endpoint de plano/entitlement de desenvolvimento;
@@ -656,19 +656,18 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 
 - login, cadastro e verificação de e-mail em desenvolvimento;
 - dashboard com cards, taxa derivada e barra de progresso;
-- listagem e criação inicial de metas, detalhe, adição de steps, progresso próprio, owner override e convite direto de meta;
-- listagem e criação básica de equipes;
+- listagem, criação completa e edição inicial de metas, detalhe com datas/tags/contexto/participantes/progresso, CRUD de steps, cancelamento, arquivamento, owner override e convite direto de meta;
+- listagem, criação básica e criação transacional de equipe com primeira meta/steps, detalhe, edição, gerenciamento de roles/membros e convite de equipe;
 - preview e aceite de convite em `/invite/<token>`;
+- recuperação e redefinição de senha em desenvolvimento;
 - navegação responsiva mobile-first com estados de loading, erro e vazio.
 
 ### Diferenças conhecidas entre o alvo da V1 e a interface atual
 
-- o formulário web de criação ainda não expõe categoria, categoria personalizada, data final ou equipe, embora a API aceite esses campos;
-- a interface web ainda não expõe edição/cancelamento de metas, gerenciamento de membros/roles, convite de equipe ou detalhe de equipe;
-- o fluxo web de criação de equipe ainda não cria a primeira meta integrada;
+- a interface web ainda não possui edição/cancelamento de membros de meta nem listagem persistida de convites já criados após recarregar a página;
 - `categoryBreakdown` já é calculado no dashboard da API, mas ainda não é renderizado como gráfico no frontend;
-- recuperação de senha e algumas operações administrativas permanecem disponíveis apenas pela API;
-- compartilhamento usa cópia para clipboard quando disponível; Web Share API e fallbacks de canais ainda não foram implementados.
+- algumas operações administrativas avançadas permanecem limitadas à API; recuperação de senha usa token local no desenvolvimento e ainda não possui entrega de e-mail em produção;
+- compartilhamento usa Web Share API quando disponível, com cópia para clipboard e atalhos de e-mail/WhatsApp/Telegram como fallback.
 
 Essas diferenças são limitações de superfície da interface, não autorização implícita: o backend continua sendo a autoridade para escopo, roles e alterações sensíveis.
 

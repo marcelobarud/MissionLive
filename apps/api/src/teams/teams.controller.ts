@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { AuthenticatedRequest } from '../auth/auth.types';
-import { CreateTeamDto, UpdateTeamDto, UpdateMemberRoleDto } from './teams.dto';
+import { CreateTeamDto, CreateTeamWithGoalDto, UpdateTeamDto, UpdateMemberRoleDto } from './teams.dto';
 import { TeamsService } from './teams.service';
 
 @Controller('teams') @UseGuards(AuthGuard)
@@ -9,6 +9,7 @@ export class TeamsController {
   constructor(private readonly teams: TeamsService) {}
   @Get() list(@Req() req: AuthenticatedRequest) { return this.teams.list(req.user.id); }
   @Post() create(@Req() req: AuthenticatedRequest, @Body() dto: CreateTeamDto) { return this.teams.create(req.user.id, dto); }
+  @Post('with-goal') createWithGoal(@Req() req: AuthenticatedRequest, @Body() dto: CreateTeamWithGoalDto) { return this.teams.createWithGoal(req.user.id, dto); }
   @Get(':teamId') get(@Req() req: AuthenticatedRequest, @Param('teamId') teamId: string) { return this.teams.get(req.user.id, teamId); }
   @Patch(':teamId') update(@Req() req: AuthenticatedRequest, @Param('teamId') teamId: string, @Body() dto: UpdateTeamDto) { return this.teams.update(req.user.id, teamId, dto); }
   @Delete(':teamId') remove(@Req() req: AuthenticatedRequest, @Param('teamId') teamId: string) { return this.teams.remove(req.user.id, teamId); }

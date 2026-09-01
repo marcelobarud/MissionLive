@@ -80,6 +80,8 @@ Matriz completa e backlog objetivo para F20/F21.
 
 ## Fase 20 — Paridade frontend de Metas
 
+**Status:** CONCLUÍDA — formulários completos, detalhe com contexto/progresso, edição, cancelamento, arquivamento, steps e convites integrados.
+
 ### Objetivo
 Expor no frontend todas as capacidades V1 já suportadas pelo backend.
 
@@ -128,6 +130,8 @@ Fluxo completo browser → API → banco; reload preserva estado; testes e build
 ---
 
 ## Fase 21 — Paridade frontend de Equipes, Convites e Conta
+
+**Status:** CONCLUÍDA — detalhe e criação transacional de equipes com primeira meta, roles/membros, convites e recuperação de senha disponíveis na web.
 
 ### Equipes
 Implementar:
