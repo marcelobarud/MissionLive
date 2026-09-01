@@ -177,6 +177,8 @@ Matriz da F19 atualizada e paridade V1 relevante concluída.
 
 ## Fase 22 — Sistema visual e UX de progressão
 
+**Status:** CONCLUÍDA — componentes de progresso, estados de conclusão, marcos, contexto e participantes aplicados ao fluxo web.
+
 ### Objetivo
 Criar linguagem visual única para progresso/recompensa.
 
@@ -207,6 +209,8 @@ Dashboard, Metas e Equipes usam linguagem consistente.
 
 ## Fase 23 — Dashboard V2 e indicadores enriquecidos
 
+**Status:** CONCLUÍDA — progresso ativo, quase concluídas, prazos próximos/atrasados e distribuição por contexto/categoria disponíveis na API e no dashboard web.
+
 ### Manter
 - Metas concluídas;
 - Metas abertas;
@@ -231,6 +235,8 @@ Agregações devem respeitar exatamente o mesmo escopo das listagens.
 ---
 
 ## Fase 24 — Busca, filtros e ordenação
+
+**Status:** CONCLUÍDA — busca e filtros escopados no backend com ordenação por recentes, nome, prazo e progresso na tela de metas.
 
 ### Metas
 Busca por:

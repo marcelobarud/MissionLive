@@ -1,12 +1,14 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateGoalDto, CreateStepDto, OverrideGoalDto, ProgressDto, ReorderStepsDto, UpdateGoalDto, UpdateMemberRoleDto, UpdateStepDto } from './goals.dto';
+import { CreateGoalDto, CreateStepDto, ListGoalsQueryDto, OverrideGoalDto, ProgressDto, ReorderStepsDto, UpdateGoalDto, UpdateMemberRoleDto, UpdateStepDto } from './goals.dto';
 
 const EDITABLE_ROLES = new Set(['admin', 'editor']);
 const MANAGE_ROLES = new Set(['admin']);
 const MEMBER_ROLES = new Set(['admin', 'editor', 'viewer']);
 
 type ProgressRecord = { userId: string; completed: boolean };
+function progressPercent(steps: Array<{ progresses: ProgressRecord[] }>) { return steps.length ? Math.round(steps.filter((step) => step.progresses.some((progress) => progress.completed)).length / steps.length * 100) : 0; }
 
 @Injectable()
 export class GoalsService {
@@ -74,9 +76,20 @@ export class GoalsService {
     throw new ForbiddenException('You do not have access to this goal.');
   }
 
-  async list(userId: string) {
-    const goals = await this.prisma.goal.findMany({ where: this.accessWhere(userId), include: { category: true, team: true, members: { include: { user: { select: { id: true, name: true, email: true } } } }, steps: { orderBy: { position: 'asc' }, include: { progresses: { where: { userId } } } } }, orderBy: [{ status: 'asc' }, { updatedAt: 'desc' }] });
-    return goals.map((goal) => this.serialize(goal));
+  async list(userId: string, query: ListGoalsQueryDto = {}) {
+    const filters: Prisma.GoalWhereInput[] = [];
+    if (query.status) filters.push({ status: query.status });
+    if (query.categoryId) filters.push({ categoryId: query.categoryId });
+    if (query.q) filters.push({ OR: [{ name: { contains: query.q } }, { description: { contains: query.q } }, { tagsJson: { contains: query.q } }] });
+    if (query.hasDeadline !== undefined) filters.push({ endDate: query.hasDeadline ? { not: null } : null });
+    if (query.from || query.to) filters.push({ startDate: { ...(query.from ? { gte: new Date(query.from) } : {}), ...(query.to ? { lte: new Date(query.to) } : {}) } });
+    if (query.context === 'individual') filters.push({ teamId: null, members: { none: {} } });
+    if (query.context === 'shared') filters.push({ teamId: null, members: { some: {} } });
+    if (query.context === 'team') filters.push({ teamId: { not: null } });
+    const goals = await this.prisma.goal.findMany({ where: { AND: [this.accessWhere(userId), ...filters] }, include: { category: true, team: true, members: { include: { user: { select: { id: true, name: true, email: true } } } }, steps: { orderBy: { position: 'asc' }, include: { progresses: { where: { userId } } } } }, orderBy: query.sort === 'name' ? { name: 'asc' } : query.sort === 'deadline' ? { endDate: 'asc' } : { updatedAt: 'desc' } });
+    const serialized = goals.map((goal) => this.serialize(goal));
+    if (query.sort === 'progress-desc' || query.sort === 'progress-asc') serialized.sort((a, b) => { const aValue = progressPercent(a.steps); const bValue = progressPercent(b.steps); return query.sort === 'progress-desc' ? bValue - aValue : aValue - bValue; });
+    return serialized;
   }
 
   async get(userId: string, goalId: string) {

@@ -1,13 +1,13 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '../auth/auth.guard';
 import { AuthenticatedRequest } from '../auth/auth.types';
-import { CreateGoalDto, CreateStepDto, OverrideGoalDto, ProgressDto, ReorderStepsDto, UpdateGoalDto, UpdateMemberRoleDto, UpdateStepDto } from './goals.dto';
+import { CreateGoalDto, CreateStepDto, ListGoalsQueryDto, OverrideGoalDto, ProgressDto, ReorderStepsDto, UpdateGoalDto, UpdateMemberRoleDto, UpdateStepDto } from './goals.dto';
 import { GoalsService } from './goals.service';
 
 @Controller('goals') @UseGuards(AuthGuard)
 export class GoalsController {
   constructor(private readonly goals: GoalsService) {}
-  @Get() list(@Req() req: AuthenticatedRequest) { return this.goals.list(req.user.id); }
+  @Get() list(@Req() req: AuthenticatedRequest, @Query() query: ListGoalsQueryDto) { return this.goals.list(req.user.id, query); }
   @Post() create(@Req() req: AuthenticatedRequest, @Body() dto: CreateGoalDto) { return this.goals.create(req.user.id, dto); }
   @Get(':goalId') get(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string) { return this.goals.get(req.user.id, goalId); }
   @Patch(':goalId') update(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string, @Body() dto: UpdateGoalDto) { return this.goals.update(req.user.id, goalId, dto); }

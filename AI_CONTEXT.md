@@ -649,14 +649,14 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - steps, reordenação, progresso próprio, conclusão automática, arquivamento e owner override auditado;
 - convites de metas/equipes com token hash, expiração de 24 horas, aceite explícito, revogação e limite de três convidados em meta compartilhada;
 - equipes, memberships, roles e autorização no backend;
-- dashboard escopado e endpoint de plano/entitlement de desenvolvimento;
+- dashboard V2 escopado (progresso ativo, prazos, quase concluídas e distribuição por contexto/categoria) e endpoint de plano/entitlement de desenvolvimento;
 - ValidationPipe global, Helmet, CORS configurável, filtro global de erros e validação de `SESSION_SECRET` no startup.
 
 ### Frontend web disponível
 
 - login, cadastro e verificação de e-mail em desenvolvimento;
-- dashboard com cards, taxa derivada e barra de progresso;
-- listagem, criação completa e edição inicial de metas, detalhe com datas/tags/contexto/participantes/progresso, CRUD de steps, cancelamento, arquivamento, owner override e convite direto de meta;
+- dashboard com cards, taxa derivada, progresso ativo, prazos, metas quase concluídas, distribuição com barras, evolução temporal e barras de progresso;
+- listagem, busca, filtros e ordenação server-side; criação completa e edição inicial de metas, detalhe com datas/tags/contexto/participantes/progresso, CRUD de steps, cancelamento, arquivamento, owner override e convite direto de meta;
 - listagem, criação básica e criação transacional de equipe com primeira meta/steps, detalhe, edição, gerenciamento de roles/membros e convite de equipe;
 - preview e aceite de convite em `/invite/<token>`;
 - recuperação e redefinição de senha em desenvolvimento;
@@ -665,8 +665,8 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 ### Diferenças conhecidas entre o alvo da V1 e a interface atual
 
 - a interface web ainda não possui edição/cancelamento de membros de meta nem listagem persistida de convites já criados após recarregar a página;
-- `categoryBreakdown` já é calculado no dashboard da API, mas ainda não é renderizado como gráfico no frontend;
 - algumas operações administrativas avançadas permanecem limitadas à API; recuperação de senha usa token local no desenvolvimento e ainda não possui entrega de e-mail em produção;
+- reminders, activity feed, comentários/reações, templates, calendário/timeline operacional, indicador “Em ritmo”, onboarding, perfil/preferências e notificações internas ainda não foram implementados;
 - compartilhamento usa Web Share API quando disponível, com cópia para clipboard e atalhos de e-mail/WhatsApp/Telegram como fallback.
 
 Essas diferenças são limitações de superfície da interface, não autorização implícita: o backend continua sendo a autoridade para escopo, roles e alterações sensíveis.

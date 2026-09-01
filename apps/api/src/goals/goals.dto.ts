@@ -1,4 +1,5 @@
-import { ArrayMaxSize, IsArray, IsBoolean, IsDateString, IsOptional, IsString, IsUUID, Length } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsDateString, IsIn, IsOptional, IsString, IsUUID, Length } from 'class-validator';
+import { Transform } from 'class-transformer';
 
 export class CreateGoalDto {
   @IsString() @Length(1, 120) name!: string;
@@ -17,3 +18,13 @@ export class ReorderStepsDto { @IsArray() @ArrayMaxSize(200) @IsUUID('4', { each
 export class ProgressDto { @IsBoolean() completed!: boolean; }
 export class OverrideGoalDto { @IsOptional() @IsString() @Length(0, 500) reason?: string; }
 export class UpdateMemberRoleDto { @IsString() role!: string; }
+export class ListGoalsQueryDto {
+  @IsOptional() @IsString() @Length(1, 120) q?: string;
+  @IsOptional() @IsIn(['active', 'completed', 'cancelled', 'archived']) status?: string;
+  @IsOptional() @IsUUID() categoryId?: string;
+  @IsOptional() @IsIn(['individual', 'shared', 'team']) context?: string;
+  @IsOptional() @Transform(({ value }) => value === true || value === 'true') @IsBoolean() hasDeadline?: boolean;
+  @IsOptional() @IsDateString() from?: string;
+  @IsOptional() @IsDateString() to?: string;
+  @IsOptional() @IsIn(['recent', 'name', 'deadline', 'progress-desc', 'progress-asc']) sort?: string;
+}

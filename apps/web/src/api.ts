@@ -7,7 +7,7 @@ export type ProgressSummary = { completedSteps: number; totalSteps: number; part
 export type Goal = { id: string; ownerUserId: string; owner?: User; name: string; description?: string | null; status: string; startDate: string; endDate?: string | null; completionMode?: string | null; completionOverrideReason?: string | null; customCategory?: string | null; category?: Category | null; team?: { id: string; name: string; ownerUserId?: string; owner?: User; members?: { id: string; user: User; role: string }[] } | null; tags: string[]; steps: Step[]; members?: { id: string; user: User; role: string }[]; progressSummary?: ProgressSummary };
 export type Team = { id: string; ownerUserId: string; owner?: User; name: string; description?: string | null; accessRole?: string; members: { id: string; user: User; role: string }[]; goals: { id: string; name: string; status: string }[] };
 export type TeamDetail = Omit<Team, 'goals'> & { goals: Goal[] };
-export type Dashboard = { counts: { completed: number; open: number; thisMonth: number; thisYear: number; total: number; completionRate: number; activeProgress: number }; categoryBreakdown: { label: string; count: number }[]; contextBreakdown: { label: string; count: number }[]; upcomingDeadlines: Goal[]; overdueGoals: Goal[]; nearlyCompleteGoals: Goal[]; recentGoals: Goal[] };
+export type Dashboard = { counts: { completed: number; open: number; thisMonth: number; thisYear: number; total: number; completionRate: number; activeProgress: number }; categoryBreakdown: { label: string; count: number }[]; contextBreakdown: { label: string; count: number }[]; upcomingDeadlines: Goal[]; overdueGoals: Goal[]; nearlyCompleteGoals: Goal[]; completionTimeline: { label: string; count: number }[]; recentGoals: Goal[] };
 export type Invite = { id: string; targetType: string; expiresAt: string; url?: string };
 
 async function request<T>(path: string, init: RequestInit = {}) {
@@ -27,7 +27,7 @@ export const api = {
   logout: () => request<void>('/auth/logout', { method: 'POST' }),
   categories: () => request<Category[]>('/categories'),
   dashboard: () => request<Dashboard>('/dashboard'),
-  goals: () => request<Goal[]>('/goals'),
+  goals: (query: Record<string, string | undefined> = {}) => { const params = new URLSearchParams(); for (const [key, value] of Object.entries(query)) if (value) params.set(key, value); const suffix = params.toString() ? `?${params.toString()}` : ''; return request<Goal[]>(`/goals${suffix}`); },
   goal: (id: string) => request<Goal>(`/goals/${id}`),
   createGoal: (body: Record<string, unknown>) => request<Goal>('/goals', json(body)),
   updateGoal: (id: string, body: Record<string, unknown>) => request<Goal>(`/goals/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
