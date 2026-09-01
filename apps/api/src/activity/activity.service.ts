@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ActivityListQueryDto } from './activity.dto';
 
 type Metadata = Record<string, string | number | boolean>;
 
@@ -22,9 +23,12 @@ export class ActivityService {
     return event;
   }
 
-  async list(userId: string, requestedLimit?: string) {
-    const parsed = Number(requestedLimit ?? 30); const limit = Number.isInteger(parsed) ? Math.min(Math.max(parsed, 1), 50) : 30;
-    const events = await this.prisma.activityEvent.findMany({ where: { OR: [{ goal: { OR: [{ ownerUserId: userId }, { members: { some: { userId } } }, { team: { ownerUserId: userId } }, { team: { members: { some: { userId } } } }] } }, { team: { OR: [{ ownerUserId: userId }, { members: { some: { userId } } }] } }] }, include: { actor: { select: { id: true, name: true } }, targetUser: { select: { id: true, name: true } }, goal: { select: { id: true, name: true } }, team: { select: { id: true, name: true } } }, orderBy: { createdAt: 'desc' }, take: limit });
-    return events.map((event) => ({ ...event, metadata: JSON.parse(event.metadataJson || '{}') as Metadata }));
+  async list(userId: string, query: ActivityListQueryDto = {}) {
+    const limit = query.limit ?? 25;
+    const offset = query.offset ?? 0;
+    const events = await this.prisma.activityEvent.findMany({ where: { OR: [{ goal: { OR: [{ ownerUserId: userId }, { members: { some: { userId } } }, { team: { ownerUserId: userId } }, { team: { members: { some: { userId } } } }] } }, { team: { OR: [{ ownerUserId: userId }, { members: { some: { userId } } }] } }] }, include: { actor: { select: { id: true, name: true } }, targetUser: { select: { id: true, name: true } }, goal: { select: { id: true, name: true } }, team: { select: { id: true, name: true } } }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip: offset, take: limit + 1 });
+    const hasMore = events.length > limit;
+    const items = (hasMore ? events.slice(0, limit) : events).map((event) => ({ ...event, metadata: JSON.parse(event.metadataJson || '{}') as Metadata }));
+    return { items, nextOffset: hasMore ? offset + limit : null, hasMore };
   }
 }

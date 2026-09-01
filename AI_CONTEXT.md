@@ -651,7 +651,7 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - equipes, memberships, roles e autorização no backend;
 - dashboard V2 escopado (progresso ativo, prazos, quase concluídas e distribuição por contexto/categoria) e endpoint de plano/entitlement de desenvolvimento;
 - reminders individuais com timezone, datas futuras, cancelamento e migration própria;
-- feed de atividade persistido, escopado por metas/equipes acessíveis, com eventos de domínio para metas, steps, equipes, convites, comentários e reações;
+- feed de atividade persistido, escopado por metas/equipes acessíveis, com eventos de domínio para metas, steps, equipes, convites, comentários e reações; `GET /activity` aceita paginação limitada por `limit`/`offset`, com o Dashboard consumindo 10 itens e o histórico completo em `/activities`;
 - comentários textuais por meta e reações limitadas a 👏, ❤️, 🎉 e 💪, com autorização de membership, moderação contextual, limite de tamanho, rate limit e sem HTML arbitrário;
 - templates oficiais e pessoais, uso com revisão explícita das datas, duplicação sem progresso/membros/convites/comentários/atividade/conclusão;
 - calendário/timeline com inícios, prazos e reminders escopados e indicador de ritmo derivado, sem percentual persistido;
@@ -661,7 +661,7 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 ### Frontend web disponível
 
 - login, cadastro e verificação de e-mail em desenvolvimento;
-- dashboard com cards, taxa derivada, progresso ativo, prazos, metas quase concluídas, distribuição com barras, evolução temporal e barras de progresso;
+- dashboard com cards, taxa derivada, progresso ativo, prazos, metas quase concluídas, distribuição com barras, evolução temporal, barras de progresso e feed recente limitado a 10 itens com acesso ao histórico;
 - listagem, busca, filtros e ordenação server-side; criação completa e edição inicial de metas, detalhe com datas/tags/contexto/participantes/progresso, CRUD de steps, cancelamento, arquivamento, owner override e convite direto de meta;
 - listagem, criação básica e criação transacional de equipe com primeira meta/steps, detalhe, edição, gerenciamento de roles/membros e convite de equipe;
 - preview e aceite de convite em `/invite/<token>`;

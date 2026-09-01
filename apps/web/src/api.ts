@@ -11,6 +11,7 @@ export type Dashboard = { counts: { completed: number; open: number; thisMonth: 
 export type Invite = { id: string; targetType: string; expiresAt: string; url?: string };
 export type Reminder = { id: string; goalId: string; remindAt: string; timezone: string; status: string; goal?: { id: string; name: string; status: string; endDate?: string | null } };
 export type ActivityEvent = { id: string; eventType: string; metadata: Record<string, string | number | boolean>; createdAt: string; actor: { id: string; name: string }; targetUser?: { id: string; name: string } | null; goal?: { id: string; name: string } | null; team?: { id: string; name: string } | null };
+export type ActivityPage = { items: ActivityEvent[]; nextOffset: number | null; hasMore: boolean };
 export type Comment = { id: string; body: string; createdAt: string; updatedAt: string; author: { id: string; name: string }; reactions: { emoji: string; count: number; reacted: boolean }[] };
 export type GoalTemplate = { id: string; name: string; description?: string | null; isOfficial: boolean; tags?: string[]; steps: string[] };
 export type Rhythm = { applicable: boolean; state: string; reason?: string; timePercent?: number; progressPercent?: number; delta?: number };
@@ -38,7 +39,8 @@ export const api = {
   goal: (id: string) => request<Goal>(`/goals/${id}`),
   createGoal: (body: Record<string, unknown>) => request<Goal>('/goals', json(body)),
   updateGoal: (id: string, body: Record<string, unknown>) => request<Goal>(`/goals/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
-  cancelGoal: (id: string) => request<{ cancelled: boolean }>(`/goals/${id}`, { method: 'DELETE' }),
+  cancelGoal: (id: string) => request<{ cancelled: boolean }>(`/goals/${id}/cancel`, { method: 'PATCH' }),
+  deleteGoal: (id: string) => request<{ deleted: boolean }>(`/goals/${id}`, { method: 'DELETE' }),
   archiveGoal: (id: string) => request<{ archived: boolean }>(`/goals/${id}/archive`, { method: 'PATCH' }),
   updateProgress: (goalId: string, stepId: string, completed: boolean) => request<Goal>(`/goals/${goalId}/steps/${stepId}/progress`, { method: 'PUT', body: JSON.stringify({ completed }) }),
   addStep: (goalId: string, title: string, description?: string) => request<Goal>(`/goals/${goalId}/steps`, json({ title, description })),
@@ -63,7 +65,7 @@ export const api = {
   reminders: () => request<Reminder[]>('/reminders'),
   createReminder: (body: { goalId: string; remindAt: string; timezone: string }) => request<Reminder>('/reminders', json(body)),
   cancelReminder: (id: string) => request<{ cancelled: boolean }>(`/reminders/${id}`, { method: 'DELETE' }),
-  activity: (limit = '30') => request<ActivityEvent[]>(`/activity?limit=${limit}`),
+  activity: (query: { limit?: number; offset?: number } = {}) => { const params = new URLSearchParams(); if (query.limit !== undefined) params.set('limit', String(query.limit)); if (query.offset !== undefined) params.set('offset', String(query.offset)); const suffix = params.toString() ? `?${params.toString()}` : ''; return request<ActivityPage>(`/activity${suffix}`); },
   comments: (goalId: string) => request<Comment[]>(`/goals/${goalId}/comments`),
   createComment: (goalId: string, body: string) => request<Comment>(`/goals/${goalId}/comments`, json({ body })),
   updateComment: (commentId: string, body: string) => request<Comment>(`/comments/${commentId}`, { method: 'PATCH', body: JSON.stringify({ body }) }),
