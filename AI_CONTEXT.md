@@ -672,6 +672,7 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - Design System V1 em `apps/web/src/design-system.tsx`, com Button, IconButton, Input, Textarea, Select, Checkbox, FormField, Card, Panel, Section, PageHeader, EmptyState, Spinner, ProgressBar e Badge;
 - tokens visuais centralizados em `apps/web/src/styles.css`, documentados em `docs/design/DESIGN_SYSTEM.md`, usando a paleta azul aprovada, escala de espaçamento, raios, alturas, foco, estados semânticos e reduced motion;
 - shell com acesso explícito ao perfil e logout separado, CTA único para criação de equipe, empty state de modelos, navegação mensal do calendário e badge de notificações não lidas.
+- `@tabler/icons-react` (`3.46.0`) é a biblioteca oficial de ícones do frontend; usar imports explícitos, família outline, `currentColor`, tamanhos padronizados e `aria-label` obrigatório em icon buttons.
 
 ### Diferenças conhecidas entre o alvo da V1 e a interface atual
 

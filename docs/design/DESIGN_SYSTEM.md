@@ -85,6 +85,21 @@ As primitives ficam em `apps/web/src/design-system.tsx` e são estilizadas no fi
 
 Wrappers de domínio existentes, como `StatusChip` e `ContextBadge`, devem compor essas primitives em vez de recriar estilos locais.
 
+## Iconografia
+
+`@tabler/icons-react` é a biblioteca oficial de ícones do frontend. Os imports são explícitos para preservar tree-shaking; não misturar bibliotecas de ícones sem decisão documentada.
+
+- ícones compactos em botões: 18px;
+- ícones padrão: 20px;
+- navegação: 21px;
+- destaques e empty states: 30–40px;
+- stroke padrão: aproximadamente `1.9`;
+- cor herdada pelo contexto (`currentColor`), sem hex hardcoded nos componentes;
+- usar principalmente a família outline;
+- `aria-label` é obrigatório para icon buttons e ícones que carregam significado sozinhos;
+- ícones acompanham labels importantes, não substituem texto essencial;
+- emojis de reação continuam sendo conteúdo do domínio, não ícones de interface.
+
 ## Regras de interação
 
 - Todo controle interativo deve ter foco visível com `--focus-ring`.

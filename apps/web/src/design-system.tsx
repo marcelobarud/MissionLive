@@ -1,10 +1,18 @@
 import type { ButtonHTMLAttributes, HTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
+import type { TablerIcon } from '@tabler/icons-react';
+import { IconInbox } from '@tabler/icons-react';
 
-export function Button({ variant = 'primary', className = '', children, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' | 'ghost'; children: ReactNode }) {
-  return <button className={`ds-button ds-button-${variant} ${className}`.trim()} {...props}>{children}</button>;
+type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & { variant?: 'primary' | 'secondary' | 'danger' | 'ghost'; children: ReactNode; startIcon?: ReactNode; endIcon?: ReactNode };
+
+export function Button({ variant = 'primary', className = '', children, startIcon, endIcon, ...props }: ButtonProps) {
+  return <button className={`ds-button ds-button-${variant} ${className}`.trim()} {...props}>{startIcon && <span className="ds-button-icon" aria-hidden="true">{startIcon}</span>}{children}{endIcon && <span className="ds-button-icon" aria-hidden="true">{endIcon}</span>}</button>;
 }
 
-export function IconButton({ className = '', children, ...props }: ButtonHTMLAttributes<HTMLButtonElement>) {
+export function AppIcon({ icon: Icon, size = 20, stroke = 1.9, className = '', ...props }: { icon: TablerIcon; size?: number; stroke?: number; className?: string; 'aria-label'?: string; 'aria-hidden'?: boolean }) {
+  return <Icon size={size} stroke={stroke} className={className || undefined} aria-hidden={props['aria-label'] ? undefined : props['aria-hidden'] ?? true} {...props} />;
+}
+
+export function IconButton({ className = '', children, ...props }: ButtonHTMLAttributes<HTMLButtonElement> & { 'aria-label': string }) {
   return <button className={`ds-icon-button ${className}`.trim()} {...props}>{children}</button>;
 }
 
@@ -44,8 +52,8 @@ export function PageHeader({ eyebrow, title, description, action, className = ''
   return <header className={`ds-page-header ${className}`.trim()}><div>{eyebrow && <p className="eyebrow">{eyebrow}</p>}<h1>{title}</h1>{description && <p className="muted">{description}</p>}</div>{action}</header>;
 }
 
-export function EmptyState({ title, description, action, className = '' }: { title: string; description: string; action?: ReactNode; className?: string }) {
-  return <div className={`ds-empty-state ${className}`.trim()}><div className="ds-empty-icon" aria-hidden="true">◎</div><h2>{title}</h2><p>{description}</p>{action}</div>;
+export function EmptyState({ title, description, action, icon: Icon = IconInbox, className = '' }: { title: string; description: string; action?: ReactNode; icon?: TablerIcon; className?: string }) {
+  return <div className={`ds-empty-state ${className}`.trim()}><div className="ds-empty-icon" aria-hidden="true"><Icon size={38} stroke={1.8} /></div><h2>{title}</h2><p>{description}</p>{action}</div>;
 }
 
 export function Spinner() { return <span className="ds-spinner" aria-label="Carregando" role="status" />; }
