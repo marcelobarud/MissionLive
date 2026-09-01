@@ -222,7 +222,7 @@ Também deve passar por revisão visual de:
 
 # Fase 36 — Auditoria visual completa
 
-**Status:** EM ANDAMENTO — rotas, estados e problemas sistêmicos foram mapeados; a refatoração ainda não começou.
+**Status:** CONCLUÍDA — auditoria visual completa registrada em `docs/design/visual-audit-plan03.md`; commit `8bd9ee4`.
 
 ## Objetivo
 
@@ -327,7 +327,7 @@ Corrigir apenas problemas que impeçam a própria auditoria.
 
 # Fase 37 — Design System, tokens e fundamentos
 
-**Status inicial:** PENDENTE
+**Status:** CONCLUÍDA — tokens visuais centralizados e fundamentos documentados em `docs/design/DESIGN_SYSTEM.md`.
 
 ## Objetivo
 
@@ -445,7 +445,7 @@ Criar:
 
 # Fase 38 — Componentes visuais base
 
-**Status inicial:** PENDENTE
+**Status:** CONCLUÍDA — primitives compartilhadas implementadas em `apps/web/src/design-system.tsx` e aplicadas aos estados e ações comuns.
 
 ## Objetivo
 
