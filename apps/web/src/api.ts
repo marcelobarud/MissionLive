@@ -9,6 +9,9 @@ export type Team = { id: string; ownerUserId: string; owner?: User; name: string
 export type TeamDetail = Omit<Team, 'goals'> & { goals: Goal[] };
 export type Dashboard = { counts: { completed: number; open: number; thisMonth: number; thisYear: number; total: number; completionRate: number; activeProgress: number }; categoryBreakdown: { label: string; count: number }[]; contextBreakdown: { label: string; count: number }[]; upcomingDeadlines: Goal[]; overdueGoals: Goal[]; nearlyCompleteGoals: Goal[]; completionTimeline: { label: string; count: number }[]; recentGoals: Goal[] };
 export type Invite = { id: string; targetType: string; expiresAt: string; url?: string };
+export type Reminder = { id: string; goalId: string; remindAt: string; timezone: string; status: string; goal?: { id: string; name: string; status: string; endDate?: string | null } };
+export type ActivityEvent = { id: string; eventType: string; metadata: Record<string, string | number | boolean>; createdAt: string; actor: { id: string; name: string }; targetUser?: { id: string; name: string } | null; goal?: { id: string; name: string } | null; team?: { id: string; name: string } | null };
+export type Comment = { id: string; body: string; createdAt: string; updatedAt: string; author: { id: string; name: string }; reactions: { emoji: string; count: number; reacted: boolean }[] };
 
 async function request<T>(path: string, init: RequestInit = {}) {
   const response = await fetch(`${API_URL}${path}`, { ...init, credentials: 'include', headers: { 'content-type': 'application/json', ...(init.headers ?? {}) } });
@@ -53,4 +56,13 @@ export const api = {
   previewInvite: (token: string) => request<{ targetType: string; name: string; expiresAt: string }>(`/invites/${token}`),
   acceptInvite: (token: string) => request<{ accepted: boolean }>('/invites/accept', json({ token })),
   revokeInvite: (id: string) => request<{ revoked: boolean }>(`/invites/${id}/revoke`, { method: 'POST' }),
+  reminders: () => request<Reminder[]>('/reminders'),
+  createReminder: (body: { goalId: string; remindAt: string; timezone: string }) => request<Reminder>('/reminders', json(body)),
+  cancelReminder: (id: string) => request<{ cancelled: boolean }>(`/reminders/${id}`, { method: 'DELETE' }),
+  activity: (limit = '30') => request<ActivityEvent[]>(`/activity?limit=${limit}`),
+  comments: (goalId: string) => request<Comment[]>(`/goals/${goalId}/comments`),
+  createComment: (goalId: string, body: string) => request<Comment>(`/goals/${goalId}/comments`, json({ body })),
+  updateComment: (commentId: string, body: string) => request<Comment>(`/comments/${commentId}`, { method: 'PATCH', body: JSON.stringify({ body }) }),
+  deleteComment: (commentId: string) => request<{ deleted: boolean }>(`/comments/${commentId}`, { method: 'DELETE' }),
+  toggleReaction: (commentId: string, emoji: string) => request<Comment>(`/comments/${commentId}/reactions`, { method: 'PUT', body: JSON.stringify({ emoji }) }),
 };

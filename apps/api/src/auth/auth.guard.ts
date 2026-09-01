@@ -14,7 +14,7 @@ export class AuthGuard implements CanActivate {
     if (!token) throw new UnauthorizedException('Authentication required.');
     const session = await this.prisma.session.findFirst({ where: { refreshTokenHash: hashToken(token), revokedAt: null, expiresAt: { gt: new Date() } }, include: { user: true } });
     if (!session || session.user.status !== 'active') throw new UnauthorizedException('Session is invalid or expired.');
-    request.user = { id: session.user.id, email: session.user.email, name: session.user.name };
+    request.user = { id: session.user.id, email: session.user.email, name: session.user.name, timezone: session.user.timezone };
     request.sessionId = session.id;
     return true;
   }

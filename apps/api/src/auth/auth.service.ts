@@ -11,7 +11,7 @@ export class AuthService {
   private readonly loginAttempts = new Map<string, { count: number; resetAt: number }>();
   constructor(private readonly prisma: PrismaService, private readonly config: ConfigService) {}
 
-  private publicUser(user: { id: string; email: string; name: string }): AuthUser { return { id: user.id, email: user.email, name: user.name }; }
+  private publicUser(user: { id: string; email: string; name: string; timezone?: string }): AuthUser { return { id: user.id, email: user.email, name: user.name, timezone: user.timezone }; }
   private localToken(token: string) { return this.config.get('NODE_ENV') !== 'production' ? token : undefined; }
 
   async register(dto: RegisterDto) {

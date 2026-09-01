@@ -269,6 +269,8 @@ Não carregar dados sem escopo para filtrar somente no browser.
 
 ## Fase 25 — Lembretes
 
+**Status:** CONCLUÍDA — reminders individuais com timezone, data futura, cancelamento, migration e painel no detalhe da meta.
+
 ### Objetivo
 Criar reminders individuais ligados a metas.
 
@@ -300,6 +302,8 @@ Estrutura conceitual:
 ---
 
 ## Fase 26 — Feed de atividade
+
+**Status:** CONCLUÍDA — ActivityEvent escopado por metas/equipes acessíveis, eventos de domínio nos fluxos principais e feed no dashboard.
 
 ### Objetivo
 Dar vida e contexto à colaboração.
@@ -334,6 +338,8 @@ Usuário só recebe eventos de recursos acessíveis.
 ---
 
 ## Fase 27 — Comentários e reações
+
+**Status:** CONCLUÍDA — comentários textuais escopados, moderação por autor/owner/admin, quatro reações com toggle, constraint única e rate limit em memória.
 
 ### Comentários
 - texto simples;

@@ -19,3 +19,18 @@ main { max-width: 1180px; margin: auto; padding: 2rem 1.25rem 5rem; }.page { ani
 @media (max-width: 720px) { .filters-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); }.dashboard-grid { grid-template-columns: 1fr; } }
 @media (max-width: 420px) { .filters-panel { grid-template-columns: 1fr; } }
 .breakdown-row { align-items: center; }.breakdown-track { overflow: hidden; height: .35rem; flex: 1; border-radius: 99px; background: #eef0f5; }.breakdown-track i { display: block; height: 100%; border-radius: inherit; background: #7b87f3; }
+.reminder-panel { display: grid; gap: .55rem; margin: 1rem 0; padding: 1.2rem 1.3rem; }.reminder-row { display: flex; align-items: center; justify-content: space-between; gap: .7rem; padding: .6rem 0; border-top: 1px solid #eef0f5; color: #59637a; font-size: .78rem; }.reminder-form { display: flex; align-items: end; gap: .6rem; padding-top: .7rem; border-top: 1px solid #eef0f5; }.reminder-form label { display: grid; flex: 1; gap: .35rem; color: #667087; font-size: .72rem; font-weight: 750; }.reminder-form input { min-height: 2.5rem; padding: .55rem .7rem; border: 1px solid #e0e3ee; border-radius: .6rem; color: #273049; background: #fbfcfe; }
+@media (max-width: 520px) { .reminder-form { align-items: stretch; flex-direction: column; }.reminder-form .button { width: 100%; } }
+.comments-panel, .activity-panel { display: grid; gap: 1rem; margin: 1rem 0; padding: 1.2rem 1.3rem; }
+.comment-row { border-top: 1px solid #eef0f5; padding-top: 1rem; }
+.comment-meta { display: flex; align-items: center; gap: .65rem; flex-wrap: wrap; }
+.comment-meta time, .activity-row small { color: #7c8598; font-size: .78rem; }
+.comment-row p { white-space: pre-wrap; overflow-wrap: anywhere; }
+.comment-form { display: grid; gap: .75rem; }
+.reaction-row { display: flex; gap: .45rem; flex-wrap: wrap; }
+.reaction { border: 1px solid #e0e3ee; background: #fbfcfe; border-radius: 999px; padding: .35rem .6rem; cursor: pointer; }
+.reaction.active { border-color: #6873ed; background: #eef0ff; }
+.activity-row { display: flex; gap: .7rem; border-top: 1px solid #eef0f5; padding-top: .8rem; }
+.activity-row > div { display: grid; gap: .2rem; }
+.activity-row a { color: #6570df; font-weight: 700; }
+.activity-dot { width: .55rem; height: .55rem; margin-top: .35rem; border-radius: 50%; background: var(--accent); flex: 0 0 auto; }

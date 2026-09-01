@@ -15,6 +15,7 @@ model User {
   passwordHash       String?
   emailVerifiedAt    DateTime?
   status             String             @default("active")
+  timezone           String             @default("UTC")
   createdAt          DateTime           @default(now())
   updatedAt          DateTime           @updatedAt
   accounts           Account[]
@@ -30,6 +31,11 @@ model User {
   completedGoals     Goal[]             @relation("GoalCompletedBy")
   subscriptions      Subscription[]
   goalAuditEvents     GoalAuditEvent[]
+  reminders           Reminder[]
+  activityEvents      ActivityEvent[] @relation("ActivityActor")
+  targetActivityEvents ActivityEvent[] @relation("ActivityTarget")
+  comments           Comment[]         @relation("CommentAuthor")
+  reactions          Reaction[]
 }
 
 model Account {
@@ -105,6 +111,9 @@ model Goal {
   steps                 GoalStep[]
   inviteLinks           InviteLink[]
   auditEvents           GoalAuditEvent[]
+  reminders             Reminder[]
+  activityEvents        ActivityEvent[]
+  comments              Comment[]
   @@index([ownerUserId])
   @@index([teamId])
   @@index([categoryId])
@@ -164,6 +173,7 @@ model Team {
   owner       User         @relation("TeamOwner", fields: [ownerUserId], references: [id], onDelete: Cascade)
   members     TeamMember[]
   goals       Goal[]
+  activityEvents ActivityEvent[]
   inviteLinks InviteLink[]
   @@index([ownerUserId])
 }
@@ -253,4 +263,65 @@ model GoalAuditEvent {
   actor       User     @relation(fields: [actorUserId], references: [id], onDelete: Cascade)
   @@index([goalId])
   @@index([actorUserId])
+}
+
+model Reminder {
+  id          String   @id @default(uuid())
+  userId      String
+  goalId      String
+  remindAt    DateTime
+  timezone    String
+  status      String   @default("pending")
+  deliveredAt DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  goal        Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  @@index([userId, status, remindAt])
+  @@index([goalId])
+}
+
+model ActivityEvent {
+  id           String   @id @default(uuid())
+  actorUserId  String
+  eventType    String
+  goalId       String?
+  teamId       String?
+  targetUserId String?
+  metadataJson String   @default("{}")
+  createdAt    DateTime @default(now())
+  actor        User     @relation("ActivityActor", fields: [actorUserId], references: [id], onDelete: Cascade)
+  targetUser   User?    @relation("ActivityTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+  goal         Goal?    @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  team         Team?    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  @@index([goalId, createdAt])
+  @@index([teamId, createdAt])
+  @@index([actorUserId, createdAt])
+}
+
+model Comment {
+  id           String     @id @default(uuid())
+  goalId       String
+  authorUserId String
+  body         String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  goal         Goal       @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  author       User       @relation("CommentAuthor", fields: [authorUserId], references: [id], onDelete: Cascade)
+  reactions    Reaction[]
+  @@index([goalId, createdAt])
+  @@index([authorUserId])
+}
+
+model Reaction {
+  id        String   @id @default(uuid())
+  commentId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([commentId, userId, emoji])
+  @@index([userId])
 }
