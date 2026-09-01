@@ -52,9 +52,17 @@ O espaçamento usa uma escala baseada em `0.25rem`: `--space-1` a `--space-12`. 
 
 Quebras principais:
 
-- até `720px`: navegação compacta, uma coluna e ações empilhadas quando necessário;
-- `721px` a `1024px`: composição intermediária, com grids reduzidos;
+- até `720px`: header compacto, drawer lateral, uma coluna e ações empilhadas quando necessário;
+- `721px` a `1024px`: sidebar fixa mais estreita e composição intermediária, com grids reduzidos;
 - acima de `1024px`: shell completo e grids de conteúdo.
+
+## Navegação e shell
+
+O shell autenticado usa uma sidebar como navegação principal em telas amplas. Ela fica fixa à esquerda, mantém a marca no topo, empilha as áreas Início, Metas, Equipes, Modelos, Calendário e Avisos e reserva a parte inferior para perfil e logout.
+
+Em telas menores, a sidebar vira um drawer acionado pelo botão de menu do header compacto. O drawer usa backdrop, fecha ao navegar ou pressionar ESC, bloqueia o scroll da página enquanto aberto e devolve o foco ao botão que o acionou. A navegação principal não é duplicada no topo nem em uma barra inferior.
+
+Os itens usam `@tabler/icons-react`, preservam nomes textuais e indicam a rota ativa com `primary`, `primary-subtle` e um indicador lateral discreto. O link de perfil e o logout permanecem ações distintas; a área de conta não concede nenhuma permissão de domínio.
 
 ## Tipografia
 
