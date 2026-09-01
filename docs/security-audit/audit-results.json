@@ -1,0 +1,265 @@
+{
+  "date": "2026-08-31",
+  "scope": "API NestJS, frontend React, Prisma schema/migrations e configuracao segura",
+  "handler_count": 37,
+  "handlers": [
+    {
+      "file": "apps/api/src/health.controller.ts",
+      "line": 5,
+      "route": "@Get()",
+      "guarded": false
+    },
+    {
+      "file": "apps/api/src/auth/auth.controller.ts",
+      "line": 14,
+      "route": "@Post('register') async register(@Body() dto: RegisterDto) { return this.auth.register(dto); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/auth/auth.controller.ts",
+      "line": 15,
+      "route": "@Post('login') @HttpCode(HttpStatus.OK) async login(@Body() dto: LoginDto, @Res({ passthrough: true }) response: Response) { const result = await this.auth.login(dto); this.setCookie(response, result.token, result.expiresAt); return { user: result.user, expiresAt: result.expiresAt }; }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/auth/auth.controller.ts",
+      "line": 16,
+      "route": "@Post('logout') @UseGuards(AuthGuard) @HttpCode(HttpStatus.NO_CONTENT) async logout(@Req() request: AuthenticatedRequest, @Res({ passthrough: true }) response: Response) { await this.auth.logout(request.sessionId); response.clearCookie(this.config.get('SESSION_COOKIE_NAME') ?? 'missionlive_session', { httpOnly: true, sameSite: 'lax', path: '/' }); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/auth/auth.controller.ts",
+      "line": 17,
+      "route": "@Get('me') @UseGuards(AuthGuard) me(@Req() request: AuthenticatedRequest) { return { user: request.user }; }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/auth/auth.controller.ts",
+      "line": 18,
+      "route": "@Post('verify-email') @HttpCode(HttpStatus.OK) verify(@Body() dto: TokenDto) { return this.auth.verifyEmail(dto.token); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/auth/auth.controller.ts",
+      "line": 19,
+      "route": "@Post('forgot-password') @HttpCode(HttpStatus.ACCEPTED) forgot(@Body() dto: ForgotPasswordDto) { return this.auth.requestPasswordReset(dto.email); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/auth/auth.controller.ts",
+      "line": 20,
+      "route": "@Post('reset-password') reset(@Body() dto: ResetPasswordDto) { return this.auth.resetPassword(dto); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/auth/auth.controller.ts",
+      "line": 21,
+      "route": "@Get('google') google(@Res() response: Response) { const result = this.googleOAuth.authorizationUrl(); return response.redirect(result.url); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/auth/auth.controller.ts",
+      "line": 22,
+      "route": "@Get('google/callback') async googleCallback(@Query('code') code: string | undefined, @Query('state') state: string | undefined, @Res({ passthrough: true }) response: Response) { const result = await this.googleOAuth.callback(code, state); this.setCookie(response, result.token, result.expiresAt); return { user: result.user, expiresAt: result.expiresAt }; }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/dashboard/dashboard.controller.ts",
+      "line": 7,
+      "route": "export class DashboardController { constructor(private readonly dashboard: DashboardService) {} @Get() summary(@Req() req: AuthenticatedRequest) { return this.dashboard.summary(req.user.id); } }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/goals/categories.controller.ts",
+      "line": 5,
+      "route": "export class CategoriesController { constructor(private readonly prisma: PrismaService) {} @Get() list() { return this.prisma.category.findMany({ orderBy: { name: 'asc' } }); } }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/goals/goals.controller.ts",
+      "line": 10,
+      "route": "@Get() list(@Req() req: AuthenticatedRequest) { return this.goals.list(req.user.id); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/goals/goals.controller.ts",
+      "line": 11,
+      "route": "@Post() create(@Req() req: AuthenticatedRequest, @Body() dto: CreateGoalDto) { return this.goals.create(req.user.id, dto); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/goals/goals.controller.ts",
+      "line": 12,
+      "route": "@Get(':goalId') get(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string) { return this.goals.get(req.user.id, goalId); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/goals/goals.controller.ts",
+      "line": 13,
+      "route": "@Patch(':goalId') update(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string, @Body() dto: UpdateGoalDto) { return this.goals.update(req.user.id, goalId, dto); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/goals/goals.controller.ts",
+      "line": 14,
+      "route": "@Delete(':goalId') remove(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string) { return this.goals.remove(req.user.id, goalId); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/goals/goals.controller.ts",
+      "line": 15,
+      "route": "@Post(':goalId/override') override(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string, @Body() dto: OverrideGoalDto) { return this.goals.override(req.user.id, goalId, dto); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/goals/goals.controller.ts",
+      "line": 16,
+      "route": "@Post(':goalId/steps') addStep(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string, @Body() dto: CreateStepDto) { return this.goals.addStep(req.user.id, goalId, dto); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/goals/goals.controller.ts",
+      "line": 17,
+      "route": "@Patch(':goalId/steps/reorder') reorder(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string, @Body() dto: ReorderStepsDto) { return this.goals.reorderSteps(req.user.id, goalId, dto); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/goals/goals.controller.ts",
+      "line": 18,
+      "route": "@Patch(':goalId/steps/:stepId') updateStep(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string, @Param('stepId') stepId: string, @Body() dto: UpdateStepDto) { return this.goals.updateStep(req.user.id, goalId, stepId, dto); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/goals/goals.controller.ts",
+      "line": 19,
+      "route": "@Delete(':goalId/steps/:stepId') removeStep(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string, @Param('stepId') stepId: string) { return this.goals.removeStep(req.user.id, goalId, stepId); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/goals/goals.controller.ts",
+      "line": 20,
+      "route": "@Put(':goalId/steps/:stepId/progress') progress(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string, @Param('stepId') stepId: string, @Body() dto: ProgressDto) { return this.goals.setProgress(req.user.id, goalId, stepId, dto); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/goals/goals.controller.ts",
+      "line": 21,
+      "route": "@Patch(':goalId/members/:memberId') memberRole(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string, @Param('memberId') memberId: string, @Body() dto: UpdateMemberRoleDto) { return this.goals.updateMemberRole(req.user.id, goalId, memberId, dto); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/goals/goals.controller.ts",
+      "line": 22,
+      "route": "@Delete(':goalId/members/:memberId') removeMember(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string, @Param('memberId') memberId: string) { return this.goals.removeMember(req.user.id, goalId, memberId); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/invites/invites.controller.ts",
+      "line": 10,
+      "route": "@Get(':token') preview(@Param('token') token: string) { return this.invites.preview(token); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/invites/invites.controller.ts",
+      "line": 11,
+      "route": "@Post() @UseGuards(AuthGuard) create(@Req() req: AuthenticatedRequest, @Body() dto: CreateInviteDto) { return this.invites.create(req.user.id, dto); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/invites/invites.controller.ts",
+      "line": 12,
+      "route": "@Post('accept') @UseGuards(AuthGuard) accept(@Req() req: AuthenticatedRequest, @Body() dto: InviteTokenDto) { return this.invites.accept(req.user.id, dto.token); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/invites/invites.controller.ts",
+      "line": 13,
+      "route": "@Post(':inviteId/revoke') @UseGuards(AuthGuard) revoke(@Req() req: AuthenticatedRequest, @Param('inviteId') inviteId: string) { return this.invites.revoke(req.user.id, inviteId); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/plans/plans.controller.ts",
+      "line": 7,
+      "route": "export class PlansController { constructor(private readonly plans: PlansService) {} @Get('current') current(@Req() req: AuthenticatedRequest) { return this.plans.current(req.user.id); } }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/teams/teams.controller.ts",
+      "line": 10,
+      "route": "@Get() list(@Req() req: AuthenticatedRequest) { return this.teams.list(req.user.id); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/teams/teams.controller.ts",
+      "line": 11,
+      "route": "@Post() create(@Req() req: AuthenticatedRequest, @Body() dto: CreateTeamDto) { return this.teams.create(req.user.id, dto); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/teams/teams.controller.ts",
+      "line": 12,
+      "route": "@Get(':teamId') get(@Req() req: AuthenticatedRequest, @Param('teamId') teamId: string) { return this.teams.get(req.user.id, teamId); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/teams/teams.controller.ts",
+      "line": 13,
+      "route": "@Patch(':teamId') update(@Req() req: AuthenticatedRequest, @Param('teamId') teamId: string, @Body() dto: UpdateTeamDto) { return this.teams.update(req.user.id, teamId, dto); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/teams/teams.controller.ts",
+      "line": 14,
+      "route": "@Delete(':teamId') remove(@Req() req: AuthenticatedRequest, @Param('teamId') teamId: string) { return this.teams.remove(req.user.id, teamId); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/teams/teams.controller.ts",
+      "line": 15,
+      "route": "@Patch(':teamId/members/:memberId') updateMember(@Req() req: AuthenticatedRequest, @Param('teamId') teamId: string, @Param('memberId') memberId: string, @Body() dto: UpdateMemberRoleDto) { return this.teams.updateMember(req.user.id, teamId, memberId, dto); }",
+      "guarded": true
+    },
+    {
+      "file": "apps/api/src/teams/teams.controller.ts",
+      "line": 16,
+      "route": "@Delete(':teamId/members/:memberId') removeMember(@Req() req: AuthenticatedRequest, @Param('teamId') teamId: string, @Param('memberId') memberId: string) { return this.teams.removeMember(req.user.id, teamId, memberId); }",
+      "guarded": true
+    }
+  ],
+  "findings": [],
+  "secret_matches": [],
+  "xss_matches": [],
+  "strengths": [
+    {
+      "file": "apps/api/src/auth/auth.guard.ts",
+      "line": 15,
+      "code": "const session = await this.prisma.session.findFirst({ where: { refreshTokenHash: hashToken(token), revokedAt: null, expiresAt: { gt: new Date() } }, include: { user: true } });"
+    },
+    {
+      "file": "apps/api/src/goals/goals.service.ts",
+      "line": 11,
+      "code": "private accessWhere(userId: string, goalId?: string) { return { ...(goalId ? { id: goalId } : {}), OR: [{ ownerUserId: userId }, { members: { some: { userId } } }, { team: { ownerUserId: userId } }, { team: { members: { some: { userId } } } }] }; }"
+    },
+    {
+      "file": "apps/api/src/main.ts",
+      "line": 1,
+      "code": "import { ValidationPipe } from '@nestjs/common';"
+    },
+    {
+      "file": "apps/api/src/invites/invites.service.ts",
+      "line": 15,
+      "code": "const invite = await this.prisma.inviteLink.create({ data: { tokenHash: hashToken(token), targetType: dto.targetType, goalId, teamId, role: 'viewer', createdByUserId: userId, expiresAt } });"
+    }
+  ],
+  "category_counts": {
+    "Isolamento": 0,
+    "Permissao no backend": 0,
+    "IDOR": 0,
+    "Segredos": 0,
+    "XSS e input": 0
+  },
+  "limitations": [
+    "Validacao de migration limpa contra PostgreSQL depende de URL/credencial SCRAM externa.",
+    "Rate limiting de login e por processo; antes de escalar horizontalmente deve usar armazenamento compartilhado."
+  ]
+}

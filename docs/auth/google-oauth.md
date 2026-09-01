@@ -1,6 +1,6 @@
 # Google OAuth
 
-O MissionLive possui um adaptador OAuth baseado em Authorization Code + state assinado e PKCE-ready, com validação de e-mail verificado e identidade Google (`sub`). O client secret nunca é enviado ao frontend.
+O MissionLive possui um adaptador OAuth baseado em Authorization Code + state assinado e PKCE (S256), com validação de e-mail verificado e identidade Google (`sub`). O client secret nunca é enviado ao frontend.
 
 Para habilitar o redirect local, configure no `.env` da API:
 

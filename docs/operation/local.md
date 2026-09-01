@@ -6,3 +6,5 @@
 4. Inicie com `npm run dev`.
 
 O banco SQLite fica em `apps/api/data/missionlive.db` e é ignorado pelo Git. A API falha no startup se o segredo de sessão estiver ausente ou inseguro fora de testes.
+
+O Prisma está fixado em uma versão estável anterior ao advisory de `deepmerge-ts` observado no tooling de configuração. Reavalie a atualização em conjunto com o próximo upgrade major do Prisma.

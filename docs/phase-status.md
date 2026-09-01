@@ -17,5 +17,7 @@
 | 12 — Owner override | CONCLUÍDA | Override exclusivo do owner, motivo e preservação de pendências |
 | 13 — Dashboard e análises | CONCLUÍDA | Cards, taxa derivada e agregações escopadas |
 | 14 — Planos/entitlements | CONCLUÍDA | Plan development seguro, estrutura de subscription e service de entitlement |
-| 15 — Hardening, UX e acessibilidade | EM ANDAMENTO | Revisão final de erros, acessibilidade, dependências e headers |
-| 16–18 | PENDENTE | PostgreSQL, auditoria PDF e fechamento |
+| 15 — Hardening, UX e acessibilidade | CONCLUÍDA | Helmet/CORS, cookies, mensagens genéricas, focus states, labels, empty/loading/error states, XSS por escape React e audit de dependências 0 vulnerabilidades |
+| 16 — PostgreSQL antes de produção | BLOQUEADA EXTERNAMENTE | Schema/script de migration limpa preparado; serviço local existe, mas credencial SCRAM não foi fornecida |
+| 17 — Auditoria final de segurança | CONCLUÍDA | Auditoria dos 37 handlers, scans de segredo/XSS, pontos fortes/limitações, script regenerável e PDF A4 validado visualmente |
+| 18 — Fechamento V1 | CONCLUÍDA | README final, operação local/PostgreSQL/Google, known limitations, backlog V2 e estado documentado |

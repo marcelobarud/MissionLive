@@ -32,8 +32,10 @@ Princípios:
 | 12 — Owner override | CONCLUÍDA |
 | 13 — Dashboard e análises | CONCLUÍDA |
 | 14 — Planos/entitlements | CONCLUÍDA |
-| 15 — Hardening, UX e acessibilidade | EM ANDAMENTO |
-| 16–18 | PENDENTE |
+| 15 — Hardening, UX e acessibilidade | CONCLUÍDA |
+| 16 — PostgreSQL antes de produção | BLOQUEADA EXTERNAMENTE |
+| 17 — Auditoria final de segurança | CONCLUÍDA |
+| 18 — Fechamento V1 | CONCLUÍDA |
 
 ---
 
