@@ -500,7 +500,7 @@ Revisar/criar:
 
 # Fase 39 — Navegação e estrutura global das páginas
 
-**Status inicial:** PENDENTE
+**Status:** CONCLUÍDA — shell, navegação mobile/desktop, espaçamento de página, largura de conteúdo e acesso ao perfil revisados.
 
 ## Objetivo
 
@@ -547,7 +547,7 @@ Uma mesma posição funcional deve usar a mesma lógica de layout em todas as p�
 
 # Fase 40 — Formulários, inputs, botões e ações
 
-**Status inicial:** PENDENTE
+**Status:** CONCLUÍDA — controles, alturas, foco, hierarquia de ações e empilhamento responsivo revisados com tokens compartilhados.
 
 ## Objetivo
 
@@ -595,7 +595,7 @@ Especialmente:
 
 # Fase 41 — Cards, boxes e empty states
 
-**Status inicial:** PENDENTE
+**Status:** CONCLUÍDA — painéis, cards, estados vazios e duplicidade de CTA revisados nas superfícies principais.
 
 ## Objetivo
 
@@ -649,7 +649,7 @@ Secondary CTA opcional
 
 # Fase 42 — Refinamento do Dashboard
 
-**Status inicial:** PENDENTE
+**Status:** CONCLUÍDA — indicadores, progresso, distribuição, timeline, atividade e listas receberam a fundação visual comum.
 
 ## Objetivo
 
@@ -698,7 +698,7 @@ Desktop:
 
 # Fase 43 — Refinamento de Metas
 
-**Status inicial:** PENDENTE
+**Status:** CONCLUÍDA — listagem, filtros, cards, detalhe, progresso, passos, colaboração e ações foram alinhados aos tokens.
 
 ## Objetivo
 
@@ -752,7 +752,7 @@ Criar hierarquia clara:
 
 # Fase 44 — Refinamento de Equipes
 
-**Status inicial:** PENDENTE
+**Status:** CONCLUÍDA — CTA duplicado removido; lista, vazio, detalhe, membros e ações receberam composição consistente.
 
 ## Objetivo
 
@@ -795,7 +795,7 @@ Padronizar:
 
 # Fase 45 — Refinamento de Modelos, Calendário e Avisos
 
-**Status inicial:** PENDENTE
+**Status:** CONCLUÍDA — empty state de modelos, navegação de período do calendário e badge de não lidos foram adicionados.
 
 ## Modelos/Templates
 
@@ -839,7 +839,7 @@ Revisar:
 
 # Fase 46 — Responsividade mobile, tablet e desktop
 
-**Status inicial:** PENDENTE
+**Status:** CONCLUÍDA — larguras 360, 768 e 1280 foram verificadas sem overflow horizontal; regras mobile-first foram consolidadas.
 
 ## Objetivo
 
@@ -884,7 +884,7 @@ Mobile-first significa projetar a composição para mobile, não apenas fazer de
 
 # Fase 47 — Acessibilidade e microinterações
 
-**Status inicial:** PENDENTE
+**Status:** CONCLUÍDA — foco visível, labels/roles semânticos, touch targets, estados semânticos e reduced motion foram revisados.
 
 ## Acessibilidade
 
@@ -927,7 +927,7 @@ Não adicionar movimento decorativo excessivo.
 
 # Fase 48 — Aplicação completa da nova paleta
 
-**Status inicial:** PENDENTE
+**Status:** CONCLUÍDA — paleta aprovada aplicada; não restam hex literais fora da definição central de tokens.
 
 ## Objetivo
 

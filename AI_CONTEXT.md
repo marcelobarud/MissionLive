@@ -668,7 +668,10 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - recuperação e redefinição de senha em desenvolvimento;
 - páginas de modelos, calendário/timeline e indicador de ritmo no detalhe da meta;
 - onboarding pulável, perfil/preferências, sessões e notificações internas com deep links;
-- navegação responsiva mobile-first com estados de loading, erro e vazio.
+- navegação responsiva mobile-first com estados de loading, erro e vazio;
+- Design System V1 em `apps/web/src/design-system.tsx`, com Button, IconButton, Input, Textarea, Select, Checkbox, FormField, Card, Panel, Section, PageHeader, EmptyState, Spinner, ProgressBar e Badge;
+- tokens visuais centralizados em `apps/web/src/styles.css`, documentados em `docs/design/DESIGN_SYSTEM.md`, usando a paleta azul aprovada, escala de espaçamento, raios, alturas, foco, estados semânticos e reduced motion;
+- shell com acesso explícito ao perfil e logout separado, CTA único para criação de equipe, empty state de modelos, navegação mensal do calendário e badge de notificações não lidas.
 
 ### Diferenças conhecidas entre o alvo da V1 e a interface atual
 

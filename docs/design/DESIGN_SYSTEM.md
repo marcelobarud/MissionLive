@@ -72,7 +72,11 @@ O texto deve continuar compreensível quando ampliado e deve poder quebrar em no
 As primitives ficam em `apps/web/src/design-system.tsx` e são estilizadas no final de `apps/web/src/styles.css`:
 
 - `Button`: variantes `primary`, `secondary`, `danger` e `ghost`; suporta os atributos nativos de botão e estados desabilitado/foco.
+- `IconButton`: botão compacto circular para ações representadas por ícone; sempre exige `aria-label` no uso.
+- `Input`, `Textarea`, `Select` e `Checkbox`: controles nativos com classes de token para uso em novos formulários.
+- `FormField`: label, hint e erro em uma composição acessível e consistente.
 - `Panel`: superfície elevada para agrupar conteúdo, com padding e borda consistentes.
+- `Card` e `Section`: bases semânticas para cards e seções compostas.
 - `PageHeader`: eyebrow, título, subtítulo e ação principal em uma estrutura responsiva.
 - `EmptyState`: estado vazio com ícone opcional, título, descrição e ação.
 - `Spinner`: indicador de carregamento com nome acessível.
