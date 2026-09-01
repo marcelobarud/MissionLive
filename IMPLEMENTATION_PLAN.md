@@ -20,8 +20,20 @@ Princípios:
 | 0 — Bootstrap documental e repositório | CONCLUÍDA |
 | 1 — Persistência e fundação NestJS | CONCLUÍDA |
 | 2 — Shell frontend mobile-first | CONCLUÍDA |
-| 3 — Users e autenticação local | EM ANDAMENTO |
-| 4–18 | PENDENTE |
+| 3 — Users e autenticação local | CONCLUÍDA |
+| 4 — Google OAuth | CONCLUÍDA / CONFIGURÁVEL |
+| 5 — Categories e Goal core | CONCLUÍDA |
+| 6 — Goal Steps e progresso individual | CONCLUÍDA |
+| 7 — Metas compartilhadas e roles | CONCLUÍDA |
+| 8 — Links de convite de meta | CONCLUÍDA |
+| 9 — Equipes e memberships | CONCLUÍDA |
+| 10 — Convites de equipe | CONCLUÍDA |
+| 11 — Progresso coletivo e conclusão automática | CONCLUÍDA |
+| 12 — Owner override | CONCLUÍDA |
+| 13 — Dashboard e análises | CONCLUÍDA |
+| 14 — Planos/entitlements | CONCLUÍDA |
+| 15 — Hardening, UX e acessibilidade | EM ANDAMENTO |
+| 16–18 | PENDENTE |
 
 ---
 
