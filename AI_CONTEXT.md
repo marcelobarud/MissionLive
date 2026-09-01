@@ -54,16 +54,15 @@ A infraestrutura de planos e assinaturas deve ser preparada no domínio da aplic
 - Capacitor não faz parte da V1 inicial, apenas deve ser preservada a compatibilidade arquitetural
 
 ### ORM/query layer
-Ainda não foi formalmente escolhido.
-A Fase 1 deve selecionar e documentar a opção com foco em:
-- compatibilidade NestJS;
-- SQLite + PostgreSQL;
-- migrations confiáveis;
-- constraints;
-- testes;
-- manutenção de longo prazo.
+Prisma Client e Prisma Migrate foram escolhidos e documentados na ADR `docs/adr/0001-persistencia.md`.
 
-Não trocar de ORM silenciosamente depois da decisão.
+- `prisma` e `@prisma/client` fixados em `6.12.0`;
+- SQLite é o banco operacional de desenvolvimento;
+- o schema mantém compatibilidade planejada com PostgreSQL;
+- migrations, constraints, índices e transações são versionados no Prisma;
+- `scripts/validate-postgres.ps1` prepara a migration limpa para a validação pré-produção.
+
+Não trocar de ORM silenciosamente depois dessa decisão.
 
 ## 4. Princípios de arquitetura
 
@@ -206,6 +205,14 @@ Persistir hash do token, não o token puro.
 - cadastro tradicional exige fluxo de verificação de e-mail;
 - rate limiting em endpoints de autenticação;
 - não registrar senhas, tokens ou segredos em logs.
+
+### Administrador na V1
+
+- A V1 não possui administrador global da plataforma no modelo `User`.
+- `admin` é uma role contextual, válida apenas em `goal_members` ou `team_members`.
+- O owner é a autoridade máxima do recurso e não deve ser confundido com uma role de membership.
+- Uma conta administrativa local de desenvolvimento pode ser provisionada para testes, mas continua sujeita ao escopo dos recursos que possui ou dos quais participa.
+- Credenciais locais não devem ser armazenadas neste documento, versionadas no repositório ou reutilizadas em produção.
 
 ## 9. Metas
 
@@ -587,7 +594,7 @@ Criar sempre usuários distintos A/B e testar:
 
 ## 19. Planos e assinaturas
 
-Domínio conceitual futuro:
+O domínio básico já existe na V1, sem cobrança real.
 
 ### `plans`
 - `id`
@@ -606,6 +613,8 @@ Domínio conceitual futuro:
 - provider_subscription_id nullable
 - timestamps
 
+O endpoint autenticado `GET /plans/current` retorna uma assinatura ativa quando existir ou o plano seguro `development` como fallback local. O service de entitlement existe, mas limites pagos ainda não estão configurados nem aplicados a recursos específicos.
+
 Não implementar cobrança real sem provedor escolhido.
 
 A autorização de recursos pagos deve ocorrer no backend por entitlement/plan, nunca apenas escondendo UI.
@@ -613,6 +622,8 @@ A autorização de recursos pagos deve ocorrer no backend por entitlement/plan, 
 ## 20. Banco e migração PostgreSQL
 
 SQLite serve para desenvolvimento/protótipo.
+
+Estado atual: migrations e script de validação PostgreSQL estão preparados, mas a execução real continua bloqueada externamente neste ambiente porque não foi fornecida uma URL/credencial SCRAM. PostgreSQL ainda não deve ser considerado validado para produção.
 
 Antes de produção:
 - PostgreSQL passa a ser banco oficial;
@@ -627,7 +638,41 @@ Antes de produção:
 
 Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 
-## 21. Fora do escopo da V1
+## 21. Estado atual da implementação
+
+### API/backend disponível
+
+- autenticação local com cadastro, verificação de e-mail, login, logout, sessões em cookie HttpOnly e recuperação de senha por token local;
+- adaptador Google OAuth configurável com state assinado e PKCE, ainda sem execução real por falta de credenciais;
+- CRUD de metas com escopo por owner, membership direta ou membership de equipe;
+- categorias, categoria personalizada, tags, datas e status no backend;
+- steps, reordenação, progresso próprio, conclusão automática e owner override auditado;
+- convites de metas/equipes com token hash, expiração de 24 horas, aceite explícito, revogação e limite de três convidados em meta compartilhada;
+- equipes, memberships, roles e autorização no backend;
+- dashboard escopado e endpoint de plano/entitlement de desenvolvimento;
+- ValidationPipe global, Helmet, CORS configurável, filtro global de erros e validação de `SESSION_SECRET` no startup.
+
+### Frontend web disponível
+
+- login, cadastro e verificação de e-mail em desenvolvimento;
+- dashboard com cards, taxa derivada e barra de progresso;
+- listagem e criação inicial de metas, detalhe, adição de steps, progresso próprio, owner override e convite direto de meta;
+- listagem e criação básica de equipes;
+- preview e aceite de convite em `/invite/<token>`;
+- navegação responsiva mobile-first com estados de loading, erro e vazio.
+
+### Diferenças conhecidas entre o alvo da V1 e a interface atual
+
+- o formulário web de criação ainda não expõe categoria, categoria personalizada, data final ou equipe, embora a API aceite esses campos;
+- a interface web ainda não expõe edição/cancelamento de metas, gerenciamento de membros/roles, convite de equipe ou detalhe de equipe;
+- o fluxo web de criação de equipe ainda não cria a primeira meta integrada;
+- `categoryBreakdown` já é calculado no dashboard da API, mas ainda não é renderizado como gráfico no frontend;
+- recuperação de senha e algumas operações administrativas permanecem disponíveis apenas pela API;
+- compartilhamento usa cópia para clipboard quando disponível; Web Share API e fallbacks de canais ainda não foram implementados.
+
+Essas diferenças são limitações de superfície da interface, não autorização implícita: o backend continua sendo a autoridade para escopo, roles e alterações sensíveis.
+
+## 22. Fora do escopo da V1
 
 - gamificação funcional;
 - XP;
@@ -642,7 +687,7 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - colaboração em tempo real/WebSocket, salvo necessidade validada;
 - permissões customizadas arbitrárias/RBAC complexo.
 
-## 22. Documentos de execução
+## 23. Documentos de execução
 
 Ordem de leitura para Codex:
 1. `AI_CONTEXT.md`
