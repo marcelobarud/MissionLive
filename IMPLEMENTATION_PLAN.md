@@ -19,8 +19,9 @@ Princípios:
 |---|---|
 | 0 — Bootstrap documental e repositório | CONCLUÍDA |
 | 1 — Persistência e fundação NestJS | CONCLUÍDA |
-| 2 — Shell frontend mobile-first | EM ANDAMENTO |
-| 3–18 | PENDENTE |
+| 2 — Shell frontend mobile-first | CONCLUÍDA |
+| 3 — Users e autenticação local | EM ANDAMENTO |
+| 4–18 | PENDENTE |
 
 ---
 
@@ -86,7 +87,7 @@ Definir camada de banco e preparar migrations SQLite/PostgreSQL.
 
 ## Fase 2 — Shell frontend mobile-first
 
-**Status:** EM ANDAMENTO — navegação e shell mobile-first em implementação.
+**Status:** CONCLUÍDA — rotas, navegação responsiva, estados vazios e base visual validados.
 
 ### Objetivo
 Criar a fundação visual e de navegação.
