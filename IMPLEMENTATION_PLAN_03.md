@@ -984,7 +984,7 @@ Definir e aplicar:
 
 # Fase 49 — QA visual completo e regressão
 
-**Status inicial:** PENDENTE
+**Status:** CONCLUÍDA — evidências técnicas e responsivas registradas em `docs/design/visual-qa-plan03.md`.
 
 ## Objetivo
 
@@ -1046,7 +1046,7 @@ Criar:
 
 # Fase 50 — Fechamento do Plano 03
 
-**Status inicial:** PENDENTE
+**Status:** CONCLUÍDA — contexto, plano, Design System e fechamento documental atualizados.
 
 ## Objetivo
 

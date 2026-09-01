@@ -704,6 +704,15 @@ Ordem de leitura para Codex:
 3. `IMPLEMENTATION_PLAN.md`
 4. `GOAL.md`
 
+Para a execução do refinamento visual do Plano 03, consultar também:
+5. `IMPLEMENTATION_PLAN_03.md`
+6. `GOAL_03.md`
+7. `docs/design/DESIGN_SYSTEM.md`
+8. `docs/design/visual-audit-plan03.md`
+9. `docs/design/visual-qa-plan03.md`
+
+O Plano 03 está concluído. O fechamento e as evidências estão em `docs/PLANO_03_FECHAMENTO.md`.
+
 O código deve refletir esses documentos.
 Se uma implementação exigir contrariar uma decisão registrada:
 - não fazer silenciosamente;
