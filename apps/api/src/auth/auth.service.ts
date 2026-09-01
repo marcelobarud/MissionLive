@@ -1,4 +1,4 @@
-import { ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { hashToken, createToken } from './token.util';
@@ -8,6 +8,7 @@ import * as argon2 from 'argon2';
 
 @Injectable()
 export class AuthService {
+  private readonly loginAttempts = new Map<string, { count: number; resetAt: number }>();
   constructor(private readonly prisma: PrismaService, private readonly config: ConfigService) {}
 
   private publicUser(user: { id: string; email: string; name: string }): AuthUser { return { id: user.id, email: user.email, name: user.name }; }
@@ -23,11 +24,13 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({ where: { email: dto.email.trim().toLowerCase() } });
-    if (!user?.passwordHash || !(await argon2.verify(user.passwordHash, dto.password))) throw new UnauthorizedException('Invalid email or password.');
+    const email = dto.email.trim().toLowerCase(); const now = Date.now(); const attempt = this.loginAttempts.get(email);
+    if (attempt && attempt.resetAt > now && attempt.count >= 10) throw new HttpException('Too many login attempts. Try again later.', HttpStatus.TOO_MANY_REQUESTS);
+    const user = await this.prisma.user.findUnique({ where: { email } });
+    if (!user?.passwordHash || !(await argon2.verify(user.passwordHash, dto.password))) { const current = attempt && attempt.resetAt > now ? attempt : { count: 0, resetAt: now + 15 * 60 * 1000 }; this.loginAttempts.set(email, { count: current.count + 1, resetAt: current.resetAt }); throw new UnauthorizedException('Invalid email or password.'); }
     if (user.status !== 'active') throw new ForbiddenException('User account is disabled.');
     if (!user.emailVerifiedAt) throw new ForbiddenException('Verify your email before signing in.');
-    return this.startSession(user);
+    this.loginAttempts.delete(email); return this.startSession(user);
   }
 
   async startSession(user: { id: string; email: string; name: string }) {

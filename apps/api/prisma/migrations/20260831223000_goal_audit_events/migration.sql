@@ -1,0 +1,3 @@
+CREATE TABLE "GoalAuditEvent" ("id" TEXT NOT NULL PRIMARY KEY, "goalId" TEXT NOT NULL, "actorUserId" TEXT NOT NULL, "eventType" TEXT NOT NULL, "reason" TEXT, "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP, CONSTRAINT "GoalAuditEvent_goalId_fkey" FOREIGN KEY ("goalId") REFERENCES "Goal" ("id") ON DELETE CASCADE ON UPDATE CASCADE, CONSTRAINT "GoalAuditEvent_actorUserId_fkey" FOREIGN KEY ("actorUserId") REFERENCES "User" ("id") ON DELETE CASCADE ON UPDATE CASCADE);
+CREATE INDEX "GoalAuditEvent_goalId_idx" ON "GoalAuditEvent"("goalId");
+CREATE INDEX "GoalAuditEvent_actorUserId_idx" ON "GoalAuditEvent"("actorUserId");

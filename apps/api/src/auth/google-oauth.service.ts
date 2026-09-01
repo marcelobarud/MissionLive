@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, ServiceUnavailableException, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { createHmac, randomBytes } from 'node:crypto';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { AuthService } from './auth.service';
 
@@ -12,13 +12,13 @@ export class GoogleOAuthService {
   private required(name: string) { const value = this.config.get<string>(name); if (!value) throw new ServiceUnavailableException('Google OAuth is not configured.'); return value; }
   private sign(payload: string) { return createHmac('sha256', this.required('SESSION_SECRET')).update(payload).digest('base64url'); }
   private state() { const payload = JSON.stringify({ verifier: randomBytes(32).toString('base64url'), nonce: randomBytes(24).toString('base64url'), issuedAt: Date.now() }); const encoded = Buffer.from(payload).toString('base64url'); return `${encoded}.${this.sign(encoded)}`; }
-  private readState(value: string) { const [encoded, signature] = value.split('.'); if (!encoded || !signature || this.sign(encoded) !== signature) throw new BadRequestException('Invalid OAuth state.'); const payload = JSON.parse(Buffer.from(encoded, 'base64url').toString()) as { verifier: string; nonce: string; issuedAt: number }; if (Date.now() - payload.issuedAt > 10 * 60 * 1000) throw new BadRequestException('OAuth state expired.'); return payload; }
-  authorizationUrl() { const clientId = this.required('GOOGLE_CLIENT_ID'); const callback = this.required('GOOGLE_CALLBACK_URL'); const state = this.state(); const query = new URLSearchParams({ client_id: clientId, redirect_uri: callback, response_type: 'code', scope: 'openid email profile', state, access_type: 'offline', prompt: 'select_account' }); return { url: `https://accounts.google.com/o/oauth2/v2/auth?${query.toString()}`, state }; }
+  private readState(value: string) { const [encoded, signature] = value.split('.'); if (!encoded || !signature) throw new BadRequestException('Invalid OAuth state.'); const expected = Buffer.from(this.sign(encoded)); const actual = Buffer.from(signature); if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) throw new BadRequestException('Invalid OAuth state.'); let payload: { verifier: string; nonce: string; issuedAt: number }; try { payload = JSON.parse(Buffer.from(encoded, 'base64url').toString()) as typeof payload; } catch { throw new BadRequestException('Invalid OAuth state.'); } if (Date.now() - payload.issuedAt > 10 * 60 * 1000) throw new BadRequestException('OAuth state expired.'); return payload; }
+  authorizationUrl() { const clientId = this.required('GOOGLE_CLIENT_ID'); const callback = this.required('GOOGLE_CALLBACK_URL'); const state = this.state(); const encodedState = Buffer.from(state.split('.')[0], 'base64url').toString(); const verifier = (JSON.parse(encodedState) as { verifier: string }).verifier; const challenge = createHash('sha256').update(verifier).digest('base64url'); const query = new URLSearchParams({ client_id: clientId, redirect_uri: callback, response_type: 'code', scope: 'openid email profile', state, code_challenge: challenge, code_challenge_method: 'S256', access_type: 'offline', prompt: 'select_account' }); return { url: `https://accounts.google.com/o/oauth2/v2/auth?${query.toString()}`, state }; }
   async callback(code: string | undefined, stateValue: string | undefined) {
     const clientId = this.required('GOOGLE_CLIENT_ID'); const clientSecret = this.required('GOOGLE_CLIENT_SECRET'); const callback = this.required('GOOGLE_CALLBACK_URL');
     if (!code || !stateValue) throw new BadRequestException('OAuth code and state are required.');
-    this.readState(stateValue);
-    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ code, client_id: clientId, client_secret: clientSecret, redirect_uri: callback, grant_type: 'authorization_code' }) });
+    const state = this.readState(stateValue);
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ code, client_id: clientId, client_secret: clientSecret, redirect_uri: callback, grant_type: 'authorization_code', code_verifier: state.verifier }) });
     if (!tokenResponse.ok) throw new UnauthorizedException('Google authorization failed.');
     const tokenData = await tokenResponse.json() as { access_token?: string };
     if (!tokenData.access_token) throw new UnauthorizedException('Google authorization did not return an access token.');
