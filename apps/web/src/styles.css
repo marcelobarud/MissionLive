@@ -33,4 +33,9 @@ main { max-width: 1180px; margin: auto; padding: 2rem 1.25rem 5rem; }.page { ani
 .activity-row { display: flex; gap: .7rem; border-top: 1px solid #eef0f5; padding-top: .8rem; }
 .activity-row > div { display: grid; gap: .2rem; }
 .activity-row a { color: #6570df; font-weight: 700; }
-.activity-dot { width: .55rem; height: .55rem; margin-top: .35rem; border-radius: 50%; background: var(--accent); flex: 0 0 auto; }
+.activity-dot { width: .55rem; height: .55rem; margin-top: .35rem; border-radius: 50%; background: #6873ed; flex: 0 0 auto; }
+.rhythm-panel { display: grid; gap: .7rem; margin: 1rem 0; padding: 1.2rem 1.3rem; border-left: .3rem solid #6873ed; }
+.rhythm-ahead { border-left-color: #3cb884; }.rhythm-attention { border-left-color: #ed9f45; }.rhythm-late { border-left-color: #c23d4e; }.rhythm-completed { border-left-color: #7d69e7; }
+.rhythm-comparison { display: flex; justify-content: space-between; color: #7c8598; font-size: .78rem; }
+.calendar-panel { display: grid; gap: 0; padding: 0 1.25rem; }.calendar-row { display: grid; grid-template-columns: 10rem 1fr auto; gap: 1rem; align-items: center; padding: 1rem 0; border-bottom: 1px solid #eef0f5; }.calendar-row:last-child { border-bottom: 0; }.calendar-row time { color: #7c8598; font-size: .78rem; }.calendar-row strong { color: #465067; font-size: .85rem; }.calendar-row span { color: #6873ed; }
+@media (max-width: 520px) { .calendar-row { grid-template-columns: 1fr auto; gap: .35rem .7rem; }.calendar-row time { grid-column: 1 / -1; }.calendar-row span { grid-row: 1 / span 2; grid-column: 2; } }

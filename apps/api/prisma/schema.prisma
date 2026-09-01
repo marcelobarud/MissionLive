@@ -36,6 +36,7 @@ model User {
   targetActivityEvents ActivityEvent[] @relation("ActivityTarget")
   comments           Comment[]         @relation("CommentAuthor")
   reactions          Reaction[]
+  goalTemplates      GoalTemplate[]
 }
 
 model Account {
@@ -83,6 +84,7 @@ model Category {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   goals     Goal[]
+  templates GoalTemplate[]
 }
 
 model Goal {
@@ -324,4 +326,22 @@ model Reaction {
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   @@unique([commentId, userId, emoji])
   @@index([userId])
+}
+
+model GoalTemplate {
+  id             String    @id @default(uuid())
+  ownerUserId    String?
+  name           String
+  description    String?
+  categoryId     String?
+  customCategory String?
+  tagsJson       String    @default("[]")
+  stepsJson      String    @default("[]")
+  isOfficial     Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  owner          User?     @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  category       Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  @@index([ownerUserId])
+  @@index([categoryId])
 }

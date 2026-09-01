@@ -370,6 +370,8 @@ Reforçar reconhecimento social sem criar chat em tempo real.
 
 ## Fase 28 — Templates e duplicação de metas
 
+**Status:** CONCLUÍDA — modelos oficiais, templates próprios derivados de metas e uso sem copiar progresso, membros, convites, comentários ou conclusão.
+
 ### Duplicar
 Copiar:
 - nome;
@@ -403,6 +405,8 @@ Templates devem ser totalmente editáveis.
 
 ## Fase 29 — Calendário / Timeline
 
+**Status:** CONCLUÍDA — timeline mobile-first com inícios, prazos e reminders em janela de 31 dias, sempre baseada em datas existentes e escopo autorizado.
+
 ### Objetivo
 Dar visão temporal de:
 - início;
@@ -421,6 +425,8 @@ Escolher calendário mensal ou timeline/lista cronológica com prioridade para a
 ---
 
 ## Fase 30 — Indicador de ritmo “Em ritmo”
+
+**Status:** CONCLUÍDA — cálculo derivado de tempo transcorrido versus passos concluídos, com estados adiantada, em ritmo, atenção, atrasada e concluída.
 
 ### Aplicabilidade
 Somente metas com:

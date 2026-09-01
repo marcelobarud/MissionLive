@@ -12,9 +12,11 @@ import { PlansModule } from './plans/plans.module';
 import { RemindersModule } from './reminders/reminders.module';
 import { ActivityModule } from './activity/activity.module';
 import { CommentsModule } from './comments/comments.module';
+import { TemplatesModule } from './templates/templates.module';
+import { CalendarModule } from './calendar/calendar.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }), PrismaModule, AuthModule, GoalsModule, TeamsModule, InvitesModule, DashboardModule, PlansModule, RemindersModule, ActivityModule, CommentsModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }), PrismaModule, AuthModule, GoalsModule, TeamsModule, InvitesModule, DashboardModule, PlansModule, RemindersModule, ActivityModule, CommentsModule, TemplatesModule, CalendarModule],
   controllers: [HealthController],
 })
 export class AppModule {}

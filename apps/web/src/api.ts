@@ -12,6 +12,9 @@ export type Invite = { id: string; targetType: string; expiresAt: string; url?: 
 export type Reminder = { id: string; goalId: string; remindAt: string; timezone: string; status: string; goal?: { id: string; name: string; status: string; endDate?: string | null } };
 export type ActivityEvent = { id: string; eventType: string; metadata: Record<string, string | number | boolean>; createdAt: string; actor: { id: string; name: string }; targetUser?: { id: string; name: string } | null; goal?: { id: string; name: string } | null; team?: { id: string; name: string } | null };
 export type Comment = { id: string; body: string; createdAt: string; updatedAt: string; author: { id: string; name: string }; reactions: { emoji: string; count: number; reacted: boolean }[] };
+export type GoalTemplate = { id: string; name: string; description?: string | null; isOfficial: boolean; tags?: string[]; steps: string[] };
+export type Rhythm = { applicable: boolean; state: string; reason?: string; timePercent?: number; progressPercent?: number; delta?: number };
+export type CalendarData = { from: string; to: string; goals: Goal[]; reminders: { id: string; remindAt: string; goal: { id: string; name: string } }[] };
 
 async function request<T>(path: string, init: RequestInit = {}) {
   const response = await fetch(`${API_URL}${path}`, { ...init, credentials: 'include', headers: { 'content-type': 'application/json', ...(init.headers ?? {}) } });
@@ -65,4 +68,8 @@ export const api = {
   updateComment: (commentId: string, body: string) => request<Comment>(`/comments/${commentId}`, { method: 'PATCH', body: JSON.stringify({ body }) }),
   deleteComment: (commentId: string) => request<{ deleted: boolean }>(`/comments/${commentId}`, { method: 'DELETE' }),
   toggleReaction: (commentId: string, emoji: string) => request<Comment>(`/comments/${commentId}/reactions`, { method: 'PUT', body: JSON.stringify({ emoji }) }),
+  templates: () => request<GoalTemplate[]>('/templates'),
+  useTemplate: (id: string, body: { startDate: string; endDate?: string }) => request<Goal>(`/templates/${id}/use`, json(body)),
+  calendar: (from?: string, to?: string) => request<CalendarData>(`/calendar?from=${encodeURIComponent(from ?? '')}&to=${encodeURIComponent(to ?? '')}`),
+  rhythm: (goalId: string) => request<Rhythm>(`/goals/${goalId}/rhythm`),
 };

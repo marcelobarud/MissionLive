@@ -653,6 +653,8 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - reminders individuais com timezone, datas futuras, cancelamento e migration própria;
 - feed de atividade persistido, escopado por metas/equipes acessíveis, com eventos de domínio para metas, steps, equipes, convites, comentários e reações;
 - comentários textuais por meta e reações limitadas a 👏, ❤️, 🎉 e 💪, com autorização de membership, moderação contextual, limite de tamanho, rate limit e sem HTML arbitrário;
+- templates oficiais e pessoais, uso com revisão explícita das datas, duplicação sem progresso/membros/convites/comentários/atividade/conclusão;
+- calendário/timeline com inícios, prazos e reminders escopados e indicador de ritmo derivado, sem percentual persistido;
 - ValidationPipe global, Helmet, CORS configurável, filtro global de erros e validação de `SESSION_SECRET` no startup.
 
 ### Frontend web disponível
@@ -669,7 +671,7 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 
 - a interface web ainda não possui edição/cancelamento de membros de meta nem listagem persistida de convites já criados após recarregar a página;
 - algumas operações administrativas avançadas permanecem limitadas à API; recuperação de senha usa token local no desenvolvimento e ainda não possui entrega de e-mail em produção;
-- templates, calendário/timeline operacional, indicador “Em ritmo”, onboarding, perfil/preferências e notificações internas ainda não foram implementados;
+- onboarding, perfil/preferências e notificações internas ainda não foram implementados;
 - compartilhamento usa Web Share API quando disponível, com cópia para clipboard e atalhos de e-mail/WhatsApp/Telegram como fallback.
 
 Essas diferenças são limitações de superfície da interface, não autorização implícita: o backend continua sendo a autoridade para escopo, roles e alterações sensíveis.

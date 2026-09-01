@@ -14,6 +14,7 @@ export class GoalsController {
   @Delete(':goalId') remove(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string) { return this.goals.remove(req.user.id, goalId); }
   @Patch(':goalId/archive') archive(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string) { return this.goals.archive(req.user.id, goalId); }
   @Post(':goalId/override') override(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string, @Body() dto: OverrideGoalDto) { return this.goals.override(req.user.id, goalId, dto); }
+  @Get(':goalId/rhythm') rhythm(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string) { return this.goals.rhythm(req.user.id, goalId); }
   @Post(':goalId/steps') addStep(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string, @Body() dto: CreateStepDto) { return this.goals.addStep(req.user.id, goalId, dto); }
   @Patch(':goalId/steps/reorder') reorder(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string, @Body() dto: ReorderStepsDto) { return this.goals.reorderSteps(req.user.id, goalId, dto); }
   @Patch(':goalId/steps/:stepId') updateStep(@Req() req: AuthenticatedRequest, @Param('goalId') goalId: string, @Param('stepId') stepId: string, @Body() dto: UpdateStepDto) { return this.goals.updateStep(req.user.id, goalId, stepId, dto); }
