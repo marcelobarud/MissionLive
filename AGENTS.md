@@ -297,3 +297,43 @@ A auditoria deve percorrer handlers reais e gerar o relatório final previsto no
 
 Achados devem ser reais e evidenciados.
 Não fabricar vulnerabilidades apenas para preencher relatório.
+
+## 19. Fluxo visual do frontend
+
+Para tarefas de criação, redesign ou refatoração significativa do frontend, seguir permanentemente esta sequência:
+
+1. compreender o contexto visual existente;
+2. preservar a identidade e o design system do projeto;
+3. utilizar `frontend-design` para criação ou refinamento visual;
+4. implementar a direção definida;
+5. utilizar `web-design-guidelines` para auditar a implementação;
+6. corrigir os problemas encontrados;
+7. validar responsividade, acessibilidade e testes.
+
+### Responsabilidade das skills
+
+#### `frontend-design`
+
+Utilizar em criação de páginas, redesign, refatoração visual, criação de componentes, dashboards, layouts, melhorias significativas de composição e definição ou refinamento de direção estética.
+
+Sua responsabilidade principal é direção visual, composição, hierarquia, tipografia, espaçamento, cores, tokens, componentização visual, identidade, responsividade, motion quando apropriado e acabamento.
+
+#### `web-design-guidelines`
+
+Utilizar após a implementação visual para auditar acessibilidade, usabilidade, interações, semântica, responsividade, formulários, estados, navegação e boas práticas de interface.
+
+### Regra de precedência
+
+`frontend-design` define e implementa a direção estética. `web-design-guidelines` audita a implementação posteriormente. Em conflito envolvendo acessibilidade, usabilidade, semântica, interação ou comportamento, as guidelines têm precedência. Em decisões puramente estéticas sem conflito funcional, a direção estabelecida pelo design pode ser preservada.
+
+### Regra contra excesso de redesign
+
+Não modificar elementos apenas para demonstrar uso de uma skill. Toda mudança deve melhorar coerência, clareza, acessibilidade, responsividade ou qualidade visual.
+
+### Regra contra AI slop
+
+Evitar aparência genérica de dashboard gerado por IA, excesso de cards desnecessários, gradients gratuitos, glassmorphism sem propósito, sombras exageradas, bordas em absolutamente tudo, excesso de badges ou pills, textos auxiliares redundantes, ícones meramente decorativos, layouts visualmente repetitivos, excesso de cores, hierarquia fraca e espaçamento inconsistente.
+
+### Regra de preservação
+
+As skills nunca justificam remoção de funcionalidade, alteração de regras de negócio, mudança de contratos de API, perda de acessibilidade ou perda de responsividade.
