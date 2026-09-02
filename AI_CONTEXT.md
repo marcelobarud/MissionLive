@@ -672,6 +672,7 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - navegação responsiva mobile-first com estados de loading, erro e vazio; o shell autenticado usa sidebar fixa no desktop/tablet e drawer acessível no mobile, sem duplicar a navegação no topo;
 - Design System V1 em `apps/web/src/design-system.tsx`, com Button, IconButton, Input, Textarea, Select, Checkbox, FormField, Card, Panel, Section, PageHeader, EmptyState, Spinner, ProgressBar e Badge;
 - tokens visuais centralizados em `apps/web/src/styles.css`, documentados em `docs/design/DESIGN_SYSTEM.md`, usando a paleta azul aprovada, escala de espaçamento, raios, alturas, foco, estados semânticos e reduced motion;
+- direção visual consolidada como “movimento editorial”: workspace claro, sidebar azul-marinho profundo, títulos de alto contraste, progresso como sinal principal e superfícies contidas, sem redesign por decoração;
 - shell com sidebar lateral, acesso explícito ao perfil e logout separado, CTA único para criação de equipe, empty state de modelos, navegação mensal do calendário e badge de notificações não lidas.
 - `@tabler/icons-react` (`3.46.0`) é a biblioteca oficial de ícones do frontend; usar imports explícitos, família outline, `currentColor`, tamanhos padronizados e `aria-label` obrigatório em icon buttons.
 - `apps/web/src/feedback.tsx` concentra `FeedbackProvider`, dialogs assíncronos de confirmação/prompt, `Toast`, `ToastViewport` e `FeedbackBanner`; os fluxos da interface não usam mais `window.alert`, `window.confirm` ou `window.prompt`.

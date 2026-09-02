@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Este documento registra os fundamentos visuais usados no refinamento do Plano 03. A V1 prioriza clareza, leitura rápida de progresso, operação confortável em telas pequenas e consistência entre as áreas autenticadas.
+Este documento registra os fundamentos visuais do MissionLive. A direção atual, refinada com `frontend-design`, é **movimento editorial**: uma base calma e clara para tornar o progresso legível, com navegação azul-marinho profunda, tipografia de alto contraste e superfícies contidas. A V1 prioriza clareza, leitura rápida de progresso, operação confortável em telas pequenas e consistência entre as áreas autenticadas.
 
 ## Princípios
 
@@ -12,6 +12,7 @@ Este documento registra os fundamentos visuais usados no refinamento do Plano 03
 - Acessibilidade por padrão: foco visível, nomes acessíveis, contraste suficiente e suporte a `prefers-reduced-motion`.
 - Sem cor solta: novos valores visuais devem usar tokens; hex literal é permitido apenas na definição dos tokens.
 - Estados completos: loading, erro, vazio, sucesso, desabilitado e ação destrutiva precisam ter tratamento visual coerente.
+- Assinatura visual: o azul-marinho profundo identifica o shell e o progresso; a composição usa uma única ação principal por contexto e reserva detalhes de contraste para orientar a leitura.
 
 ## Paleta aprovada
 
@@ -38,6 +39,16 @@ Este documento registra os fundamentos visuais usados no refinamento do Plano 03
 | Perigo | `--danger` | `#a83245` |
 | Informação | `--info` | `#145b80` |
 
+Tokens de composição usados pela direção editorial:
+
+| Papel | Token | Valor |
+| --- | --- | --- |
+| Tinta profunda do shell | `--ink-deep` | `#063650` |
+| Tinta suave sobre shell | `--ink-soft` | `#dbe8ef` |
+| Superfície de apoio | `--surface-tint` | `#f2f6f8` |
+| Superfície de destaque | `--surface-warm` | `#fffdf8` |
+| Borda discreta | `--border-faint` | `#e2e8ee` |
+
 Os tokens de estado possuem variantes `*-subtle` para fundos suaves. Componentes não devem introduzir uma nova cor sem atualizar esta fundação.
 
 ## Espaçamento e layout
@@ -58,7 +69,7 @@ Quebras principais:
 
 ## Navegação e shell
 
-O shell autenticado usa uma sidebar como navegação principal em telas amplas. Ela fica fixa à esquerda, mantém a marca no topo, empilha as áreas Início, Metas, Equipes, Modelos, Calendário e Avisos e reserva a parte inferior para perfil e logout.
+O shell autenticado usa uma sidebar azul-marinho como navegação principal em telas amplas. Ela fica fixa à esquerda, mantém a marca no topo, empilha as áreas Início, Metas, Equipes, Modelos, Calendário e Avisos e reserva a parte inferior para perfil e logout. O workspace permanece claro para que o progresso, os títulos e os estados sejam o foco da leitura.
 
 Em telas menores, a sidebar vira um drawer acionado pelo botão de menu do header compacto. O drawer usa backdrop, fecha ao navegar ou pressionar ESC, bloqueia o scroll da página enquanto aberto e devolve o foco ao botão que o acionou. A navegação principal não é duplicada no topo nem em uma barra inferior.
 
@@ -66,6 +77,8 @@ Os itens usam `@tabler/icons-react`, preservam nomes textuais e indicam a rota a
 
 ## Tipografia
 
+- corpo: `Aptos`, com fallback para `Segoe UI` e sans-serif do sistema;
+- display: a mesma família do sistema com escala curta, peso alto e tracking negativo para títulos de ação;
 - `h1`: título da página e contexto principal;
 - `h2`: seção ou painel relevante;
 - `h3`: card ou agrupamento local;
