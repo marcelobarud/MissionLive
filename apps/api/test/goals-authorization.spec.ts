@@ -95,6 +95,19 @@ describe('GoalsService authorization boundary', () => {
     expect(result.steps[0].progresses).toEqual([{ userId: 'owner', completed: true }]);
   });
 
+  it('appends a new step after the current maximum and reads steps in position order', async () => {
+    const prisma = fakePrisma(); const service = new GoalsService(prisma as never);
+    prisma.goal.findUnique.mockResolvedValue({ id: 'goal-a', ownerUserId: 'owner', members: [], team: null });
+    prisma.goalStep.aggregate.mockResolvedValue({ _max: { position: 1 } });
+    prisma.goalStep.create.mockResolvedValue({ id: 'step-3' });
+    prisma.goal.findFirst.mockResolvedValue({ id: 'goal-a', ownerUserId: 'owner', tagsJson: '[]', members: [], team: null, steps: [{ id: 'step-1', title: 'Primeiro', position: 0, progresses: [] }, { id: 'step-2', title: 'Segundo', position: 1, progresses: [] }, { id: 'step-3', title: 'Terceiro', position: 2, progresses: [] }] });
+
+    const result = await service.addStep('owner', 'goal-a', { title: '  Terceiro  ' });
+
+    expect(prisma.goalStep.create).toHaveBeenCalledWith({ data: { goalId: 'goal-a', title: 'Terceiro', description: undefined, position: 2 } });
+    expect(result.steps.map((step) => step.id)).toEqual(['step-1', 'step-2', 'step-3']);
+  });
+
   it('rejects an incomplete or duplicated reorder without mutating steps', async () => {
     const prisma = fakePrisma(); const service = new GoalsService(prisma as never);
     prisma.goal.findUnique.mockResolvedValue({ id: 'goal-a', ownerUserId: 'owner', members: [], team: null });
