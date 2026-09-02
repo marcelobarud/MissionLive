@@ -106,3 +106,45 @@ input, select, textarea { border-color: var(--border-strong); color: var(--text-
   .mobile-brand .brand-mark { width: 1.85rem; height: 1.85rem; }
 }
 @media (prefers-reduced-motion: reduce) { .sidebar { transition: none; } }
+
+.participant-progress-panel { display: grid; gap: var(--space-4); margin: 1rem 0; padding: var(--card-padding-lg); }
+.participant-progress-panel .panel-heading .eyebrow { gap: var(--space-1); }
+.participant-collective-summary { display: grid; gap: var(--space-2); padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-subtle); }
+.participant-collective-summary > div { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
+.participant-collective-summary strong { color: var(--text-primary); font-size: .88rem; }
+.participant-collective-summary span, .participant-collective-summary small { color: var(--text-secondary); font-size: .78rem; }
+.participant-collective-summary span { white-space: nowrap; font-weight: 750; }
+.participant-progress-list { display: grid; gap: var(--space-2); }
+.participant-progress-card { overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-raised); }
+.participant-progress-trigger { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto auto; align-items: center; gap: var(--space-3); width: 100%; min-height: 4.25rem; padding: var(--space-3) var(--space-4); border: 0; color: var(--text-primary); background: transparent; text-align: left; cursor: pointer; }
+.participant-progress-trigger:hover, .participant-progress-trigger:focus-visible { background: var(--surface-subtle); }
+.participant-avatar { display: grid; place-items: center; width: 2.35rem; height: 2.35rem; flex: 0 0 auto; border-radius: 50%; color: var(--text-inverse); background: var(--primary); font-size: .72rem; font-weight: 800; }
+.participant-progress-identity { display: grid; gap: .15rem; min-width: 0; }
+.participant-progress-identity strong { overflow-wrap: anywhere; font-size: .86rem; }
+.participant-progress-identity small { color: var(--text-secondary); font-size: .7rem; }
+.participant-progress-stats { display: grid; gap: .15rem; min-width: 5.4rem; text-align: right; }
+.participant-progress-stats strong { font-size: .78rem; white-space: nowrap; }
+.participant-progress-stats span { color: var(--primary); font-size: .78rem; font-weight: 800; }
+.participant-status { display: inline-flex; align-items: center; gap: .3rem; min-width: 7.8rem; color: var(--text-secondary); font-size: .7rem; font-weight: 750; }
+.participant-status-icon, .participant-progress-chevron, .participant-step-icon { display: inline-flex; flex: 0 0 auto; }
+.participant-status-completed, .participant-status-completed .participant-status-icon, .participant-step-icon { color: var(--success); }
+.participant-status-nearly-complete { color: var(--warning); }
+.participant-status-in-progress { color: var(--primary); }
+.participant-progress-chevron { color: var(--text-secondary); }
+.participant-progress-bar { margin: 0 var(--space-4) var(--space-3) 4.25rem; }
+.participant-progress-details { padding: var(--space-3) var(--space-4) var(--space-4) 4.25rem; border-top: 1px solid var(--border); background: var(--surface-subtle); }
+.participant-progress-details ul { display: grid; gap: .55rem; margin: 0; padding: 0; list-style: none; }
+.participant-progress-details li { display: flex; align-items: flex-start; gap: .55rem; }
+.participant-progress-details li > span:last-child { display: grid; gap: .1rem; min-width: 0; }
+.participant-progress-details strong { overflow-wrap: anywhere; color: var(--text-primary); font-size: .78rem; font-weight: 650; }
+.participant-progress-details small { color: var(--text-secondary); font-size: .7rem; }
+.participant-progress-details .muted { margin: 0; font-size: .78rem; }
+@media (max-width: 640px) {
+  .participant-collective-summary > div { align-items: flex-start; flex-direction: column; gap: .25rem; }
+  .participant-progress-trigger { grid-template-columns: auto minmax(0, 1fr) auto; gap: var(--space-2); padding-inline: var(--space-3); }
+  .participant-progress-stats { grid-column: 2; grid-row: 2; display: flex; justify-content: space-between; min-width: 0; text-align: left; }
+  .participant-status { grid-column: 2; grid-row: 3; min-width: 0; }
+  .participant-progress-chevron { grid-column: 3; grid-row: 1 / span 3; }
+  .participant-progress-bar { margin-left: 3.25rem; margin-right: var(--space-3); }
+  .participant-progress-details { padding-left: 3.25rem; padding-right: var(--space-3); }
+}

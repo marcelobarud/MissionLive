@@ -647,6 +647,7 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - CRUD de metas com escopo por owner, membership direta ou membership de equipe;
 - categorias, categoria personalizada, tags, datas e status no backend;
 - steps, reordenação, progresso próprio, conclusão automática, arquivamento, cancelamento preservado e owner override auditado; exclusão permanente de meta é exclusiva do `ownerUserId`, usa `DELETE /goals/:goalId` e remove dependências de domínio de forma transacional;
+- o detalhe de metas compartilhadas e de equipe retorna progresso derivado por participante (steps concluídos/total, percentual, estado e `completedAt` real), resumo coletivo e checklist expandível em modo somente leitura; a lista de participantes reutiliza o mesmo conjunto usado pela conclusão coletiva;
 - convites de metas/equipes com token hash, expiração de 24 horas, aceite explícito, revogação e limite de três convidados em meta compartilhada;
 - equipes, memberships, roles e autorização no backend;
 - dashboard V2 escopado (progresso ativo, prazos, quase concluídas e distribuição por contexto/categoria) e endpoint de plano/entitlement de desenvolvimento;
@@ -662,7 +663,7 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 
 - login, cadastro e verificação de e-mail em desenvolvimento;
 - dashboard com cards, taxa derivada, progresso ativo, prazos, metas quase concluídas, distribuição com barras, evolução temporal, barras de progresso e feed recente limitado a 10 itens com acesso ao histórico;
-- listagem, busca, filtros e ordenação server-side; criação completa e edição inicial de metas, detalhe com datas/tags/contexto/participantes/progresso, CRUD de steps, cancelamento, arquivamento, exclusão permanente protegida por owner, owner override e convite direto de meta;
+- listagem, busca, filtros e ordenação server-side; criação completa e edição inicial de metas, detalhe com datas/tags/contexto/participantes/progresso, progresso individual expandível por participante em modo somente leitura, CRUD de steps, cancelamento, arquivamento, exclusão permanente protegida por owner, owner override e convite direto de meta;
 - listagem, criação básica e criação transacional de equipe com primeira meta/steps, detalhe, edição, gerenciamento de roles/membros e convite de equipe;
 - preview e aceite de convite em `/invite/<token>`;
 - recuperação e redefinição de senha em desenvolvimento;

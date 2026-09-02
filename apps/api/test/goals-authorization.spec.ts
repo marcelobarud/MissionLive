@@ -44,4 +44,35 @@ describe('GoalsService authorization boundary', () => {
     await expect(service.hardDelete('owner', 'missing')).rejects.toBeInstanceOf(NotFoundException);
     expect(prisma.$transaction).not.toHaveBeenCalled();
   });
+
+  it('returns derived participant progress with the collective summary and completion timestamps', async () => {
+    const prisma = fakePrisma() as unknown as FakePrisma; const service = new GoalsService(prisma as never); const completedAt = new Date('2026-08-29T22:42:00.000Z');
+    prisma.goal.findFirst.mockResolvedValue({
+      id: 'goal-a', ownerUserId: 'owner', tagsJson: '[]', members: [
+        { userId: 'user-a', role: 'viewer', user: { id: 'user-a', name: 'Teste A', avatarUrl: null } },
+        { userId: 'user-b', role: 'editor', user: { id: 'user-b', name: 'Teste B', avatarUrl: null } },
+      ],
+      owner: { id: 'owner', name: 'Owner', email: 'hidden@example.test', avatarUrl: null }, team: null,
+      steps: [
+        { id: 'step-1', title: 'Primeiro passo', position: 0, progresses: [{ userId: 'owner', completed: true, completedAt }, { userId: 'user-a', completed: true, completedAt: null }] },
+        { id: 'step-2', title: 'Segundo passo', position: 1, progresses: [{ userId: 'owner', completed: true, completedAt }] },
+        { id: 'step-3', title: 'Terceiro passo', position: 2, progresses: [] },
+      ],
+    });
+
+    const result = await service.get('user-a', 'goal-a');
+    expect(result.participantsProgress).toMatchObject({ totalParticipants: 3, participantsCompleted: 0, collectiveCompletedSteps: 3, collectiveTotalSteps: 9, collectivePercentage: 33.3 });
+    expect(result.participantsProgress?.participants.map((participant) => participant.name)).toEqual(['Owner', 'Teste A', 'Teste B']);
+    expect(result.participantsProgress?.participants[0]).toMatchObject({ completedSteps: 2, totalSteps: 3, percentage: 66.7, status: 'in-progress' });
+    expect(result.participantsProgress?.participants[0].steps[0].completedAt).toEqual(completedAt);
+    expect(result.participantsProgress?.participants[0]).not.toHaveProperty('email');
+  });
+
+  it('handles collective participant progress without steps', async () => {
+    const prisma = fakePrisma() as unknown as FakePrisma; const service = new GoalsService(prisma as never);
+    prisma.goal.findFirst.mockResolvedValue({ id: 'goal-empty', ownerUserId: 'owner', tagsJson: '[]', members: [{ userId: 'user-a', role: 'viewer', user: { id: 'user-a', name: 'Teste A', avatarUrl: null } }], owner: { id: 'owner', name: 'Owner', avatarUrl: null }, team: null, steps: [] });
+    const result = await service.get('user-a', 'goal-empty');
+    expect(result.participantsProgress).toMatchObject({ totalParticipants: 2, participantsCompleted: 0, collectiveCompletedSteps: 0, collectiveTotalSteps: 0, collectivePercentage: 0 });
+    expect(result.participantsProgress?.participants.every((participant) => participant.status === 'not-started')).toBe(true);
+  });
 });

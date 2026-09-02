@@ -8,7 +8,20 @@ const EDITABLE_ROLES = new Set(['admin', 'editor']);
 const MANAGE_ROLES = new Set(['admin']);
 const MEMBER_ROLES = new Set(['admin', 'editor', 'viewer']);
 
-type ProgressRecord = { userId: string; completed: boolean };
+type ProgressRecord = { userId: string; completed: boolean; completedAt?: Date | null };
+type ParticipantSource = {
+  ownerUserId: string;
+  members?: Array<{ userId: string }>;
+  team?: { ownerUserId: string; members?: Array<{ userId: string }> } | null;
+};
+type ParticipantUser = { id: string; name: string; avatarUrl: string | null };
+type ParticipantMember = { userId: string; role: string; user: ParticipantUser };
+type ParticipantProgressGoal = ParticipantSource & {
+  owner?: ParticipantUser | null;
+  members: ParticipantMember[];
+  team?: ({ ownerUserId: string; owner?: ParticipantUser | null; members: ParticipantMember[] } | null);
+  steps: Array<{ id: string; title: string; position: number; progresses: ProgressRecord[] }>;
+};
 function progressPercent(steps: Array<{ progresses: ProgressRecord[] }>) { return steps.length ? Math.round(steps.filter((step) => step.progresses.some((progress) => progress.completed)).length / steps.length * 100) : 0; }
 
 @Injectable()
@@ -48,21 +61,75 @@ export class GoalsService {
     return { categoryId: dto.categoryId, customCategory };
   }
 
-  private serialize<T extends { tagsJson: string; steps: Array<{ progresses: ProgressRecord[] }> }>(goal: T) {
-    const steps = goal.steps.map((step) => ({ ...step, progresses: step.progresses }));
-    const participantIds = new Set<string>();
-    if ('ownerUserId' in goal && typeof goal.ownerUserId === 'string') participantIds.add(goal.ownerUserId);
-    if ('members' in goal && Array.isArray(goal.members)) for (const member of goal.members as Array<{ userId: string }>) participantIds.add(member.userId);
-    if ('team' in goal && goal.team && typeof goal.team === 'object') {
-      const team = goal.team as { ownerUserId?: string; members?: Array<{ userId: string }> };
-      if (team.ownerUserId) participantIds.add(team.ownerUserId);
-      for (const member of team.members ?? []) participantIds.add(member.userId);
+  private participantIds(goal: ParticipantSource) {
+    const participantIds = new Set<string>([goal.ownerUserId]);
+    for (const member of goal.members ?? []) participantIds.add(member.userId);
+    if (goal.team) {
+      participantIds.add(goal.team.ownerUserId);
+      for (const member of goal.team.members ?? []) participantIds.add(member.userId);
     }
+    return participantIds;
+  }
+
+  private participantProgress(goal: ParticipantProgressGoal) {
+    const participants = new Map<string, { user: ParticipantUser; role: string }>();
+    const addParticipant = (user: ParticipantUser | undefined, role: string) => {
+      if (!user) return;
+      const current = participants.get(user.id);
+      if (!current || role === 'owner') participants.set(user.id, { user, role });
+    };
+    addParticipant(goal.owner ?? undefined, 'owner');
+    for (const member of goal.members) addParticipant(member.user, member.role);
+    if (goal.team) {
+      addParticipant(goal.team.owner ?? undefined, 'owner');
+      for (const member of goal.team.members) addParticipant(member.user, member.role);
+    }
+
+    const applicableIds = this.participantIds(goal);
+    const participantsInOrder = [...participants.entries()]
+      .filter(([userId]) => applicableIds.has(userId))
+      .sort(([, left], [, right]) => left.role === 'owner' && right.role !== 'owner' ? -1 : right.role === 'owner' && left.role !== 'owner' ? 1 : left.user.name.localeCompare(right.user.name, 'pt-BR'));
+    const totalSteps = goal.steps.length;
+    const participantRows = participantsInOrder.map(([userId, participant]) => {
+      const steps = goal.steps.map((step) => {
+        const progress = step.progresses.find((entry) => entry.userId === userId);
+        return { id: step.id, title: step.title, position: step.position, completed: progress?.completed === true, completedAt: progress?.completed === true ? progress.completedAt ?? null : null };
+      });
+      const completedSteps = steps.filter((step) => step.completed).length;
+      const percentage = totalSteps ? Math.round(completedSteps / totalSteps * 1000) / 10 : 0;
+      return {
+        userId,
+        name: participant.user.name,
+        avatarUrl: participant.user.avatarUrl ?? null,
+        role: participant.role,
+        completedSteps,
+        totalSteps,
+        percentage,
+        completed: totalSteps > 0 && completedSteps === totalSteps,
+        status: totalSteps === 0 ? 'not-started' : completedSteps === 0 ? 'not-started' : completedSteps === totalSteps ? 'completed' : percentage >= 75 ? 'nearly-complete' : 'in-progress',
+        steps,
+      };
+    });
+    const collectiveCompletedSteps = participantRows.reduce((sum, participant) => sum + participant.completedSteps, 0);
+    const collectiveTotalSteps = participantRows.length * totalSteps;
+    return {
+      totalParticipants: participantRows.length,
+      participantsCompleted: participantRows.filter((participant) => participant.completed).length,
+      collectiveCompletedSteps,
+      collectiveTotalSteps,
+      collectivePercentage: collectiveTotalSteps ? Math.round(collectiveCompletedSteps / collectiveTotalSteps * 1000) / 10 : 0,
+      participants: participantRows,
+    };
+  }
+
+  private serialize<T extends ParticipantSource & { tagsJson: string; steps: Array<{ progresses: ProgressRecord[] }> }>(goal: T) {
+    const steps = goal.steps.map((step) => ({ ...step, progresses: step.progresses }));
+    const participantIds = this.participantIds(goal);
     const participantCount = participantIds.size;
     const completedParticipants = participantCount && steps.length ? [...participantIds].filter((userId) => steps.every((step) => step.progresses.some((progress) => progress.userId === userId && progress.completed))).length : 0;
     const completedSteps = steps.filter((step) => step.progresses.some((progress) => progress.completed)).length;
     const { tagsJson, ...rest } = goal;
-    return { ...rest, steps, tags: JSON.parse(tagsJson || '[]') as string[], progressSummary: { completedSteps, totalSteps: steps.length, participantCount, completedParticipants } };
+    return { ...rest, steps, tags: JSON.parse(tagsJson || '[]') as string[], progressSummary: { completedSteps, totalSteps: steps.length, participantCount, completedParticipants }, participantsProgress: undefined };
   }
 
   private async role(userId: string, goalId: string) {
@@ -96,11 +163,12 @@ export class GoalsService {
   }
 
   async get(userId: string, goalId: string) {
-    const goal = await this.prisma.goal.findFirst({ where: this.accessWhere(userId, goalId), include: { category: true, owner: { select: { id: true, name: true, email: true } }, team: { include: { owner: { select: { id: true, name: true, email: true } }, members: { include: { user: { select: { id: true, name: true, email: true } } } } } }, members: { include: { user: { select: { id: true, name: true, email: true } } } }, steps: { orderBy: { position: 'asc' }, include: { progresses: true } } } });
+    const goal = await this.prisma.goal.findFirst({ where: this.accessWhere(userId, goalId), include: { category: true, owner: { select: { id: true, name: true, email: true, avatarUrl: true } }, team: { include: { owner: { select: { id: true, name: true, email: true, avatarUrl: true } }, members: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true } } } } } }, members: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true } } } }, steps: { orderBy: { position: 'asc' }, include: { progresses: true } } } });
     if (!goal) throw new NotFoundException('Goal not found.');
     const detailParticipants = goal.team || goal.members.length > 0;
     const steps = goal.steps.map((step) => ({ ...step, progresses: detailParticipants ? step.progresses : step.progresses.filter((progress) => progress.userId === userId) }));
-    return this.serialize({ ...goal, steps });
+    const serialized = this.serialize({ ...goal, steps });
+    return detailParticipants ? { ...serialized, participantsProgress: this.participantProgress({ ...goal, steps }) } : serialized;
   }
 
   async create(userId: string, dto: CreateGoalDto) {
@@ -133,7 +201,7 @@ export class GoalsService {
   async reorderSteps(userId: string, goalId: string, dto: ReorderStepsDto) { const access = await this.role(userId, goalId); if (access.role !== 'owner' && !EDITABLE_ROLES.has(access.role)) throw new ForbiddenException('You cannot edit steps.'); const steps = await this.prisma.goalStep.findMany({ where: { goalId }, select: { id: true } }); if (steps.length !== dto.stepIds.length || new Set(dto.stepIds).size !== steps.length || steps.some((step) => !dto.stepIds.includes(step.id))) throw new BadRequestException('stepIds must contain each goal step exactly once.'); await this.prisma.$transaction(async (tx) => { for (const [index, id] of dto.stepIds.entries()) await tx.goalStep.update({ where: { id }, data: { position: index + 100000 } }); for (const [index, id] of dto.stepIds.entries()) await tx.goalStep.update({ where: { id }, data: { position: index } }); }); await this.record(userId, 'steps_reordered', { goalId }); return this.get(userId, goalId); }
   async setProgress(userId: string, goalId: string, stepId: string, dto: ProgressDto) { await this.role(userId, goalId); const step = await this.prisma.goalStep.findFirst({ where: { id: stepId, goalId } }); if (!step) throw new NotFoundException('Step not found.'); await this.prisma.goalStepProgress.upsert({ where: { goalStepId_userId: { goalStepId: stepId, userId } }, update: { completed: dto.completed, completedAt: dto.completed ? new Date() : null }, create: { goalStepId: stepId, userId, completed: dto.completed, completedAt: dto.completed ? new Date() : null } }); await this.record(userId, dto.completed ? 'step_completed' : 'step_uncompleted', { goalId }, { stepId }); await this.recalculate(goalId); return this.get(userId, goalId); }
 
-  async recalculate(goalId: string) { const goal = await this.prisma.goal.findUnique({ where: { id: goalId }, include: { steps: { include: { progresses: true } }, members: true, team: { include: { members: true } } } }); if (!goal || goal.status !== 'active' || goal.steps.length === 0) return; const participants = new Set([goal.ownerUserId, ...goal.members.map((member) => member.userId), ...(goal.team ? [goal.team.ownerUserId, ...goal.team.members.map((member) => member.userId)] : [])]); const complete = [...participants].every((userId) => goal.steps.every((step) => step.progresses.some((progress) => progress.userId === userId && progress.completed))); if (complete) await this.prisma.goal.update({ where: { id: goalId }, data: { status: 'completed', completedAt: new Date(), completionMode: 'automatic', completedByUserId: goal.ownerUserId } }); }
+  async recalculate(goalId: string) { const goal = await this.prisma.goal.findUnique({ where: { id: goalId }, include: { steps: { include: { progresses: true } }, members: true, team: { include: { members: true } } } }); if (!goal || goal.status !== 'active' || goal.steps.length === 0) return; const participants = this.participantIds(goal); const complete = [...participants].every((userId) => goal.steps.every((step) => step.progresses.some((progress) => progress.userId === userId && progress.completed))); if (complete) await this.prisma.goal.update({ where: { id: goalId }, data: { status: 'completed', completedAt: new Date(), completionMode: 'automatic', completedByUserId: goal.ownerUserId } }); }
   async override(userId: string, goalId: string, dto: OverrideGoalDto) { const goal = await this.prisma.goal.findFirst({ where: { id: goalId, ownerUserId: userId } }); if (!goal) throw new ForbiddenException('Only the goal owner can override completion.'); await this.prisma.$transaction([this.prisma.goal.update({ where: { id: goalId }, data: { status: 'completed', completedAt: new Date(), completionMode: 'owner_override', completedByUserId: userId, completionOverrideReason: dto.reason?.trim() || null } }), this.prisma.goalAuditEvent.create({ data: { goalId, actorUserId: userId, eventType: 'owner_override', reason: dto.reason?.trim() || null } })]); await this.record(userId, 'goal_owner_override', { goalId }, { reason: dto.reason?.trim() || '' }); return this.get(userId, goalId); }
   async getRole(userId: string, goalId: string) { const access = await this.role(userId, goalId); return access.role; }
   async rhythm(userId: string, goalId: string) {

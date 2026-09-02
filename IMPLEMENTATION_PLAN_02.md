@@ -177,7 +177,7 @@ Matriz da F19 atualizada e paridade V1 relevante concluída.
 
 ## Fase 22 — Sistema visual e UX de progressão
 
-**Status:** CONCLUÍDA — componentes de progresso, estados de conclusão, marcos, contexto e participantes aplicados ao fluxo web.
+**Status:** CONCLUÍDA — componentes de progresso, estados de conclusão, marcos, contexto e participantes aplicados ao fluxo web; o detalhe de metas coletivas também exibe progresso individual derivado, resumo coletivo e checklist expandível somente leitura.
 
 ### Objetivo
 Criar linguagem visual única para progresso/recompensa.
