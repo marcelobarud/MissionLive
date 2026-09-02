@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ActivityListQueryDto } from './activity.dto';
+import { publicIdentity } from '../auth/user.serializer';
 
 type Metadata = Record<string, string | number | boolean>;
 
@@ -26,9 +27,9 @@ export class ActivityService {
   async list(userId: string, query: ActivityListQueryDto = {}) {
     const limit = query.limit ?? 25;
     const offset = query.offset ?? 0;
-    const events = await this.prisma.activityEvent.findMany({ where: { OR: [{ goal: { OR: [{ ownerUserId: userId }, { members: { some: { userId } } }, { team: { ownerUserId: userId } }, { team: { members: { some: { userId } } } }] } }, { team: { OR: [{ ownerUserId: userId }, { members: { some: { userId } } }] } }] }, include: { actor: { select: { id: true, name: true } }, targetUser: { select: { id: true, name: true } }, goal: { select: { id: true, name: true } }, team: { select: { id: true, name: true } } }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip: offset, take: limit + 1 });
+    const events = await this.prisma.activityEvent.findMany({ where: { OR: [{ goal: { OR: [{ ownerUserId: userId }, { members: { some: { userId } } }, { team: { ownerUserId: userId } }, { team: { members: { some: { userId } } } }] } }, { team: { OR: [{ ownerUserId: userId }, { members: { some: { userId } } }] } }] }, include: { actor: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } }, targetUser: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } }, goal: { select: { id: true, name: true } }, team: { select: { id: true, name: true } } }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], skip: offset, take: limit + 1 });
     const hasMore = events.length > limit;
-    const items = (hasMore ? events.slice(0, limit) : events).map((event) => ({ ...event, metadata: JSON.parse(event.metadataJson || '{}') as Metadata }));
+    const items = (hasMore ? events.slice(0, limit) : events).map((event) => ({ ...event, actor: event.actor ? publicIdentity(event.actor) : event.actor, targetUser: event.targetUser ? publicIdentity(event.targetUser) : null, metadata: JSON.parse(event.metadataJson || '{}') as Metadata }));
     return { items, nextOffset: hasMore ? offset + limit : null, hasMore };
   }
 }

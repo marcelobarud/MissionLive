@@ -2,6 +2,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { PrismaService } from '../prisma/prisma.service';
 import { GoalsService } from '../goals/goals.service';
 import { ActivityService } from '../activity/activity.service';
+import { publicIdentity } from '../auth/user.serializer';
 
 const EMOJIS = new Set(['👏', '❤️', '🎉', '💪']);
 
@@ -16,13 +17,13 @@ export class CommentsService {
     recent.push(now); this.writes.set(userId, recent);
   }
 
-  private format(comment: { id: string; body: string; createdAt: Date; updatedAt: Date; author: { id: string; name: string }; reactions: { emoji: string; userId: string }[] }, userId: string) {
+  private format(comment: { id: string; body: string; createdAt: Date; updatedAt: Date; author: { id: string; name: string; email: string; avatarUrl?: string | null; avatarType?: string | null; avatarPresetId?: string | null; avatarFileKey?: string | null }; reactions: { emoji: string; userId: string }[] }, userId: string) {
     const reactions = [...EMOJIS].map((emoji) => ({ emoji, count: comment.reactions.filter((reaction) => reaction.emoji === emoji).length, reacted: comment.reactions.some((reaction) => reaction.emoji === emoji && reaction.userId === userId) }));
-    return { id: comment.id, body: comment.body, createdAt: comment.createdAt, updatedAt: comment.updatedAt, author: comment.author, reactions };
+    return { id: comment.id, body: comment.body, createdAt: comment.createdAt, updatedAt: comment.updatedAt, author: publicIdentity(comment.author), reactions };
   }
 
   private async serialize(commentId: string, userId: string) {
-    const comment = await this.prisma.comment.findUnique({ where: { id: commentId }, include: { author: { select: { id: true, name: true } }, reactions: { select: { emoji: true, userId: true } } } });
+    const comment = await this.prisma.comment.findUnique({ where: { id: commentId }, include: { author: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } }, reactions: { select: { emoji: true, userId: true } } } });
     if (!comment) throw new NotFoundException('Comment not found.');
     return this.format(comment, userId);
   }
@@ -30,7 +31,7 @@ export class CommentsService {
   async list(userId: string, goalId: string, requestedLimit?: string) {
     await this.goals.get(userId, goalId);
     const parsed = Number(requestedLimit ?? 50); const limit = Number.isInteger(parsed) ? Math.min(Math.max(parsed, 1), 50) : 50;
-    const comments = await this.prisma.comment.findMany({ where: { goalId }, include: { author: { select: { id: true, name: true } }, reactions: { select: { emoji: true, userId: true } } }, orderBy: { createdAt: 'asc' }, take: limit });
+    const comments = await this.prisma.comment.findMany({ where: { goalId }, include: { author: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } }, reactions: { select: { emoji: true, userId: true } } }, orderBy: { createdAt: 'asc' }, take: limit });
     return comments.map((comment) => this.format(comment, userId));
   }
 

@@ -12,6 +12,9 @@ model User {
   email              String             @unique
   name               String
   avatarUrl          String?
+  avatarType         String?
+  avatarPresetId     String?
+  avatarFileKey      String?
   passwordHash       String?
   emailVerifiedAt    DateTime?
   status             String             @default("active")

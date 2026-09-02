@@ -7,4 +7,5 @@ coverage/
 *.db
 *.db-journal
 *.log
+apps/api/var/avatars/
 .DS_Store

@@ -1,11 +1,12 @@
 const API_URL = 'http://localhost:3000';
 
-export type User = { id: string; email: string; name: string; avatarUrl?: string | null; timezone?: string; onboardingCompletedAt?: string | null; preferences?: Record<string, boolean | string | number> };
+export type Avatar = { type: 'preset' | 'upload' | 'google' | null; presetId: string | null; url: string | null };
+export type User = { id: string; email: string; name: string; avatarUrl?: string | null; avatar?: Avatar; timezone?: string; onboardingCompletedAt?: string | null; preferences?: Record<string, boolean | string | number> };
 export type Category = { id: string; name: string };
 export type Step = { id: string; title: string; description?: string | null; position: number; progresses?: { userId: string; completed: boolean; completedAt?: string | null }[] };
 export type ProgressSummary = { completedSteps: number; totalSteps: number; participantCount: number; completedParticipants: number };
 export type ParticipantProgressStep = { id: string; title: string; position: number; completed: boolean; completedAt: string | null };
-export type ParticipantProgress = { userId: string; name: string; avatarUrl?: string | null; role: string; completedSteps: number; totalSteps: number; percentage: number; completed: boolean; status: 'not-started' | 'in-progress' | 'nearly-complete' | 'completed'; steps: ParticipantProgressStep[] };
+export type ParticipantProgress = { userId: string; name: string; avatarUrl?: string | null; avatar?: Avatar; role: string; completedSteps: number; totalSteps: number; percentage: number; completed: boolean; status: 'not-started' | 'in-progress' | 'nearly-complete' | 'completed'; steps: ParticipantProgressStep[] };
 export type ParticipantsProgress = { totalParticipants: number; participantsCompleted: number; collectiveCompletedSteps: number; collectiveTotalSteps: number; collectivePercentage: number; participants: ParticipantProgress[] };
 export type Goal = { id: string; ownerUserId: string; owner?: User; name: string; description?: string | null; status: string; startDate: string; endDate?: string | null; completionMode?: string | null; completionOverrideReason?: string | null; customCategory?: string | null; category?: Category | null; team?: { id: string; name: string; ownerUserId?: string; owner?: User; members?: { id: string; user: User; role: string }[] } | null; tags: string[]; steps: Step[]; members?: { id: string; user: User; role: string }[]; progressSummary?: ProgressSummary; participantsProgress?: ParticipantsProgress };
 export type Team = { id: string; ownerUserId: string; owner?: User; name: string; description?: string | null; accessRole?: string; members: { id: string; user: User; role: string }[]; goals: { id: string; name: string; status: string }[] };
@@ -13,9 +14,9 @@ export type TeamDetail = Omit<Team, 'goals'> & { goals: Goal[] };
 export type Dashboard = { counts: { completed: number; open: number; thisMonth: number; thisYear: number; total: number; completionRate: number; activeProgress: number }; categoryBreakdown: { label: string; count: number }[]; contextBreakdown: { label: string; count: number }[]; upcomingDeadlines: Goal[]; overdueGoals: Goal[]; nearlyCompleteGoals: Goal[]; completionTimeline: { label: string; count: number }[]; recentGoals: Goal[] };
 export type Invite = { id: string; targetType: string; expiresAt: string; url?: string };
 export type Reminder = { id: string; goalId: string; remindAt: string; timezone: string; status: string; goal?: { id: string; name: string; status: string; endDate?: string | null } };
-export type ActivityEvent = { id: string; eventType: string; metadata: Record<string, string | number | boolean>; createdAt: string; actor: { id: string; name: string }; targetUser?: { id: string; name: string } | null; goal?: { id: string; name: string } | null; team?: { id: string; name: string } | null };
+export type ActivityEvent = { id: string; eventType: string; metadata: Record<string, string | number | boolean>; createdAt: string; actor: User; targetUser?: User | null; goal?: { id: string; name: string } | null; team?: { id: string; name: string } | null };
 export type ActivityPage = { items: ActivityEvent[]; nextOffset: number | null; hasMore: boolean };
-export type Comment = { id: string; body: string; createdAt: string; updatedAt: string; author: { id: string; name: string }; reactions: { emoji: string; count: number; reacted: boolean }[] };
+export type Comment = { id: string; body: string; createdAt: string; updatedAt: string; author: User; reactions: { emoji: string; count: number; reacted: boolean }[] };
 export type GoalTemplate = { id: string; name: string; description?: string | null; isOfficial: boolean; tags?: string[]; steps: string[] };
 export type Rhythm = { applicable: boolean; state: string; reason?: string; timePercent?: number; progressPercent?: number; delta?: number };
 export type CalendarData = { from: string; to: string; goals: Goal[]; reminders: { id: string; remindAt: string; goal: { id: string; name: string } }[] };
@@ -79,6 +80,9 @@ export const api = {
   calendar: (from?: string, to?: string) => request<CalendarData>(`/calendar?from=${encodeURIComponent(from ?? '')}&to=${encodeURIComponent(to ?? '')}`),
   rhythm: (goalId: string) => request<Rhythm>(`/goals/${goalId}/rhythm`),
   updateProfile: (body: { name?: string; avatarUrl?: string; timezone?: string; preferences?: Record<string, boolean | string | number> }) => request<User>('/auth/profile', { method: 'PATCH', body: JSON.stringify(body) }),
+  setAvatarPreset: (presetId: string) => request<User>('/profile/avatar/preset', { method: 'PATCH', body: JSON.stringify({ presetId }) }),
+  uploadAvatar: async (file: File) => { const response = await fetch(`${API_URL}/profile/avatar/upload`, { method: 'POST', body: (() => { const form = new FormData(); form.append('file', file); return form; })(), credentials: 'include' }); if (!response.ok) { const body = await response.json().catch(() => ({})) as { message?: string | string[] }; const message = Array.isArray(body.message) ? body.message.join(', ') : body.message; throw new Error(message || 'Não foi possível enviar a foto.'); } return response.json() as Promise<User>; },
+  removeAvatar: () => request<User>('/profile/avatar', { method: 'DELETE' }),
   completeOnboarding: () => request<User>('/auth/onboarding/complete', json({})),
   sessions: () => request<{ id: string; createdAt: string; expiresAt: string; current: boolean }[]>('/auth/sessions'),
   revokeOtherSessions: () => request<{ revoked: boolean }>('/auth/sessions/revoke-others', json({})),

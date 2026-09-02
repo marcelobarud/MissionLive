@@ -723,3 +723,12 @@ Se uma implementação exigir contrariar uma decisão registrada:
 - documentar o conflito;
 - escolher a alternativa mais conservadora apenas quando necessário;
 - atualizar os documentos quando a decisão mudar oficialmente.
+
+## 24. Avatares e foto de perfil
+
+- A identidade visual do usuário é resolvida por um avatar predefinido, uma foto processada ou fallback por iniciais.
+- Existem dez presets determinísticos baseados em `react-nice-avatar`; os IDs são allowlisted no backend e o domínio não depende da biblioteca visual.
+- Upload aceita somente JPEG, PNG ou WebP até 5 MB. O backend valida o conteúdo real, rejeita MIME spoofing, SVG, GIF/animado, imagens malformadas e dimensões acima dos limites, e usa Sharp para gerar WebP 256×256 sem metadados.
+- O banco guarda apenas `avatarType`, `avatarPresetId` e `avatarFileKey` nullable. A foto original não é persistida; arquivos processados ficam no armazenamento local (`apps/api/var/avatars` ou `AVATAR_STORAGE_DIR`) através da abstração `AvatarStorage`.
+- A alteração e remoção usam exclusivamente o usuário autenticado. A mídia é servida por rota segura, sem aceitar caminho físico ou `userId` no payload.
+- Fotos Google já existentes continuam como fallback quando o usuário remove um preset/upload. Object storage permanece uma evolução futura.

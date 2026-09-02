@@ -15,9 +15,10 @@ import { CommentsModule } from './comments/comments.module';
 import { TemplatesModule } from './templates/templates.module';
 import { CalendarModule } from './calendar/calendar.module';
 import { NotificationsModule } from './notifications/notifications.module';
+import { AvatarsModule } from './avatars/avatars.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }), PrismaModule, AuthModule, GoalsModule, TeamsModule, InvitesModule, DashboardModule, PlansModule, RemindersModule, ActivityModule, CommentsModule, TemplatesModule, CalendarModule, NotificationsModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }), PrismaModule, AuthModule, AvatarsModule, GoalsModule, TeamsModule, InvitesModule, DashboardModule, PlansModule, RemindersModule, ActivityModule, CommentsModule, TemplatesModule, CalendarModule, NotificationsModule],
   controllers: [HealthController],
 })
 export class AppModule {}

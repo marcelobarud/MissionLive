@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateGoalDto, CreateStepDto, ListGoalsQueryDto, OverrideGoalDto, ProgressDto, ReorderStepsDto, UpdateGoalDto, UpdateMemberRoleDto, UpdateStepDto } from './goals.dto';
 import { ActivityService } from '../activity/activity.service';
+import { publicAvatar, publicIdentity } from '../auth/user.serializer';
 
 const EDITABLE_ROLES = new Set(['admin', 'editor']);
 const MANAGE_ROLES = new Set(['admin']);
@@ -14,7 +15,7 @@ type ParticipantSource = {
   members?: Array<{ userId: string }>;
   team?: { ownerUserId: string; members?: Array<{ userId: string }> } | null;
 };
-type ParticipantUser = { id: string; name: string; avatarUrl: string | null };
+type ParticipantUser = { id: string; name: string; avatarUrl: string | null; avatarType?: string | null; avatarPresetId?: string | null; avatarFileKey?: string | null };
 type ParticipantMember = { userId: string; role: string; user: ParticipantUser };
 type ParticipantProgressGoal = ParticipantSource & {
   owner?: ParticipantUser | null;
@@ -23,6 +24,7 @@ type ParticipantProgressGoal = ParticipantSource & {
   steps: Array<{ id: string; title: string; position: number; progresses: ProgressRecord[] }>;
 };
 function progressPercent(steps: Array<{ progresses: ProgressRecord[] }>) { return steps.length ? Math.round(steps.filter((step) => step.progresses.some((progress) => progress.completed)).length / steps.length * 100) : 0; }
+function sanitizeUserRelations<T>(value: T): T { if (!value || typeof value !== 'object') return value; const record = value as Record<string, unknown>; if (typeof record.id === 'string' && typeof record.name === 'string' && typeof record.email === 'string') return publicIdentity(record as { id: string; name: string; email: string; avatarUrl?: string | null; avatarType?: string | null; avatarPresetId?: string | null; avatarFileKey?: string | null }) as T; const result = { ...record }; if ('owner' in result) result.owner = sanitizeUserRelations(result.owner); if ('user' in result) result.user = sanitizeUserRelations(result.user); if (Array.isArray(result.members)) result.members = result.members.map((member) => sanitizeUserRelations(member)); if ('team' in result && result.team) result.team = sanitizeUserRelations(result.team); return result as T; }
 
 @Injectable()
 export class GoalsService {
@@ -101,6 +103,7 @@ export class GoalsService {
         userId,
         name: participant.user.name,
         avatarUrl: participant.user.avatarUrl ?? null,
+        avatar: publicAvatar(participant.user),
         role: participant.role,
         completedSteps,
         totalSteps,
@@ -129,7 +132,7 @@ export class GoalsService {
     const completedParticipants = participantCount && steps.length ? [...participantIds].filter((userId) => steps.every((step) => step.progresses.some((progress) => progress.userId === userId && progress.completed))).length : 0;
     const completedSteps = steps.filter((step) => step.progresses.some((progress) => progress.completed)).length;
     const { tagsJson, ...rest } = goal;
-    return { ...rest, steps, tags: JSON.parse(tagsJson || '[]') as string[], progressSummary: { completedSteps, totalSteps: steps.length, participantCount, completedParticipants }, participantsProgress: undefined };
+    return sanitizeUserRelations({ ...rest, steps, tags: JSON.parse(tagsJson || '[]') as string[], progressSummary: { completedSteps, totalSteps: steps.length, participantCount, completedParticipants }, participantsProgress: undefined });
   }
 
   private async role(userId: string, goalId: string) {
@@ -156,14 +159,14 @@ export class GoalsService {
     if (query.context === 'individual') filters.push({ teamId: null, members: { none: {} } });
     if (query.context === 'shared') filters.push({ teamId: null, members: { some: {} } });
     if (query.context === 'team') filters.push({ teamId: { not: null } });
-    const goals = await this.prisma.goal.findMany({ where: { AND: [this.accessWhere(userId), ...filters] }, include: { category: true, team: true, members: { include: { user: { select: { id: true, name: true, email: true } } } }, steps: { orderBy: { position: 'asc' }, include: { progresses: { where: { userId } } } } }, orderBy: query.sort === 'name' ? { name: 'asc' } : query.sort === 'deadline' ? { endDate: 'asc' } : { updatedAt: 'desc' } });
+    const goals = await this.prisma.goal.findMany({ where: { AND: [this.accessWhere(userId), ...filters] }, include: { category: true, team: true, members: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } } } }, steps: { orderBy: { position: 'asc' }, include: { progresses: { where: { userId } } } } }, orderBy: query.sort === 'name' ? { name: 'asc' } : query.sort === 'deadline' ? { endDate: 'asc' } : { updatedAt: 'desc' } });
     const serialized = goals.map((goal) => this.serialize(goal));
     if (query.sort === 'progress-desc' || query.sort === 'progress-asc') serialized.sort((a, b) => { const aValue = progressPercent(a.steps); const bValue = progressPercent(b.steps); return query.sort === 'progress-desc' ? bValue - aValue : aValue - bValue; });
     return serialized;
   }
 
   async get(userId: string, goalId: string) {
-    const goal = await this.prisma.goal.findFirst({ where: this.accessWhere(userId, goalId), include: { category: true, owner: { select: { id: true, name: true, email: true, avatarUrl: true } }, team: { include: { owner: { select: { id: true, name: true, email: true, avatarUrl: true } }, members: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true } } } } } }, members: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true } } } }, steps: { orderBy: { position: 'asc' }, include: { progresses: true } } } });
+    const goal = await this.prisma.goal.findFirst({ where: this.accessWhere(userId, goalId), include: { category: true, owner: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } }, team: { include: { owner: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } }, members: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } } } } } }, members: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } } } }, steps: { orderBy: { position: 'asc' }, include: { progresses: true } } } });
     if (!goal) throw new NotFoundException('Goal not found.');
     const detailParticipants = goal.team || goal.members.length > 0;
     const steps = goal.steps.map((step) => ({ ...step, progresses: detailParticipants ? step.progresses : step.progresses.filter((progress) => progress.userId === userId) }));

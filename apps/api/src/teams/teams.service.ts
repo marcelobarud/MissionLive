@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateTeamDto, CreateTeamWithGoalDto, UpdateTeamDto, UpdateMemberRoleDto } from './teams.dto';
 import { GoalsService } from '../goals/goals.service';
 import { ActivityService } from '../activity/activity.service';
+import { publicIdentity } from '../auth/user.serializer';
 
 const MEMBER_ROLES = new Set(['admin', 'editor', 'viewer']);
 
@@ -18,15 +19,16 @@ export class TeamsService {
   }
 
   async list(userId: string) {
-    return this.prisma.team.findMany({ where: { OR: [{ ownerUserId: userId }, { members: { some: { userId } } }] }, include: { owner: { select: { id: true, name: true, email: true } }, members: { include: { user: { select: { id: true, name: true, email: true } } } }, goals: { where: { status: { not: 'cancelled' } }, select: { id: true, name: true, status: true } } }, orderBy: { updatedAt: 'desc' } });
+    const teams = await this.prisma.team.findMany({ where: { OR: [{ ownerUserId: userId }, { members: { some: { userId } } }] }, include: { owner: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } }, members: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } } } }, goals: { where: { status: { not: 'cancelled' } }, select: { id: true, name: true, status: true } } }, orderBy: { updatedAt: 'desc' } });
+    return teams.map((team) => ({ ...team, owner: team.owner ? publicIdentity(team.owner) : null, members: team.members.map((member) => ({ ...member, user: publicIdentity(member.user) })) }));
   }
 
   async get(userId: string, teamId: string) {
     const access = await this.access(userId, teamId);
-    const team = await this.prisma.team.findFirst({ where: { id: teamId, OR: [{ ownerUserId: userId }, { members: { some: { userId } } }] }, include: { owner: { select: { id: true, name: true, email: true } }, members: { include: { user: { select: { id: true, name: true, email: true } } } }, goals: { where: { status: { not: 'cancelled' } }, select: { id: true } } } });
+    const team = await this.prisma.team.findFirst({ where: { id: teamId, OR: [{ ownerUserId: userId }, { members: { some: { userId } } }] }, include: { owner: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } }, members: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } } } }, goals: { where: { status: { not: 'cancelled' } }, select: { id: true } } } });
     if (!team) throw new ForbiddenException('You do not have access to this team.');
     const goals = await Promise.all(team.goals.map((goal) => this.goals.get(userId, goal.id)));
-    return { ...team, accessRole: access.role, goals };
+    return { ...team, owner: team.owner ? publicIdentity(team.owner) : null, members: team.members.map((member) => ({ ...member, user: publicIdentity(member.user) })), accessRole: access.role, goals };
   }
 
   async create(userId: string, dto: CreateTeamDto) { const team = await this.prisma.team.create({ data: { ownerUserId: userId, name: dto.name.trim(), description: dto.description?.trim() || undefined } }); await this.activity.record(userId, 'team_created', { teamId: team.id }); return this.get(userId, team.id); }

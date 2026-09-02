@@ -2,16 +2,15 @@ import { ConflictException, ForbiddenException, HttpException, HttpStatus, Injec
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { hashToken, createToken } from './token.util';
-import { AuthUser } from './auth.types';
 import { RegisterDto, LoginDto, ResetPasswordDto } from './auth.dto';
 import * as argon2 from 'argon2';
+import { publicUser } from './user.serializer';
 
 @Injectable()
 export class AuthService {
   private readonly loginAttempts = new Map<string, { count: number; resetAt: number }>();
   constructor(private readonly prisma: PrismaService, private readonly config: ConfigService) {}
 
-  private publicUser(user: { id: string; email: string; name: string; avatarUrl?: string | null; timezone?: string; onboardingCompletedAt?: Date | null; preferencesJson?: string }): AuthUser { return { id: user.id, email: user.email, name: user.name, avatarUrl: user.avatarUrl, timezone: user.timezone, onboardingCompletedAt: user.onboardingCompletedAt?.toISOString() ?? null, preferences: JSON.parse(user.preferencesJson ?? '{}') }; }
   private localToken(token: string) { return this.config.get('NODE_ENV') !== 'production' ? token : undefined; }
 
   async register(dto: RegisterDto) {
@@ -20,7 +19,7 @@ export class AuthService {
     if (existing) throw new ConflictException('Email is already registered.');
     const verificationToken = createToken();
     const user = await this.prisma.user.create({ data: { email, name: dto.name.trim(), passwordHash: await argon2.hash(dto.password), authTokens: { create: { type: 'email_verification', tokenHash: hashToken(verificationToken), expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) } } } });
-    return { user: this.publicUser(user), emailVerified: false, verificationToken: this.localToken(verificationToken) };
+    return { user: publicUser(user), emailVerified: false, verificationToken: this.localToken(verificationToken) };
   }
 
   async login(dto: LoginDto) {
@@ -38,15 +37,15 @@ export class AuthService {
     const ttlDays = Number(this.config.get('SESSION_TTL_DAYS') ?? 30);
     const expiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000);
     const session = await this.prisma.session.create({ data: { userId: user.id, refreshTokenHash: hashToken(token), expiresAt } });
-    return { user: this.publicUser(user), token, expiresAt, sessionId: session.id };
+    return { user: publicUser(user), token, expiresAt, sessionId: session.id };
   }
 
   async logout(sessionId: string) { await this.prisma.session.update({ where: { id: sessionId }, data: { revokedAt: new Date() } }); }
   async updateProfile(userId: string, dto: import('./profile.dto').UpdateProfileDto) {
     const current = await this.prisma.user.findUnique({ where: { id: userId } }); if (!current) throw new UnauthorizedException('User not found.');
-    const user = await this.prisma.user.update({ where: { id: userId }, data: { name: dto.name?.trim(), avatarUrl: dto.avatarUrl, timezone: dto.timezone?.trim(), preferencesJson: dto.preferences ? JSON.stringify(dto.preferences) : undefined } }); return this.publicUser(user);
+    const user = await this.prisma.user.update({ where: { id: userId }, data: { name: dto.name?.trim(), avatarUrl: dto.avatarUrl, timezone: dto.timezone?.trim(), preferencesJson: dto.preferences ? JSON.stringify(dto.preferences) : undefined } }); return publicUser(user);
   }
-  async completeOnboarding(userId: string) { const user = await this.prisma.user.update({ where: { id: userId }, data: { onboardingCompletedAt: new Date() } }); return this.publicUser(user); }
+  async completeOnboarding(userId: string) { const user = await this.prisma.user.update({ where: { id: userId }, data: { onboardingCompletedAt: new Date() } }); return publicUser(user); }
   async sessions(userId: string, currentSessionId: string) { return this.prisma.session.findMany({ where: { userId, revokedAt: null }, select: { id: true, createdAt: true, expiresAt: true }, orderBy: { createdAt: 'desc' } }).then((items) => items.map((item) => ({ ...item, current: item.id === currentSessionId }))); }
   async revokeOtherSessions(userId: string, currentSessionId: string) { await this.prisma.session.updateMany({ where: { userId, revokedAt: null, id: { not: currentSessionId } }, data: { revokedAt: new Date() } }); return { revoked: true }; }
   async verifyEmail(token: string) {
