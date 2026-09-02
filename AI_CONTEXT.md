@@ -664,6 +664,7 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - login, cadastro e verificação de e-mail em desenvolvimento;
 - dashboard com cards, taxa derivada, progresso ativo, prazos, metas quase concluídas, distribuição com barras, evolução temporal, barras de progresso e feed recente limitado a 10 itens com acesso ao histórico;
 - listagem, busca, filtros e ordenação server-side; criação completa e edição inicial de metas, detalhe com datas/tags/contexto/participantes/progresso, progresso individual expandível por participante em modo somente leitura, CRUD de steps, cancelamento, arquivamento, exclusão permanente protegida por owner, owner override e convite direto de meta;
+- o construtor reutilizável `GoalStepsBuilder` substitui a entrada por linhas na criação de metas, edição de metas e primeira meta de equipe: mantém IDs existentes, deriva números da posição, ignora itens vazios, adiciona com foco, aceita Enter, remove com confirmação, reordena por ponteiro/touch e oferece subir/descer por teclado; a sincronização usa `goalStep.position` e preserva o progresso individual;
 - listagem, criação básica e criação transacional de equipe com primeira meta/steps, detalhe, edição, gerenciamento de roles/membros e convite de equipe;
 - preview e aceite de convite em `/invite/<token>`;
 - recuperação e redefinição de senha em desenvolvimento;
@@ -677,6 +678,7 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - `@tabler/icons-react` (`3.46.0`) é a biblioteca oficial de ícones do frontend; usar imports explícitos, família outline, `currentColor`, tamanhos padronizados e `aria-label` obrigatório em icon buttons.
 - `apps/web/src/feedback.tsx` concentra `FeedbackProvider`, dialogs assíncronos de confirmação/prompt, `Toast`, `ToastViewport` e `FeedbackBanner`; os fluxos da interface não usam mais `window.alert`, `window.confirm` ou `window.prompt`.
 - dialogs compartilhados usam tokens do Design System, semântica `role="dialog"`, `aria-modal`, título/descrição associados, foco inicial, ciclo de foco por teclado, ESC e restauração do foco anterior; ações assíncronas mantêm seus erros no contexto da tela ou em toast.
+- o fluxo visual do frontend deve continuar usando as skills locais `frontend-design` e `web-design-guidelines`; o builder segue a direção “movimento editorial”, foco visível, controles com labels, estados reduzidos de movimento e alternativa acessível à interação por arraste.
 
 ### Diferenças conhecidas entre o alvo da V1 e a interface atual
 
