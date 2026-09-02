@@ -63,3 +63,24 @@ As guidelines atuais foram buscadas em 2026-09-01 e aplicadas ao conjunto de arq
 - transições com propriedades explícitas e variante para reduced motion.
 
 Não foram alteradas regras de negócio, contratos, permissões ou o uso de links/botões semântico já presente. A auditoria não adicionou dependências.
+
+## Auditoria final de cobertura
+
+- [x] `/` — dashboard e estados de loading/erro/vazio
+- [x] `/activities` — histórico e paginação
+- [x] `/goals` — listagem, filtros e estado vazio
+- [x] `/goals/new` — formulário de criação
+- [x] `/goals/:goalId` — detalhe, checklist, progresso, comentários, reminders e ações
+- [x] `/teams` — listagem e estado vazio
+- [x] `/teams/new` — criação de equipe e primeira meta
+- [x] `/teams/:teamId` — detalhe, membros, roles, convites e metas
+- [x] `/templates` — modelos, uso e estado vazio
+- [x] `/calendar` — período, navegação, eventos e estado vazio
+- [x] `/notifications` — avisos lidos/não lidos, deep link e estado vazio
+- [x] `/profile` — avatar, preferências e sessões
+- [x] `/invite/:token` — preview, aceite e erro
+- [x] rotas de autenticação e recuperação — login, cadastro, verificação, recuperação e redefinição
+- [x] componentes compartilhados — shell, navegação, botões, campos, cards, painéis, badges, progresso, dialogs, toasts, skeleton/loading, erro e vazio
+- [x] dimensões mobile, tablet e desktop consideradas por CSS e inspeção visual desktop
+- [x] teclado, foco, labels, semântica, touch, reduced motion e overflow considerados
+- [x] nenhuma funcionalidade removida e nenhum contrato frontend/backend alterado
