@@ -1,4 +1,4 @@
-import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { GoalsService } from '../src/goals/goals.service';
 
 type FakePrisma = { goal: { findFirst: jest.Mock; findUnique: jest.Mock; update: jest.Mock } };
@@ -74,5 +74,47 @@ describe('GoalsService authorization boundary', () => {
     const result = await service.get('user-a', 'goal-empty');
     expect(result.participantsProgress).toMatchObject({ totalParticipants: 2, participantsCompleted: 0, collectiveCompletedSteps: 0, collectiveTotalSteps: 0, collectivePercentage: 0 });
     expect(result.participantsProgress?.participants.every((participant) => participant.status === 'not-started')).toBe(true);
+  });
+
+  it('reorders every step transactionally and returns the persisted order', async () => {
+    const prisma = fakePrisma(); const service = new GoalsService(prisma as never); const updates: unknown[] = [];
+    prisma.goal.findUnique.mockResolvedValue({ id: 'goal-a', ownerUserId: 'owner', members: [], team: null });
+    prisma.goalStep.findMany.mockResolvedValue([{ id: 'step-1' }, { id: 'step-2' }]);
+    prisma.$transaction.mockImplementation(async (callback: (transaction: { goalStep: { update: jest.Mock } }) => Promise<void>) => callback({ goalStep: { update: jest.fn((args) => { updates.push(args); }) } }));
+    prisma.goal.findFirst.mockResolvedValue({ id: 'goal-a', ownerUserId: 'owner', tagsJson: '[]', members: [], team: null, steps: [{ id: 'step-2', title: 'Segundo', position: 0, progresses: [{ userId: 'owner', completed: true }] }, { id: 'step-1', title: 'Primeiro', position: 1, progresses: [] }] });
+
+    const result = await service.reorderSteps('owner', 'goal-a', { stepIds: ['step-2', 'step-1'] });
+
+    expect(updates).toEqual([
+      { where: { id: 'step-2' }, data: { position: 100000 } },
+      { where: { id: 'step-1' }, data: { position: 100001 } },
+      { where: { id: 'step-2' }, data: { position: 0 } },
+      { where: { id: 'step-1' }, data: { position: 1 } },
+    ]);
+    expect(result.steps.map((step) => step.id)).toEqual(['step-2', 'step-1']);
+    expect(result.steps[0].progresses).toEqual([{ userId: 'owner', completed: true }]);
+  });
+
+  it('rejects an incomplete or duplicated reorder without mutating steps', async () => {
+    const prisma = fakePrisma(); const service = new GoalsService(prisma as never);
+    prisma.goal.findUnique.mockResolvedValue({ id: 'goal-a', ownerUserId: 'owner', members: [], team: null });
+    prisma.goalStep.findMany.mockResolvedValue([{ id: 'step-1' }, { id: 'step-2' }]);
+
+    await expect(service.reorderSteps('owner', 'goal-a', { stepIds: ['step-1', 'step-1'] })).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
+  it('updates an existing step in place so its ID and progress remain stable', async () => {
+    const prisma = fakePrisma(); const service = new GoalsService(prisma as never);
+    prisma.goal.findUnique.mockResolvedValue({ id: 'goal-a', ownerUserId: 'owner', members: [], team: null });
+    prisma.goalStep.findFirst.mockResolvedValue({ id: 'step-1', goalId: 'goal-a' });
+    prisma.goal.findFirst.mockResolvedValue({ id: 'goal-a', ownerUserId: 'owner', tagsJson: '[]', members: [], team: null, steps: [{ id: 'step-1', title: 'Revisado', position: 0, progresses: [{ userId: 'owner', completed: true }] }] });
+
+    const result = await service.updateStep('owner', 'goal-a', 'step-1', { title: '  Revisado  ' });
+
+    expect(prisma.goalStep.update).toHaveBeenCalledWith({ where: { id: 'step-1' }, data: { title: 'Revisado', description: null } });
+    expect(prisma.goalStep.create).not.toHaveBeenCalled();
+    expect(prisma.goalStep.delete).not.toHaveBeenCalled();
+    expect(result.steps[0]).toMatchObject({ id: 'step-1', title: 'Revisado', position: 0, progresses: [{ userId: 'owner', completed: true }] });
   });
 });
