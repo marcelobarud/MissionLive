@@ -16,8 +16,9 @@ export function UserAvatar({ user, size = 'md', decorative = false, className = 
   useEffect(() => setBroken(false), [avatar?.url, avatar?.presetId, user.avatarUrl]);
   const label = decorative ? undefined : `Avatar de ${user.name}`;
   const classes = `user-avatar user-avatar-${size}${className ? ` ${className}` : ''}`;
-  if (!broken && avatar?.type === 'upload' && avatar.url) return <img className={classes} src={avatar.url.startsWith('/') ? `http://localhost:3000${avatar.url}` : avatar.url} alt={label ?? ''} aria-hidden={decorative} onError={() => setBroken(true)} />;
-  if (!broken && avatar?.type === 'google' && avatar.url) return <img className={classes} src={avatar.url} alt={label ?? ''} aria-hidden={decorative} referrerPolicy="no-referrer" onError={() => setBroken(true)} />;
+  const avatarPixels = { xs: 28, sm: 35, md: 38, lg: 72, xl: 92 }[size];
+  if (!broken && avatar?.type === 'upload' && avatar.url) return <img className={classes} width={avatarPixels} height={avatarPixels} src={avatar.url.startsWith('/') ? `http://localhost:3000${avatar.url}` : avatar.url} alt={label ?? ''} aria-hidden={decorative} onError={() => setBroken(true)} />;
+  if (!broken && avatar?.type === 'google' && avatar.url) return <img className={classes} width={avatarPixels} height={avatarPixels} src={avatar.url} alt={label ?? ''} aria-hidden={decorative} referrerPolicy="no-referrer" onError={() => setBroken(true)} />;
   if (avatar?.type === 'preset' && avatar.presetId && PRESET_CONFIGS.has(avatar.presetId)) return <NiceAvatar className={classes} aria-hidden={decorative} {...PRESET_CONFIGS.get(avatar.presetId)} />;
   return <span className={`${classes} user-avatar-fallback`} aria-label={label} aria-hidden={decorative}>{avatarInitials(user.name)}</span>;
 }

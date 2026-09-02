@@ -49,4 +49,17 @@ As alterações ficaram limitadas a tokens, composição CSS e documentação vi
 - `npm run build --workspace @missionlive/web`
 - inspeção visual no navegador em `http://localhost:5173/` com viewport desktop; autenticação carregada com a nova composição.
 
-Próxima etapa obrigatória: auditar esta implementação completa com `web-design-guidelines` e corrigir somente achados aplicáveis.
+## Auditoria web-design-guidelines
+
+As guidelines atuais foram buscadas em 2026-09-01 e aplicadas ao conjunto de arquivos reais do frontend. Achados aplicáveis corrigidos:
+
+- skip link com foco visível e destino `main-content`;
+- `autocomplete`, `name` e `spellCheck` coerentes nos campos de autenticação, formulários e prompts;
+- placeholders com exemplos e reticências;
+- dimensões explícitas nos avatares `<img>` para reduzir risco de layout shift;
+- `theme-color` compatível com o shell;
+- `touch-action: manipulation`, tap highlight intencional e contenção de overscroll em overlays;
+- headings com `text-wrap: balance` e contagens com numerais tabulares;
+- transições com propriedades explícitas e variante para reduced motion.
+
+Não foram alteradas regras de negócio, contratos, permissões ou o uso de links/botões semântico já presente. A auditoria não adicionou dependências.
