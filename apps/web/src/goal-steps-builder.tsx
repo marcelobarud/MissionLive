@@ -7,10 +7,15 @@ export type GoalStepDraft = {
   title: string;
   description?: string | null;
   position: number;
+  assignmentMode?: 'ALL_PARTICIPANTS' | 'SPECIFIC_PARTICIPANT';
+  assigneeUserId?: string | null;
+  assigneeName?: string | null;
 };
 
-export function toGoalStepDrafts(steps: { id: string; title: string; description?: string | null; position: number }[] = []): GoalStepDraft[] {
-  return steps.map((step, index) => ({ draftId: step.id, id: step.id, title: step.title, description: step.description, position: index }));
+export type StepParticipantOption = { id: string; name: string };
+
+export function toGoalStepDrafts(steps: { id: string; title: string; description?: string | null; position: number; assignmentMode?: 'ALL_PARTICIPANTS' | 'SPECIFIC_PARTICIPANT'; assigneeUserId?: string | null; assigneeName?: string | null }[] = []): GoalStepDraft[] {
+  return steps.map((step, index) => ({ draftId: step.id, id: step.id, title: step.title, description: step.description, position: index, assignmentMode: step.assignmentMode ?? 'ALL_PARTICIPANTS', assigneeUserId: step.assigneeUserId ?? null, assigneeName: step.assigneeName ?? null }));
 }
 
 export function sanitizeGoalStepDrafts(steps: GoalStepDraft[]) {
@@ -22,6 +27,7 @@ type GoalStepsBuilderProps = {
   onChange: (steps: GoalStepDraft[]) => void;
   confirmRemove?: (step: GoalStepDraft) => Promise<boolean>;
   disabled?: boolean;
+  participants?: StepParticipantOption[];
 };
 
 let nextDraftId = 0;
@@ -35,7 +41,7 @@ function createDraft(): GoalStepDraft {
   return { draftId, title: '', position: 0 };
 }
 
-export function GoalStepsBuilder({ value, onChange, confirmRemove, disabled = false }: GoalStepsBuilderProps) {
+export function GoalStepsBuilder({ value, onChange, confirmRemove, disabled = false, participants = [] }: GoalStepsBuilderProps) {
   const [draggingId, setDraggingId] = useState<string>();
   const [dragMessage, setDragMessage] = useState('');
   const focusAfterAdd = useRef<string | undefined>(undefined);
@@ -114,7 +120,7 @@ export function GoalStepsBuilder({ value, onChange, confirmRemove, disabled = fa
     {value.length === 0 ? <div className="goal-steps-builder__empty"><p>Comece com um passo pequeno e concreto.</p><button className="button button-secondary" type="button" onClick={addAtEnd} disabled={disabled}><IconPlus size={17} stroke={1.9} aria-hidden="true" />Adicionar primeiro passo</button></div> : <ol className="goal-steps-builder__list" aria-label="Passos da meta">
       {value.map((step, index) => <li className={draggingId === step.draftId ? 'goal-step-builder__item is-dragging' : 'goal-step-builder__item'} data-step-key={step.draftId} key={step.draftId}>
         <span className="goal-step-builder__number" aria-hidden="true">{index + 1}</span>
-        <div className="goal-step-builder__field"><label htmlFor={`goal-step-${step.draftId}`}>Título do passo {index + 1}</label><input id={`goal-step-${step.draftId}`} name={`goal-step-${step.draftId}`} autoComplete="off" ref={(input) => { if (input) inputRefs.current.set(step.draftId, input); else inputRefs.current.delete(step.draftId); }} value={step.title} onChange={(event) => onChange(normalize(value.map((current) => current.draftId === step.draftId ? { ...current, title: event.target.value } : current)))} onKeyDown={(event) => { if (event.key === 'Enter' && step.title.trim()) { event.preventDefault(); addAfter(index); } }} placeholder="Descreva uma ação…" maxLength={200} disabled={disabled} />{!step.title.trim() && <small className="goal-step-builder__hint">Será ignorado se ficar vazio.</small>}</div>
+        <div className="goal-step-builder__field"><label htmlFor={`goal-step-${step.draftId}`}>Título do passo {index + 1}</label><input id={`goal-step-${step.draftId}`} name={`goal-step-${step.draftId}`} autoComplete="off" ref={(input) => { if (input) inputRefs.current.set(step.draftId, input); else inputRefs.current.delete(step.draftId); }} value={step.title} onChange={(event) => onChange(normalize(value.map((current) => current.draftId === step.draftId ? { ...current, title: event.target.value } : current)))} onKeyDown={(event) => { if (event.key === 'Enter' && step.title.trim()) { event.preventDefault(); addAfter(index); } }} placeholder="Descreva uma ação…" maxLength={200} disabled={disabled} />{participants.length > 0 && <label className="goal-step-builder__assignee" htmlFor={`goal-step-assignee-${step.draftId}`}>Responsável<select id={`goal-step-assignee-${step.draftId}`} name={`goal-step-assignee-${step.draftId}`} value={step.assignmentMode === 'SPECIFIC_PARTICIPANT' ? (step.assigneeUserId ?? '__unavailable') : 'ALL_PARTICIPANTS'} onChange={(event) => { const valueSelected = event.target.value; onChange(normalize(value.map((current) => current.draftId === step.draftId ? valueSelected === 'ALL_PARTICIPANTS' ? { ...current, assignmentMode: 'ALL_PARTICIPANTS', assigneeUserId: null, assigneeName: null } : { ...current, assignmentMode: 'SPECIFIC_PARTICIPANT', assigneeUserId: valueSelected, assigneeName: participants.find((participant) => participant.id === valueSelected)?.name ?? current.assigneeName ?? null } : current))); }} disabled={disabled}><option value="ALL_PARTICIPANTS">Todos</option>{step.assignmentMode === 'SPECIFIC_PARTICIPANT' && step.assigneeUserId && !participants.some((participant) => participant.id === step.assigneeUserId) && <option value={step.assigneeUserId}>{step.assigneeName ? `${step.assigneeName} (indisponível)` : 'Responsável indisponível'}</option>}{participants.map((participant) => <option key={participant.id} value={participant.id}>{participant.name}</option>)}</select></label>}{!step.title.trim() && <small className="goal-step-builder__hint">Será ignorado se ficar vazio.</small>}</div>
         <button className="goal-step-builder__drag" type="button" aria-label={`Arrastar passo ${index + 1}`} onPointerDown={(event) => { if (disabled || !event.isPrimary) return; event.preventDefault(); setDraggingId(step.draftId); setDragMessage('Use o ponteiro para reposicionar este passo.'); }} disabled={disabled}><IconGripVertical size={18} stroke={1.8} aria-hidden="true" /></button>
         <div className="goal-step-builder__actions" aria-label={`Ações do passo ${index + 1}`}><button className="icon-button" type="button" aria-label={`Mover passo ${index + 1} para cima`} onClick={() => { if (index > 0) reorder(step.draftId, value[index - 1].draftId); }} disabled={disabled || index === 0}><IconArrowUp size={17} stroke={1.9} aria-hidden="true" /></button><button className="icon-button" type="button" aria-label={`Mover passo ${index + 1} para baixo`} onClick={() => { if (index < value.length - 1) reorder(step.draftId, value[index + 1].draftId, true); }} disabled={disabled || index === value.length - 1}><IconArrowDown size={17} stroke={1.9} aria-hidden="true" /></button><button className="icon-button goal-step-builder__remove" type="button" aria-label={`Remover passo ${index + 1}`} onClick={() => { void remove(step); }} disabled={disabled}><IconTrash size={17} stroke={1.9} aria-hidden="true" /></button></div>
       </li>)}

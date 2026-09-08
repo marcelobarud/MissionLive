@@ -1,13 +1,14 @@
 import { createContext, FormEvent, ReactNode, useCallback, useContext, useEffect, useId, useRef, useState } from 'react';
 import { IconAlertTriangle, IconCheck, IconInfoCircle, IconX } from '@tabler/icons-react';
-import { Button, IconButton, Input, Textarea } from './design-system';
+import { Button, IconButton, Input, Select, Textarea } from './design-system';
 
 export type FeedbackTone = 'success' | 'warning' | 'danger' | 'info';
 
 export type DialogField = {
   name: string;
   label: string;
-  type?: 'text' | 'date' | 'textarea';
+  type?: 'text' | 'date' | 'textarea' | 'select';
+  options?: { value: string; label: string }[];
   defaultValue?: string;
   placeholder?: string;
   required?: boolean;
@@ -145,7 +146,7 @@ export function PromptDialog({ open, options, onCancel, onSubmit }: { open: bool
     setSubmitting(true);
     try { await onSubmit(values); } catch (err) { setError(feedbackError(err, 'Não foi possível concluir esta ação.')); } finally { setSubmitting(false); }
   };
-  return <Dialog open={open} title={options.title} description={options.description} tone={options.tone} onClose={submitting ? () => undefined : onCancel}><form className="feedback-prompt-form" onSubmit={(event) => { void handleSubmit(event); }} aria-busy={submitting}>{options.fields.map((field, index) => <label className="ds-form-field" key={field.name}><span>{field.label}</span>{field.type === 'textarea' ? <Textarea name={field.name} autoComplete="off" value={values[field.name] ?? ''} onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))} placeholder={field.placeholder} required={field.required} minLength={field.minLength} maxLength={field.maxLength} disabled={submitting} data-dialog-initial-focus={index === 0 ? true : undefined} /> : <Input name={field.name} autoComplete="off" type={field.type ?? 'text'} value={values[field.name] ?? ''} onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))} placeholder={field.placeholder} required={field.required} minLength={field.minLength} maxLength={field.maxLength} disabled={submitting} data-dialog-initial-focus={index === 0 ? true : undefined} />}</label>)}{error && <p className="form-error" role="alert">{error}</p>}<div className="ds-dialog-actions"><Button variant="ghost" type="button" onClick={onCancel} disabled={submitting}>Cancelar</Button><Button variant={options.tone === 'danger' ? 'danger' : 'primary'} type="submit" disabled={submitting} aria-busy={submitting}>{submitting ? 'Processando…' : options.confirmLabel ?? 'Salvar'}</Button></div></form></Dialog>;
+  return <Dialog open={open} title={options.title} description={options.description} tone={options.tone} onClose={submitting ? () => undefined : onCancel}><form className="feedback-prompt-form" onSubmit={(event) => { void handleSubmit(event); }} aria-busy={submitting}>{options.fields.map((field, index) => <label className="ds-form-field" key={field.name}><span>{field.label}</span>{field.type === 'textarea' ? <Textarea name={field.name} autoComplete="off" value={values[field.name] ?? ''} onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))} placeholder={field.placeholder} required={field.required} minLength={field.minLength} maxLength={field.maxLength} disabled={submitting} data-dialog-initial-focus={index === 0 ? true : undefined} /> : field.type === 'select' ? <Select name={field.name} autoComplete="off" value={values[field.name] ?? ''} onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))} required={field.required} disabled={submitting} data-dialog-initial-focus={index === 0 ? true : undefined}>{field.options?.map((option) => <option value={option.value} key={option.value}>{option.label}</option>)}</Select> : <Input name={field.name} autoComplete="off" type={field.type ?? 'text'} value={values[field.name] ?? ''} onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))} placeholder={field.placeholder} required={field.required} minLength={field.minLength} maxLength={field.maxLength} disabled={submitting} data-dialog-initial-focus={index === 0 ? true : undefined} />}</label>)}{error && <p className="form-error" role="alert">{error}</p>}<div className="ds-dialog-actions"><Button variant="ghost" type="button" onClick={onCancel} disabled={submitting}>Cancelar</Button><Button variant={options.tone === 'danger' ? 'danger' : 'primary'} type="submit" disabled={submitting} aria-busy={submitting}>{submitting ? 'Processando…' : options.confirmLabel ?? 'Salvar'}</Button></div></form></Dialog>;
 }
 
 export function FeedbackBanner({ tone = 'info', title, description }: { tone?: FeedbackTone; title: string; description?: string }) {

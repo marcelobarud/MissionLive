@@ -1,12 +1,17 @@
 /* @vitest-environment jsdom */
 import { cleanup, fireEvent, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { GoalStepsBuilder, sanitizeGoalStepDrafts, toGoalStepDrafts, type GoalStepDraft } from './goal-steps-builder';
+import { GoalStepsBuilder, sanitizeGoalStepDrafts, toGoalStepDrafts, type GoalStepDraft, type StepParticipantOption } from './goal-steps-builder';
 import { useState } from 'react';
 
 function Harness({ initial }: { initial: GoalStepDraft[] }) {
   const [steps, setSteps] = useState(initial);
   return <GoalStepsBuilder value={steps} onChange={setSteps} />;
+}
+
+function AssignmentHarness({ initial, participants }: { initial: GoalStepDraft[]; participants: StepParticipantOption[] }) {
+  const [steps, setSteps] = useState(initial);
+  return <GoalStepsBuilder value={steps} onChange={setSteps} participants={participants} />;
 }
 
 describe('GoalStepsBuilder', () => {
@@ -44,5 +49,16 @@ describe('GoalStepsBuilder', () => {
     fireEvent.click(getByRole('button', { name: 'Remover passo 1' }));
     await vi.waitFor(() => expect(confirmRemove).toHaveBeenCalledOnce());
     expect(onChange).not.toHaveBeenCalled();
+  });
+
+  it('offers only valid participants and preserves an unavailable assignee for reattribution', () => {
+    const initial = toGoalStepDrafts([{ id: 'step-a', title: 'Revisar entrega', position: 0, assignmentMode: 'SPECIFIC_PARTICIPANT', assigneeUserId: 'user-old', assigneeName: 'Pessoa removida' }]);
+    const { getByLabelText } = render(<AssignmentHarness initial={initial} participants={[{ id: 'user-a', name: 'Ana' }, { id: 'user-b', name: 'Bruno' }]} />);
+    const select = getByLabelText('Responsável') as HTMLSelectElement;
+    expect(select.value).toBe('user-old');
+    expect(select.options[0]?.textContent).toBe('Todos');
+    expect(select.options[1]?.textContent).toContain('Pessoa removida');
+    expect(select.options[2]?.textContent).toBe('Ana');
+    expect(select.options[3]?.textContent).toBe('Bruno');
   });
 });

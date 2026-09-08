@@ -3,7 +3,7 @@ import { renderToString } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { fireEvent, render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { MissionLiveWelcome, ParticipantProgressSection, Sidebar } from './app';
+import { goalStepPreview, homeGoalStepsSummary, MissionLiveWelcome, ParticipantProgressSection, Sidebar } from './app';
 import type { ParticipantsProgress } from './api';
 
 const participantProgress: ParticipantsProgress = {
@@ -20,6 +20,27 @@ const participantProgress: ParticipantsProgress = {
 };
 
 describe('MissionLive shell', () => {
+  it('resume passos ativos com a mesma semântica do progresso e trata metas sem passos', () => {
+    const partialGoal = { steps: [{ id: 'step-1', title: 'Primeiro', position: 0 }], progressSummary: { completedSteps: 1, totalSteps: 2, participantCount: 1, completedParticipants: 0 } } as unknown as Parameters<typeof homeGoalStepsSummary>[0];
+    const completeGoal = { steps: [{ id: 'step-1', title: 'Primeiro', position: 0 }], progressSummary: { completedSteps: 3, totalSteps: 3, participantCount: 1, completedParticipants: 1 } } as unknown as Parameters<typeof homeGoalStepsSummary>[0];
+    const emptyGoal = { steps: [], progressSummary: { completedSteps: 0, totalSteps: 0, participantCount: 1, completedParticipants: 0 } } as unknown as Parameters<typeof homeGoalStepsSummary>[0];
+    expect(homeGoalStepsSummary(partialGoal)).toEqual({ label: '1/2 passos', ariaLabel: '1 concluídos, 1 faltantes' });
+    expect(homeGoalStepsSummary(completeGoal)).toEqual({ label: '3/3 passos', ariaLabel: '3 concluídos, 0 faltantes' });
+    expect(homeGoalStepsSummary(emptyGoal)).toEqual({ label: 'Sem passos', ariaLabel: 'Meta sem passos' });
+  });
+
+  it('limita a prévia a cinco passos e prioriza os concluídos', () => {
+    const goal = { steps: [
+      { id: 'step-1', title: 'Pendente 1', position: 0, progresses: [] },
+      { id: 'step-2', title: 'Concluído 1', position: 1, progresses: [{ userId: 'user-a', completed: true }] },
+      { id: 'step-3', title: 'Pendente 2', position: 2, progresses: [] },
+      { id: 'step-4', title: 'Concluído 2', position: 3, progresses: [{ userId: 'user-a', completed: true }] },
+      { id: 'step-5', title: 'Pendente 3', position: 4, progresses: [] },
+      { id: 'step-6', title: 'Pendente 4', position: 5, progresses: [] },
+    ] } as unknown as Parameters<typeof goalStepPreview>[0];
+    expect(goalStepPreview(goal).map((step) => step.title)).toEqual(['Concluído 1', 'Concluído 2', 'Pendente 1', 'Pendente 2', 'Pendente 3']);
+  });
+
   it('renders the welcome message', () => {
     expect(renderToString(<MissionLiveWelcome />)).toContain('Suas metas, em movimento.');
   });
