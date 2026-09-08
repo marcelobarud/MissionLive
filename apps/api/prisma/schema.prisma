@@ -28,6 +28,7 @@ model User {
   goalMemberships    GoalMember[]
   ownedTeams         Team[]             @relation("TeamOwner")
   teamMemberships    TeamMember[]
+  assignedGoalSteps  GoalStep[]         @relation("GoalStepAssignee")
   progresses         GoalStepProgress[]
   createdInvites     InviteLink[]       @relation("InviteCreator")
   redemptions        InviteRedemption[]
@@ -143,17 +144,22 @@ model GoalMember {
 }
 
 model GoalStep {
-  id          String             @id @default(uuid())
-  goalId      String
-  title       String
-  description String?
-  position    Int
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  goal        Goal               @relation(fields: [goalId], references: [id], onDelete: Cascade)
-  progresses  GoalStepProgress[]
+  id             String             @id @default(uuid())
+  goalId         String
+  title          String
+  description    String?
+  position       Int
+  assignmentMode String             @default("ALL_PARTICIPANTS")
+  assigneeUserId String?
+  assigneeName   String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  goal           Goal               @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  assigneeUser   User?              @relation("GoalStepAssignee", fields: [assigneeUserId], references: [id], onDelete: SetNull)
+  progresses     GoalStepProgress[]
   @@unique([goalId, position])
   @@index([goalId])
+  @@index([assigneeUserId])
 }
 
 model GoalStepProgress {

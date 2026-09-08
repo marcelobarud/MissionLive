@@ -12,7 +12,12 @@ export class CreateGoalDto {
   @IsOptional() @IsUUID() teamId?: string;
 }
 export class UpdateGoalDto extends CreateGoalDto {}
-export class CreateStepDto { @IsString() @Length(1, 200) title!: string; @IsOptional() @IsString() @Length(0, 1000) description?: string; }
+export class CreateStepDto {
+  @IsString() @Length(1, 200) title!: string;
+  @IsOptional() @IsString() @Length(0, 1000) description?: string;
+  @IsOptional() @IsIn(['ALL_PARTICIPANTS', 'SPECIFIC_PARTICIPANT']) assignmentMode?: string;
+  @IsOptional() @IsUUID() assigneeUserId?: string;
+}
 export class UpdateStepDto extends CreateStepDto {}
 export class ReorderStepsDto { @IsArray() @ArrayMaxSize(200) @IsUUID('4', { each: true }) stepIds!: string[]; }
 export class ProgressDto { @IsBoolean() completed!: boolean; }

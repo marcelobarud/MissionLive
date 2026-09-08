@@ -241,6 +241,15 @@ Adicionar checklist binário.
 - testes de ordem;
 - UI mobile.
 
+### Extensão experimental — atribuição de responsáveis por step (concluída)
+
+- `GoalStep.assignmentMode` suporta `ALL_PARTICIPANTS` e `SPECIFIC_PARTICIPANT`;
+- `assigneeUserId`/`assigneeName` preservam a atribuição sem armazenar binários ou dados redundantes de progresso;
+- autorização backend impede atribuição a usuário externo e atualização por não responsável;
+- progresso individual e coletivo consideram somente steps aplicáveis;
+- saída de participante deixa atribuição específica marcada como indisponível até decisão explícita;
+- o construtor e a checklist exibem responsável, bloqueiam ações fora do escopo e mantêm o restante do checklist visível.
+
 ---
 
 ## Fase 7 — Metas compartilhadas e roles

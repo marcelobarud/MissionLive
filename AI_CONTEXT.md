@@ -112,7 +112,11 @@ A "taxa de conclusão" não deve ser um card independente; pode aparecer como in
 
 ### 5.3 Equipes
 - cards de equipes;
+- imagem principal opcional de identidade, com fallback por iniciais/ícone;
+- a imagem é armazenada fora do banco; a equipe persiste somente a referência do arquivo;
+- na versão experimental, upload local aceita JPEG, PNG e WebP de até 5 MB, com processamento seguro para WebP;
 - resumo por equipe;
+- ao abrir uma equipe, priorizar Metas como primeira visão e Participantes como última área;
 - ao abrir uma equipe, mostrar participantes, metas, progresso, concluídos, pendentes e demais detalhes relevantes;
 - metas da equipe ficam agrupadas no contexto da equipe;
 - não permitir compartilhamento direto de uma meta interna da equipe para usuários externos.
@@ -318,6 +322,12 @@ Checklist simples:
 - `position`
 - timestamps
 
+Cada passo também possui atribuição opcional:
+- `assignment_mode`: `ALL_PARTICIPANTS` ou `SPECIFIC_PARTICIPANT`;
+- `assignee_user_id` nullable, validado contra os participantes atuais da meta/equipe;
+- `assignee_name` nullable, snapshot do nome para manter contexto quando o participante sair;
+- a relação do responsável usa `ON DELETE SET NULL`, preservando o passo e sinalizando atribuição indisponível.
+
 V1 suporta apenas:
 - criação;
 - ordenação;
@@ -349,6 +359,10 @@ Não implementar na V1:
 
 O checklist estrutural é compartilhado, mas cada participante registra o próprio progresso.
 
+Todos os participantes continuam vendo todos os passos. Um passo `ALL_PARTICIPANTS` é aplicável a todos; um passo `SPECIFIC_PARTICIPANT` só é aplicável ao responsável indicado. A API retorna `applicable` para o usuário autenticado e bloqueia no backend qualquer tentativa de marcar passo fora do próprio escopo.
+
+Os percentuais individuais e coletivos contam somente obrigações aplicáveis. Uma atribuição específica cujo responsável deixou de participar permanece identificada como indisponível, não é convertida silenciosamente para `Todos` e impede a conclusão automática até reatribuição, remoção ou owner override.
+
 Viewer:
 - pode marcar/desmarcar o próprio progresso;
 - não pode editar estrutura;
@@ -371,9 +385,13 @@ Concluída automaticamente apenas quando todos os membros aplicáveis da equipe 
 
 ### Novo membro
 Novo membro que entra em uma equipe/meta ativa:
-- passa a contar no progresso coletivo;
-- recebe o checklist existente;
-- pode marcar steps antigos como concluídos se já os tiver realizado.
+- passa a contar no progresso coletivo para os steps `ALL_PARTICIPANTS`;
+- recebe os steps existentes atribuídos a `Todos`;
+- não recebe como obrigação steps específicos atribuídos a outra pessoa;
+- pode marcar steps antigos aplicáveis como concluídos se já os tiver realizado.
+
+### Reatribuição
+Alterar o responsável de um step não transfere nem recria automaticamente progresso individual. O histórico de progresso anterior permanece associado ao usuário original; a nova pessoa começa com seu próprio progresso, sem herdar conclusão alheia.
 
 ### Owner override
 O owner pode encerrar/concluir uma meta mesmo com participantes pendentes.
@@ -648,6 +666,7 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - categorias, categoria personalizada, tags, datas e status no backend;
 - steps, reordenação, progresso próprio, conclusão automática, arquivamento, cancelamento preservado e owner override auditado; exclusão permanente de meta é exclusiva do `ownerUserId`, usa `DELETE /goals/:goalId` e remove dependências de domínio de forma transacional;
 - o detalhe de metas compartilhadas e de equipe retorna progresso derivado por participante (steps concluídos/total, percentual, estado e `completedAt` real), resumo coletivo e checklist expandível em modo somente leitura; a lista de participantes reutiliza o mesmo conjunto usado pela conclusão coletiva;
+- steps podem ser atribuídos a todos ou a um participante específico, com autorização backend, atribuição indisponível explícita, progresso derivado somente sobre obrigações aplicáveis e reatribuição sem transferência de progresso;
 - convites de metas/equipes com token hash, expiração de 24 horas, aceite explícito, revogação e limite de três convidados em meta compartilhada;
 - equipes, memberships, roles e autorização no backend;
 - dashboard V2 escopado (progresso ativo, prazos, quase concluídas e distribuição por contexto/categoria) e endpoint de plano/entitlement de desenvolvimento;
@@ -664,7 +683,7 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - login, cadastro e verificação de e-mail em desenvolvimento;
 - dashboard com cards, taxa derivada, progresso ativo, prazos, metas quase concluídas, distribuição com barras, evolução temporal, barras de progresso e feed recente limitado a 10 itens com acesso ao histórico;
 - listagem, busca, filtros e ordenação server-side; criação completa e edição inicial de metas, detalhe com datas/tags/contexto/participantes/progresso, progresso individual expandível por participante em modo somente leitura, CRUD de steps, cancelamento, arquivamento, exclusão permanente protegida por owner, owner override e convite direto de meta;
-- o construtor reutilizável `GoalStepsBuilder` substitui a entrada por linhas na criação de metas, edição de metas e primeira meta de equipe: mantém IDs existentes, deriva números da posição, ignora itens vazios, adiciona com foco, aceita Enter, remove com confirmação, reordena por ponteiro/touch e oferece subir/descer por teclado; a sincronização usa `goalStep.position` e preserva o progresso individual;
+- o construtor reutilizável `GoalStepsBuilder` substitui a entrada por linhas na criação de metas, edição de metas e primeira meta de equipe: mantém IDs existentes, deriva números da posição, ignora itens vazios, adiciona com foco, aceita Enter, remove com confirmação, reordena por ponteiro/touch e oferece subir/descer por teclado; a sincronização usa `goalStep.position`, preserva o progresso individual e oferece seleção de responsável apenas quando há participantes válidos;
 - listagem, criação básica e criação transacional de equipe com primeira meta/steps, detalhe, edição, gerenciamento de roles/membros e convite de equipe;
 - preview e aceite de convite em `/invite/<token>`;
 - recuperação e redefinição de senha em desenvolvimento;

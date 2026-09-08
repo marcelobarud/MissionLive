@@ -2,7 +2,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from '@nes
 import { GoalsService } from '../src/goals/goals.service';
 
 type FakePrisma = { goal: { findFirst: jest.Mock; findUnique: jest.Mock; update: jest.Mock } };
-function fakePrisma() { return { goal: { findFirst: jest.fn(), findUnique: jest.fn(), update: jest.fn(), delete: jest.fn() }, goalMember: { findFirst: jest.fn(), update: jest.fn(), delete: jest.fn() }, goalStep: { findFirst: jest.fn(), findMany: jest.fn(), aggregate: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() }, goalStepProgress: { upsert: jest.fn() }, notification: { deleteMany: jest.fn() }, $transaction: jest.fn() }; }
+function fakePrisma() { return { goal: { findFirst: jest.fn(), findUnique: jest.fn(), update: jest.fn(), delete: jest.fn() }, user: { findUnique: jest.fn() }, goalMember: { findFirst: jest.fn(), update: jest.fn(), delete: jest.fn() }, goalStep: { findFirst: jest.fn(), findMany: jest.fn(), aggregate: jest.fn(), create: jest.fn(), update: jest.fn(), delete: jest.fn() }, goalStepProgress: { upsert: jest.fn() }, notification: { deleteMany: jest.fn() }, $transaction: jest.fn() }; }
 
 describe('GoalsService authorization boundary', () => {
   it('does not return a goal when the authenticated user is outside every scope', async () => {
@@ -129,5 +129,85 @@ describe('GoalsService authorization boundary', () => {
     expect(prisma.goalStep.create).not.toHaveBeenCalled();
     expect(prisma.goalStep.delete).not.toHaveBeenCalled();
     expect(result.steps[0]).toMatchObject({ id: 'step-1', title: 'Revisado', position: 0, progresses: [{ userId: 'owner', completed: true }] });
+  });
+
+  it('creates a step assigned to a valid goal participant', async () => {
+    const prisma = fakePrisma(); const service = new GoalsService(prisma as never);
+    prisma.goal.findUnique.mockResolvedValue({ id: 'goal-a', ownerUserId: 'owner', members: [{ userId: 'ana' }], team: null });
+    prisma.goalStep.aggregate.mockResolvedValue({ _max: { position: 0 } });
+    prisma.user.findUnique.mockResolvedValue({ name: 'Ana' });
+    prisma.goalStep.create.mockResolvedValue({ id: 'step-2' });
+    prisma.goal.findFirst.mockResolvedValue({ id: 'goal-a', ownerUserId: 'owner', tagsJson: '[]', members: [{ userId: 'ana', role: 'viewer', user: { id: 'ana', name: 'Ana', email: 'ana@example.test', avatarUrl: null } }], owner: { id: 'owner', name: 'Owner', email: 'owner@example.test', avatarUrl: null }, team: null, steps: [] });
+
+    await service.addStep('owner', 'goal-a', { title: 'Reservar hospedagem', assignmentMode: 'SPECIFIC_PARTICIPANT', assigneeUserId: 'ana' });
+
+    expect(prisma.goalStep.create).toHaveBeenCalledWith({ data: { goalId: 'goal-a', title: 'Reservar hospedagem', description: undefined, position: 1, assignmentMode: 'SPECIFIC_PARTICIPANT', assigneeUserId: 'ana', assigneeName: 'Ana' } });
+  });
+
+  it('rejects assigning a step to someone outside the goal', async () => {
+    const prisma = fakePrisma(); const service = new GoalsService(prisma as never);
+    prisma.goal.findUnique.mockResolvedValue({ id: 'goal-a', ownerUserId: 'owner', members: [{ userId: 'ana' }], team: null });
+    prisma.goalStep.aggregate.mockResolvedValue({ _max: { position: 0 } });
+
+    await expect(service.addStep('owner', 'goal-a', { title: 'Passo privado', assignmentMode: 'SPECIFIC_PARTICIPANT', assigneeUserId: 'external' })).rejects.toBeInstanceOf(BadRequestException);
+    expect(prisma.goalStep.create).not.toHaveBeenCalled();
+    expect(prisma.user.findUnique).not.toHaveBeenCalled();
+  });
+
+  it('allows only the assigned participant to update a specific step', async () => {
+    const prisma = fakePrisma(); const service = new GoalsService(prisma as never);
+    prisma.goal.findUnique.mockResolvedValue({ id: 'goal-a', ownerUserId: 'owner', members: [{ userId: 'ana', role: 'viewer' }, { userId: 'bruno', role: 'admin' }], team: null });
+    prisma.goalStep.findFirst.mockResolvedValue({ id: 'step-1', goalId: 'goal-a', assignmentMode: 'SPECIFIC_PARTICIPANT', assigneeUserId: 'ana', assigneeName: 'Ana' });
+
+    await expect(service.setProgress('bruno', 'goal-a', 'step-1', { completed: true })).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.goalStepProgress.upsert).not.toHaveBeenCalled();
+  });
+
+  it('calculates individual progress only from applicable assignments', async () => {
+    const prisma = fakePrisma(); const service = new GoalsService(prisma as never);
+    const user = (id: string, name: string, role = 'viewer') => ({ userId: id, role, user: { id, name, email: `${id}@example.test`, avatarUrl: null } });
+    prisma.goal.findFirst.mockResolvedValue({
+      id: 'goal-a', ownerUserId: 'owner', tagsJson: '[]',
+      owner: { id: 'owner', name: 'Owner', email: 'owner@example.test', avatarUrl: null },
+      members: [user('ana', 'Ana'), user('bruno', 'Bruno'), user('carlos', 'Carlos')], team: null,
+      steps: [
+        { id: 'step-a', title: 'Escolher destino', position: 0, assignmentMode: 'ALL_PARTICIPANTS', assigneeUserId: null, assigneeName: null, progresses: [{ userId: 'carlos', completed: true }] },
+        { id: 'step-b', title: 'Reservar hospedagem', position: 1, assignmentMode: 'SPECIFIC_PARTICIPANT', assigneeUserId: 'ana', assigneeName: 'Ana', assigneeUser: { id: 'ana', name: 'Ana', avatarUrl: null }, progresses: [{ userId: 'ana', completed: true }] },
+        { id: 'step-c', title: 'Comprar passagens', position: 2, assignmentMode: 'SPECIFIC_PARTICIPANT', assigneeUserId: 'bruno', assigneeName: 'Bruno', assigneeUser: { id: 'bruno', name: 'Bruno', avatarUrl: null }, progresses: [] },
+      ],
+    });
+
+    const result = await service.get('carlos', 'goal-a');
+    const carlos = result.participantsProgress?.participants.find((participant) => participant.userId === 'carlos');
+    expect(carlos).toMatchObject({ completedSteps: 1, totalSteps: 1, percentage: 100 });
+    expect(result.participantsProgress).toMatchObject({ collectiveCompletedSteps: 2, collectiveTotalSteps: 6, collectivePercentage: 33.3 });
+  });
+
+  it('does not transfer old progress when reassigning a step', async () => {
+    const prisma = fakePrisma(); const service = new GoalsService(prisma as never);
+    prisma.goal.findUnique.mockResolvedValue({ id: 'goal-a', ownerUserId: 'owner', members: [{ userId: 'ana' }, { userId: 'bruno' }], team: null });
+    prisma.goalStep.findFirst.mockResolvedValue({ id: 'step-1', goalId: 'goal-a', title: 'Reservar', description: null, position: 0, assignmentMode: 'SPECIFIC_PARTICIPANT', assigneeUserId: 'ana', assigneeName: 'Ana' });
+    prisma.user.findUnique.mockResolvedValue({ name: 'Bruno' });
+    prisma.goal.findFirst.mockResolvedValue({ id: 'goal-a', ownerUserId: 'owner', tagsJson: '[]', owner: { id: 'owner', name: 'Owner', email: 'owner@example.test', avatarUrl: null }, members: [{ userId: 'ana', role: 'viewer', user: { id: 'ana', name: 'Ana', email: 'ana@example.test', avatarUrl: null } }, { userId: 'bruno', role: 'viewer', user: { id: 'bruno', name: 'Bruno', email: 'bruno@example.test', avatarUrl: null } }], team: null, steps: [{ id: 'step-1', title: 'Reservar', position: 0, assignmentMode: 'SPECIFIC_PARTICIPANT', assigneeUserId: 'bruno', assigneeName: 'Bruno', progresses: [{ userId: 'ana', completed: true }] }] });
+
+    const result = await service.updateStep('owner', 'goal-a', 'step-1', { title: 'Reservar', assignmentMode: 'SPECIFIC_PARTICIPANT', assigneeUserId: 'bruno' });
+
+    expect(prisma.goalStep.update).toHaveBeenCalledWith({ where: { id: 'step-1' }, data: { title: 'Reservar', description: null, assignmentMode: 'SPECIFIC_PARTICIPANT', assigneeUserId: 'bruno', assigneeName: 'Bruno' } });
+    expect(prisma.goalStepProgress.upsert).not.toHaveBeenCalled();
+    expect(result.steps[0].progresses).toEqual([{ userId: 'ana', completed: true }]);
+  });
+
+  it('keeps an assignment unavailable when its participant leaves the scope', async () => {
+    const prisma = fakePrisma() as unknown as FakePrisma; const service = new GoalsService(prisma as never);
+    prisma.goal.findFirst.mockResolvedValue({
+      id: 'goal-a', ownerUserId: 'owner', tagsJson: '[]', owner: { id: 'owner', name: 'Owner', email: 'owner@example.test', avatarUrl: null },
+      members: [], team: null,
+      steps: [{ id: 'step-1', title: 'Revisar', position: 0, assignmentMode: 'SPECIFIC_PARTICIPANT', assigneeUserId: 'former-member', assigneeName: 'Pessoa removida', progresses: [] }],
+    });
+
+    const result = await service.get('owner', 'goal-a');
+
+    expect(result.steps[0]).toMatchObject({ assignmentMode: 'SPECIFIC_PARTICIPANT', assigneeUserId: 'former-member', assigneeName: 'Pessoa removida', assigneeAvailable: false, applicable: false });
+    expect(result.progressSummary).toMatchObject({ completedSteps: 0, totalSteps: 0, unavailableSteps: 1 });
   });
 });

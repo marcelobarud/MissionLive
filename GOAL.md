@@ -130,8 +130,11 @@ Viewer nunca pode:
 ### Progresso
 - checklist é comum;
 - progresso é individual;
-- conclusão coletiva exige todos os participantes aplicáveis;
-- membro novo entra no cálculo de meta ativa;
+- cada step pode ser de todos os participantes ou de um participante específico;
+- conclusão coletiva exige todos os participantes aplicáveis e não permite atribuição específica indisponível;
+- percentuais contam somente obrigações aplicáveis a cada participante;
+- membro novo entra no cálculo de meta ativa para steps atribuídos a todos;
+- reatribuição não transfere progresso individual;
 - owner override pode encerrar com pendências;
 - override nunca altera/falsifica progressos individuais.
 
