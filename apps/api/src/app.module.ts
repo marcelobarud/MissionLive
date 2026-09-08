@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
+import { resolve } from 'node:path';
 import { HealthController } from './health.controller';
 import { PrismaModule } from './prisma/prisma.module';
 import { validateEnvironment } from './config/env.validation';
@@ -18,7 +19,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { AvatarsModule } from './avatars/avatars.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }), PrismaModule, AuthModule, AvatarsModule, GoalsModule, TeamsModule, InvitesModule, DashboardModule, PlansModule, RemindersModule, ActivityModule, CommentsModule, TemplatesModule, CalendarModule, NotificationsModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true, envFilePath: [resolve(process.cwd(), '.env'), resolve(process.cwd(), '../../.env'), resolve(__dirname, '../../../.env')], validate: validateEnvironment }), PrismaModule, AuthModule, AvatarsModule, GoalsModule, TeamsModule, InvitesModule, DashboardModule, PlansModule, RemindersModule, ActivityModule, CommentsModule, TemplatesModule, CalendarModule, NotificationsModule],
   controllers: [HealthController],
 })
 export class AppModule {}

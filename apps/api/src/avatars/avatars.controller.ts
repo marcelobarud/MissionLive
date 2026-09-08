@@ -21,5 +21,5 @@ export class AvatarsController {
   remove(@Req() request: AuthenticatedRequest) { return this.avatars.remove(request.user.id); }
 
   @Get('media/avatars/:userId/:fileName')
-  async media(@Param('userId') userId: string, @Param('fileName') fileName: string, @Res() response: Response) { const content = await this.avatars.read(userId, fileName); response.set({ 'Content-Type': 'image/webp', 'Cache-Control': 'public, max-age=31536000, immutable', 'X-Content-Type-Options': 'nosniff' }); return response.send(content); }
+  async media(@Param('userId') userId: string, @Param('fileName') fileName: string, @Res() response: Response) { const content = await this.avatars.read(userId, fileName); response.set({ 'Content-Type': 'image/webp', 'Cache-Control': 'public, max-age=31536000, immutable', 'Cross-Origin-Resource-Policy': 'same-site', 'X-Content-Type-Options': 'nosniff' }); return response.send(content); }
 }

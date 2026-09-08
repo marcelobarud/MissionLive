@@ -16,7 +16,7 @@ export class TeamsController {
   @Post(':teamId/image') @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_TEAM_IMAGE_BYTES, files: 1 } }))
   uploadImage(@Req() req: AuthenticatedRequest, @Param('teamId') teamId: string, @UploadedFile() file: Express.Multer.File) { return this.teams.uploadImage(req.user.id, teamId, file); }
   @Get(':teamId/image')
-  async image(@Req() req: AuthenticatedRequest, @Param('teamId') teamId: string, @Res() response: Response) { const content = await this.teams.readImage(req.user.id, teamId); response.set({ 'Content-Type': 'image/webp', 'Cache-Control': 'private, no-cache', 'X-Content-Type-Options': 'nosniff' }); return response.send(content); }
+  async image(@Req() req: AuthenticatedRequest, @Param('teamId') teamId: string, @Res() response: Response) { const content = await this.teams.readImage(req.user.id, teamId); response.set({ 'Content-Type': 'image/webp', 'Cache-Control': 'private, no-cache', 'Cross-Origin-Resource-Policy': 'same-site', 'X-Content-Type-Options': 'nosniff' }); return response.send(content); }
   @Delete(':teamId/image') removeImage(@Req() req: AuthenticatedRequest, @Param('teamId') teamId: string) { return this.teams.removeImage(req.user.id, teamId); }
   @Get(':teamId') get(@Req() req: AuthenticatedRequest, @Param('teamId') teamId: string) { return this.teams.get(req.user.id, teamId); }
   @Patch(':teamId') update(@Req() req: AuthenticatedRequest, @Param('teamId') teamId: string, @Body() dto: UpdateTeamDto) { return this.teams.update(req.user.id, teamId, dto); }

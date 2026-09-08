@@ -13,7 +13,7 @@ describe('team images', () => {
   it('loads a persisted relative image through the API boundary', () => {
     const html = renderToString(<TeamImage team={{ name: 'Equipe MissionLive', imageUrl: '/teams/team-id/image' }} />);
     expect(html).toContain('http://localhost:3000/teams/team-id/image');
-    expect(html).not.toContain('crossorigin=');
+    expect(html).toContain('crossorigin="use-credentials"');
   });
 
   it('exposes the contextual edit action with an accessible tooltip', () => {

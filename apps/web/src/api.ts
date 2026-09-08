@@ -1,4 +1,4 @@
-export const API_URL = 'http://localhost:3000';
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export type Avatar = { type: 'preset' | 'upload' | 'google' | null; presetId: string | null; url: string | null };
 export type User = { id: string; email: string; name: string; avatarUrl?: string | null; avatar?: Avatar; timezone?: string; onboardingCompletedAt?: string | null; preferences?: Record<string, boolean | string | number> };

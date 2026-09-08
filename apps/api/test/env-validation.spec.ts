@@ -6,6 +6,20 @@ describe('validateEnvironment', () => {
   });
 
   it('accepts test configuration without a secret', () => {
-    expect(validateEnvironment({ NODE_ENV: 'test' }).DATABASE_URL).toBe('file:./data/missionlive.db');
+    const config = validateEnvironment({ NODE_ENV: 'test' });
+    expect(config.DATABASE_URL).toBe('file:./data/missionlive.db');
+    expect(config.API_HOST).toBe('127.0.0.1');
+    expect(config.CORS_ORIGINS).toBe('http://localhost:5173');
+  });
+
+  it('keeps the canonical invite origin separate from allowed CORS origins', () => {
+    const config = validateEnvironment({ NODE_ENV: 'test', WEB_ORIGIN: 'https://missionlive.example', CORS_ORIGINS: 'http://localhost:5173, http://192.0.2.20:5173' });
+    expect(config.WEB_ORIGIN).toBe('https://missionlive.example');
+    expect(config.CORS_ORIGINS).toBe('http://localhost:5173,http://192.0.2.20:5173');
+  });
+
+  it('rejects a list in WEB_ORIGIN and malformed CORS origins', () => {
+    expect(() => validateEnvironment({ NODE_ENV: 'test', WEB_ORIGIN: 'http://localhost:5173,http://192.0.2.20:5173' })).toThrow('WEB_ORIGIN');
+    expect(() => validateEnvironment({ NODE_ENV: 'test', CORS_ORIGINS: 'not-a-url' })).toThrow('CORS_ORIGINS');
   });
 });

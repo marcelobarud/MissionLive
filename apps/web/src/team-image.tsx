@@ -18,7 +18,7 @@ export function TeamImage({ team, size = 'md', decorative = false, srcOverride, 
   const classes = `team-image team-image-${size}`;
   const dimension = { sm: 44, md: 64, lg: 88, xl: 104 }[size];
   const content = source && !broken
-    ? <img className={classes} width={dimension} height={dimension} loading={size === 'xl' ? 'eager' : 'lazy'} src={source} alt={label ?? ''} aria-hidden={decorative} onError={() => setBroken(true)} />
+    ? <img className={classes} width={dimension} height={dimension} loading={size === 'xl' ? 'eager' : 'lazy'} src={source} alt={label ?? ''} aria-hidden={decorative} crossOrigin="use-credentials" onError={() => setBroken(true)} />
     : <span className={`${classes} team-image-fallback`} aria-label={label} aria-hidden={decorative}><span>{initials(team.name)}</span><IconUsersGroup size={size === 'xl' ? 24 : size === 'lg' ? 19 : 15} stroke={1.7} aria-hidden="true" /></span>;
   return <span className={`team-image-shell team-image-shell-${size}${className ? ` ${className}` : ''}`}>{content}{editable && <button className="team-image-edit" type="button" aria-label="Editar imagem da equipe" title="Editar imagem da equipe" data-tooltip="Editar imagem" onClick={() => onEdit?.()}><IconPencil size={18} stroke={2} aria-hidden="true" /></button>}</span>;
 }

@@ -25,6 +25,17 @@ npm run dev
 
 O frontend fica em `http://localhost:5173` e a API em `http://localhost:3000`.
 
+O acesso pela rede local é deliberadamente opt-in. Para testar em outro dispositivo, use no `.env`:
+
+```dotenv
+API_HOST=0.0.0.0
+VITE_DEV_HOST=0.0.0.0
+VITE_API_URL=http://<IP_LOCAL>:3000
+CORS_ORIGINS=http://localhost:5173,http://<IP_LOCAL>:5173
+```
+
+Mantenha `WEB_ORIGIN` como a URL canônica única usada nos convites. Regras de firewall são configuração da máquina e não fazem parte do repositório.
+
 Para habilitar Google OAuth, configure os placeholders correspondentes no `.env`; consulte `docs/auth/google-oauth.md`. Nenhuma credencial é necessária para o fluxo local: em desenvolvimento o token de verificação aparece na resposta de cadastro.
 
 ## Validação
