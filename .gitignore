@@ -11,3 +11,5 @@ apps/api/var/avatars/
 apps/api/var/uploads/teams/
 var/uploads/teams/
 .DS_Store
+.obsidian/workspace.json
+.obsidian/graph.json
