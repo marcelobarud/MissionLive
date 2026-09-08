@@ -2,7 +2,7 @@
 
 ## Objetivo
 
-Este documento registra os fundamentos visuais do MissionLive. A direção atual, refinada com `frontend-design`, é **movimento editorial**: uma base calma e clara para tornar o progresso legível, com navegação azul-marinho profunda, tipografia de alto contraste e superfícies contidas. A V1 prioriza clareza, leitura rápida de progresso, operação confortável em telas pequenas e consistência entre as áreas autenticadas.
+Este documento registra os fundamentos visuais vigentes do MissionLive. A direção atual, priorizada com `impeccable` e refinada com `frontend-design`, é **Calm Focus**: uma base calma e clara para tornar o progresso legível, com grafite esverdeado, verde-sálvia para ação e progresso, tipografia de alto contraste e superfícies contidas.
 
 ## Princípios
 
@@ -12,42 +12,42 @@ Este documento registra os fundamentos visuais do MissionLive. A direção atual
 - Acessibilidade por padrão: foco visível, nomes acessíveis, contraste suficiente e suporte a `prefers-reduced-motion`.
 - Sem cor solta: novos valores visuais devem usar tokens; hex literal é permitido apenas na definição dos tokens.
 - Estados completos: loading, erro, vazio, sucesso, desabilitado e ação destrutiva precisam ter tratamento visual coerente.
-- Assinatura visual: o azul-marinho profundo identifica o shell e o progresso; a composição usa uma única ação principal por contexto e reserva detalhes de contraste para orientar a leitura.
+- Assinatura visual: o grafite esverdeado e o verde-sálvia identificam shell, ação e progresso; a composição usa uma única ação principal por contexto e reserva detalhes de contraste para orientar a leitura.
 
 ## Paleta aprovada
 
 | Papel | Token | Valor |
 | --- | --- | --- |
-| Primária | `--primary` | `#09456c` |
-| Primária hover | `--primary-hover` | `#0d5b89` |
-| Primária ativa | `--primary-active` | `#063650` |
-| Primária suave | `--primary-subtle` | `#e7f0f6` |
-| Neutro forte | `--neutral-strong` | `#6c788e` |
-| Neutro médio | `--neutral-medium` | `#a6aec1` |
-| Neutro claro | `--neutral-light` | `#cfd5e1` |
-| Superfície | `--surface` | `#ededf2` |
-| Superfície elevada | `--surface-raised` | `#ffffff` |
-| Superfície sutil | `--surface-subtle` | `#f7f8fa` |
-| Fundo | `--background` | `#fcfdff` |
-| Texto primário | `--text-primary` | `#172033` |
-| Texto secundário | `--text-secondary` | `#425168` |
-| Texto auxiliar | `--text-muted` | `#6c788e` |
-| Borda | `--border` | `#cfd5e1` |
-| Borda forte | `--border-strong` | `#a6aec1` |
-| Sucesso | `--success` | `#246b52` |
-| Atenção | `--warning` | `#8b5b20` |
-| Perigo | `--danger` | `#a83245` |
-| Informação | `--info` | `#145b80` |
+| Primária | `--primary` | `#335f53` |
+| Primária hover | `--primary-hover` | `#25483f` |
+| Primária ativa | `--primary-active` | `#1b352f` |
+| Primária suave | `--primary-subtle` | `#e5efea` |
+| Neutro forte | `--neutral-strong` | `#5f746b` |
+| Neutro médio | `--neutral-medium` | `#9aaca4` |
+| Neutro claro | `--neutral-light` | `#d6e1db` |
+| Superfície | `--surface` | `#eef3f0` |
+| Superfície elevada | `--surface-raised` | `#fbfcfa` |
+| Superfície sutil | `--surface-subtle` | `#f4f7f5` |
+| Fundo | `--background` | `#f1f4f1` |
+| Texto primário | `--text-primary` | `#20332f` |
+| Texto secundário | `--text-secondary` | `#536761` |
+| Texto auxiliar | `--text-muted` | `#71827b` |
+| Borda | `--border` | `#d8e3dd` |
+| Borda forte | `--border-strong` | `#b8c9c0` |
+| Sucesso | `--success` | `#39715b` |
+| Atenção | `--warning` | `#8d6b3e` |
+| Perigo | `--danger` | `#9d584f` |
+| Informação | `--info` | `#507486` |
 
 Tokens de composição usados pela direção editorial:
 
 | Papel | Token | Valor |
 | --- | --- | --- |
-| Tinta profunda do shell | `--ink-deep` | `#063650` |
-| Tinta suave sobre shell | `--ink-soft` | `#dbe8ef` |
-| Superfície de apoio | `--surface-tint` | `#f2f6f8` |
-| Superfície de destaque | `--surface-warm` | `#fffdf8` |
-| Borda discreta | `--border-faint` | `#e2e8ee` |
+| Tinta profunda do shell | `--ink-deep` | `#20332f` |
+| Tinta suave sobre shell | `--ink-soft` | `#dce9e2` |
+| Superfície de apoio | `--surface-tint` | `#edf3ef` |
+| Superfície de destaque | `--surface-warm` | `#fbfaf5` |
+| Borda discreta | `--border-faint` | `#e3ebe6` |
 
 Os tokens de estado possuem variantes `*-subtle` para fundos suaves. Componentes não devem introduzir uma nova cor sem atualizar esta fundação.
 
@@ -69,7 +69,7 @@ Quebras principais:
 
 ## Navegação e shell
 
-O shell autenticado usa uma sidebar azul-marinho como navegação principal em telas amplas. Ela fica fixa à esquerda, mantém a marca no topo, empilha as áreas Início, Metas, Equipes, Modelos, Calendário e Avisos e reserva a parte inferior para perfil e logout. O workspace permanece claro para que o progresso, os títulos e os estados sejam o foco da leitura.
+O shell autenticado usa uma sidebar em grafite esverdeado como navegação principal em telas amplas. Ela fica fixa à esquerda, mantém a marca no topo, empilha as áreas Início, Metas, Equipes, Modelos, Calendário e Avisos e reserva a parte inferior para perfil e logout. O workspace permanece claro para que o progresso, os títulos e os estados sejam o foco da leitura.
 
 Em telas menores, a sidebar vira um drawer acionado pelo botão de menu do header compacto. O drawer usa backdrop, fecha ao navegar ou pressionar ESC, bloqueia o scroll da página enquanto aberto e devolve o foco ao botão que o acionou. A navegação principal não é duplicada no topo nem em uma barra inferior.
 

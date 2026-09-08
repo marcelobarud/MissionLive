@@ -2,17 +2,18 @@
 
 ## 1. Missão do agente
 
-Trabalhar no MissionLive como engenheiro de software responsável por implementar uma V1 segura, testável, mobile-first e preparada para evolução.
+Trabalhar no MissionLive como engenheiro de software responsável por manter e evoluir uma V1 segura, testável, mobile-first e preparada para evolução.
 
 Antes de qualquer trabalho relevante, ler:
-1. `AI_CONTEXT.md`
-2. `IMPLEMENTATION_PLAN.md`
-3. `GOAL.md`
+1. `AI_CONTEXT.md`;
+2. o documento técnico, de design ou de operação diretamente relacionado à tarefa;
+3. `docs/phase-status.md`, quando a tarefa depender do estado das fases.
+
+`IMPLEMENTATION_PLAN*.md`, `GOAL*.md` e documentos de fechamento são registros históricos dos ciclos concluídos. Consultá-los somente quando a tarefa retomar uma decisão daquele ciclo ou exigir rastreabilidade; eles não devem bloquear nem redirecionar a manutenção atual.
 
 Este arquivo define COMO trabalhar.
-`AI_CONTEXT.md` define O QUE o produto é.
-`IMPLEMENTATION_PLAN.md` define a sequência.
-`GOAL.md` define o objetivo mestre e critérios de conclusão.
+`AI_CONTEXT.md` define O QUE o produto é no estado atual.
+Documentos de operação, design, ADRs e o código são a referência para decisões vigentes.
 
 ## 2. Regra de contexto
 
@@ -37,8 +38,8 @@ Base aprovada:
 
 Não substituir framework principal sem necessidade explícita.
 
-ORM/query layer ainda precisa ser escolhido na Fase 1.
-A escolha deve ser documentada e suportar SQLite + PostgreSQL com migrations confiáveis.
+Prisma Client e Prisma Migrate são a camada oficial de persistência, fixada no workspace.
+A escolha está documentada em `docs/adr/0001-persistencia.md` e deve suportar SQLite + PostgreSQL com migrations confiáveis.
 
 ## 4. Estrutura de repositório
 
@@ -49,9 +50,9 @@ MissionLive/
 ├── apps/
 │   ├── web/
 │   └── api/
-├── packages/
-│   └── shared/        # apenas se houver benefício real
 ├── docs/
+├── missionlive-brand-final/
+├── .agents/skills/
 ├── AI_CONTEXT.md
 ├── AGENTS.md
 ├── IMPLEMENTATION_PLAN.md
@@ -261,11 +262,11 @@ Não instalar ferramentas globalmente por conveniência.
 
 Trabalhar de forma incremental.
 
-Ao final de cada fase:
+Ao final de cada entrega relevante:
 - revisar diff;
-- garantir que documentação da fase esteja atualizada;
+- garantir que a documentação normativa afetada esteja atualizada;
 - deixar árvore consistente;
-- criar commit de fase quando o fluxo do GOAL estiver sendo executado.
+- criar commit semântico. O formato de fase só deve ser usado quando um plano histórico for explicitamente retomado.
 
 Formato sugerido:
 `Fase N — <descrição curta>`
@@ -278,22 +279,27 @@ Não reescrever histórico remoto ou usar ações destrutivas sem necessidade ex
 
 Manter:
 - `AI_CONTEXT.md`;
-- `IMPLEMENTATION_PLAN.md`;
+- `README.md` e `docs/operation/`;
+- ADRs e documentação de design vigente;
 - documentação técnica relevante em `docs/`;
 - decisões arquiteturais quando necessário;
 - instruções de execução local;
 - `.env.example` apenas com placeholders seguros.
 
+Planos, GOALs e fechamentos concluídos devem ser preservados como histórico, mas não tratados como backlog ativo por padrão.
+
 ## 18. Auditoria final de segurança
 
-A última fase deve executar auditoria sistemática das cinco categorias:
+A auditoria de segurança da V1 já foi concluída e está registrada em `docs/security-audit/`. Toda alteração que afete segurança deve repetir a verificação relevante; uma auditoria final sistemática deve ser executada novamente antes de produção.
+
+As cinco categorias da auditoria são:
 1. isolamento;
 2. permissão somente no frontend;
 3. IDOR;
 4. segredos;
 5. XSS/input.
 
-A auditoria deve percorrer handlers reais e gerar o relatório final previsto no `GOAL.md`.
+A auditoria deve percorrer handlers reais e registrar evidências em `docs/security-audit/`.
 
 Achados devem ser reais e evidenciados.
 Não fabricar vulnerabilidades apenas para preencher relatório.
@@ -304,13 +310,18 @@ Para tarefas de criação, redesign ou refatoração significativa do frontend, 
 
 1. compreender o contexto visual existente;
 2. preservar a identidade e o design system do projeto;
-3. utilizar `frontend-design` para criação ou refinamento visual;
+3. utilizar `impeccable` como skill prioritária para criação, refinamento e auditoria visual;
 4. implementar a direção definida;
 5. utilizar `web-design-guidelines` para auditar a implementação;
-6. corrigir os problemas encontrados;
-7. validar responsividade, acessibilidade e testes.
+6. utilizar `frontend-design` quando for necessária uma nova direção estética ou composição;
+7. corrigir os problemas encontrados;
+8. validar responsividade, acessibilidade e testes.
 
 ### Responsabilidade das skills
+
+#### `impeccable`
+
+Utilizar como primeira referência para trabalho de interface. A skill local em `.agents/skills/impeccable` orienta auditoria, refinamento, hierarquia, layout, acessibilidade, responsividade, estados e prevenção de AI slop.
 
 #### `frontend-design`
 
@@ -324,7 +335,7 @@ Utilizar após a implementação visual para auditar acessibilidade, usabilidade
 
 ### Regra de precedência
 
-`frontend-design` define e implementa a direção estética. `web-design-guidelines` audita a implementação posteriormente. Em conflito envolvendo acessibilidade, usabilidade, semântica, interação ou comportamento, as guidelines têm precedência. Em decisões puramente estéticas sem conflito funcional, a direção estabelecida pelo design pode ser preservada.
+`impeccable` orienta o refinamento e a auditoria visual. `frontend-design` define uma nova direção estética quando necessário. `web-design-guidelines` audita a implementação posteriormente. Em conflito envolvendo acessibilidade, usabilidade, semântica, interação ou comportamento, as guidelines têm precedência. Em decisões puramente estéticas sem conflito funcional, a direção estabelecida pelo design pode ser preservada.
 
 ### Regra contra excesso de redesign
 

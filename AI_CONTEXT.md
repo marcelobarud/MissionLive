@@ -114,7 +114,8 @@ A "taxa de conclusão" não deve ser um card independente; pode aparecer como in
 - cards de equipes;
 - imagem principal opcional de identidade, com fallback por iniciais/ícone;
 - a imagem é armazenada fora do banco; a equipe persiste somente a referência do arquivo;
-- na versão experimental, upload local aceita JPEG, PNG e WebP de até 5 MB, com processamento seguro para WebP;
+- na versão atual, upload local aceita JPEG, PNG e WebP de até 5 MB, com processamento seguro para WebP;
+- a equipe persiste `imageFileKey` e expõe `imageUrl` pela rota autenticada; upload, substituição e remoção exigem owner/admin e a exclusão da equipe remove o arquivo associado;
 - resumo por equipe;
 - ao abrir uma equipe, priorizar Metas como primeira visão e Participantes como última área;
 - ao abrir uma equipe, mostrar participantes, metas, progresso, concluídos, pendentes e demais detalhes relevantes;
@@ -691,15 +692,15 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - onboarding pulável, perfil/preferências, sessões e notificações internas com deep links;
 - navegação responsiva mobile-first com estados de loading, erro e vazio; o shell autenticado usa sidebar fixa no desktop/tablet e drawer acessível no mobile, sem duplicar a navegação no topo;
 - Design System V1 em `apps/web/src/design-system.tsx`, com Button, IconButton, Input, Textarea, Select, Checkbox, FormField, Card, Panel, Section, PageHeader, EmptyState, Spinner, ProgressBar e Badge;
-- tokens visuais centralizados em `apps/web/src/styles.css`, documentados em `docs/design/DESIGN_SYSTEM.md`, usando a paleta azul aprovada, escala de espaçamento, raios, alturas, foco, estados semânticos e reduced motion;
-- direção visual consolidada como “movimento editorial”: workspace claro, sidebar azul-marinho profundo, títulos de alto contraste, progresso como sinal principal e superfícies contidas, sem redesign por decoração;
+- tokens visuais centralizados em `apps/web/src/styles.css`, documentados em `docs/design/DESIGN_SYSTEM.md`, usando neutros minerais, verde-sálvia, escala de espaçamento, raios, alturas, foco, estados semânticos e reduced motion;
+- direção visual consolidada como “Calm Focus”: workspace claro, navegação leve, grafite esverdeado, verde-sálvia para ação/progresso, títulos de alto contraste e superfícies contidas, sem redesign por decoração;
 - shell com sidebar lateral, acesso explícito ao perfil e logout separado, CTA único para criação de equipe, empty state de modelos, navegação mensal do calendário e badge de notificações não lidas.
 - `@tabler/icons-react` (`3.46.0`) é a biblioteca oficial de ícones do frontend; usar imports explícitos, família outline, `currentColor`, tamanhos padronizados e `aria-label` obrigatório em icon buttons.
 - `apps/web/src/feedback.tsx` concentra `FeedbackProvider`, dialogs assíncronos de confirmação/prompt, `Toast`, `ToastViewport` e `FeedbackBanner`; os fluxos da interface não usam mais `window.alert`, `window.confirm` ou `window.prompt`.
 - dialogs compartilhados usam tokens do Design System, semântica `role="dialog"`, `aria-modal`, título/descrição associados, foco inicial, ciclo de foco por teclado, ESC e restauração do foco anterior; ações assíncronas mantêm seus erros no contexto da tela ou em toast.
-- o fluxo visual do frontend deve continuar usando as skills locais `frontend-design` e `web-design-guidelines`; o builder segue a direção “movimento editorial”, foco visível, controles com labels, estados reduzidos de movimento e alternativa acessível à interação por arraste.
+- o fluxo visual do frontend deve priorizar a skill local `impeccable`, seguida de `web-design-guidelines` para acessibilidade/usabilidade e `frontend-design` quando houver nova direção estética; o builder segue a direção “Calm Focus”, foco visível, controles com labels, estados reduzidos de movimento e alternativa acessível à interação por arraste.
 
-### Diferenças conhecidas entre o alvo da V1 e a interface atual
+### Limitações conhecidas da interface atual
 
 - a interface web ainda não possui edição/cancelamento de membros de meta nem listagem persistida de convites já criados após recarregar a página; o gerenciamento avançado continua disponível na API;
 - recuperação de senha usa token local no desenvolvimento e ainda não possui entrega de e-mail em produção;
@@ -722,22 +723,18 @@ Essas diferenças são limitações de superfície da interface, não autorizaç
 - colaboração em tempo real/WebSocket, salvo necessidade validada;
 - permissões customizadas arbitrárias/RBAC complexo.
 
-## 23. Documentos de execução
+## 23. Documentos de referência e histórico
 
-Ordem de leitura para Codex:
-1. `AI_CONTEXT.md`
-2. `AGENTS.md`
-3. `IMPLEMENTATION_PLAN.md`
-4. `GOAL.md`
+Ordem de referência para trabalho atual:
+1. `AGENTS.md` — regras de execução;
+2. `AI_CONTEXT.md` — produto e arquitetura vigentes;
+3. `README.md` e `docs/operation/local.md` — execução local;
+4. `DESIGN.md` e `docs/design/DESIGN_SYSTEM.md` — direção visual vigente;
+5. ADRs e documentação técnica diretamente relacionada à tarefa.
 
-Para a execução do refinamento visual do Plano 03, consultar também:
-5. `IMPLEMENTATION_PLAN_03.md`
-6. `GOAL_03.md`
-7. `docs/design/DESIGN_SYSTEM.md`
-8. `docs/design/visual-audit-plan03.md`
-9. `docs/design/visual-qa-plan03.md`
+`IMPLEMENTATION_PLAN.md`, `IMPLEMENTATION_PLAN_02.md`, `IMPLEMENTATION_PLAN_03.md`, `GOAL.md`, `GOAL_02.md`, `GOAL_03.md` e os documentos de fechamento registram ciclos concluídos. Eles devem ser consultados apenas para histórico, rastreabilidade ou retomada explícita de uma decisão.
 
-O Plano 03 está concluído. O fechamento e as evidências estão em `docs/PLANO_03_FECHAMENTO.md`.
+O estado das fases está resumido em `docs/phase-status.md`. A migração consolidada do experimento está registrada em `docs/migration/2026-09-08-experimental-to-official.md`.
 
 O código deve refletir esses documentos.
 Se uma implementação exigir contrariar uma decisão registrada:

@@ -60,4 +60,4 @@ Consulte `docs/security-audit/relatorio-auditoria-seguranca.pdf` para a auditori
 
 Capacitor para Android/iOS, gamificação, XP/achievements/streaks, billing provider, push notifications, objetivos avançados, real-time e anexos/evidências.
 
-Consulte `AI_CONTEXT.md`, `IMPLEMENTATION_PLAN.md` e `GOAL.md` para as decisões completas da V1. O ciclo complementar está registrado em `GOAL_02.md`, `IMPLEMENTATION_PLAN_02.md` e `docs/PLANO_02_FECHAMENTO.md`.
+Para decisões vigentes, consulte `AI_CONTEXT.md`, `AGENTS.md`, `DESIGN.md` e `docs/phase-status.md`. `IMPLEMENTATION_PLAN*.md`, `GOAL*.md` e os fechamentos de plano são registros históricos dos ciclos concluídos. A migração consolidada do experimento está registrada em `docs/migration/2026-09-08-experimental-to-official.md`.

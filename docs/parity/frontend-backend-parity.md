@@ -1,5 +1,7 @@
 # Paridade Frontend × Backend — F19
 
+> Auditoria histórica, não backlog ativo. A tabela registra a fotografia do projeto em 2026-09-01, antes dos ciclos 02/03 e da migração consolidada. Para o estado atual, use `AI_CONTEXT.md`, `docs/phase-status.md` e o código.
+
 Data da auditoria: 2026-09-01  
 Base: `main` em `645b5f3` e estado do working tree antes das Fases 20–21.
 

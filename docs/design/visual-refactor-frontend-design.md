@@ -1,5 +1,7 @@
 # Refatoração visual — frontend-design
 
+> Registro histórico do refinamento visual concluído. A direção vigente está em `DESIGN.md` e `docs/design/DESIGN_SYSTEM.md`; este documento preserva decisões e evidências do ciclo original.
+
 Data: 2026-09-01
 
 ## Escopo
@@ -24,7 +26,7 @@ As rotas reais foram confirmadas em `apps/web/src/app.tsx`:
 
 ## Direção consolidada
 
-**Movimento editorial**: o azul-marinho profundo (`--ink-deep`) funciona como âncora do shell e das ações primárias; o workspace claro, com bordas discretas, mantém a interface profissional e acolhedora. O progresso continua sendo o sinal visual principal, acompanhado de texto para não depender de cor.
+**Direção registrada no ciclo**: a âncora escura do shell e das ações primárias funciona sobre um workspace claro, com bordas discretas, mantendo a interface profissional e acolhedora. A implementação consolidada atual usa o sistema **Calm Focus**, documentado em `DESIGN.md` e no Design System vigente. O progresso continua sendo o sinal visual principal, acompanhado de texto para não depender de cor.
 
 Decisões intencionais:
 

@@ -1,5 +1,7 @@
 # MissionLive — QA visual do Plano 03
 
+> Registro histórico da QA do Plano 03. Os números de suítes e o estado visual são evidências da execução daquele ciclo; novas validações devem usar os scripts atuais e o código presente.
+
 ## Escopo e método
 
 QA executada após as fases F36–F48, combinando inspeção do código/rotas, validação técnica e inspeção visual no navegador local. A tela pública de autenticação foi aberta em `http://localhost:5173/`; as telas autenticadas foram revisadas pela composição real de rotas e estados no frontend, sem inserir credenciais ou senha.

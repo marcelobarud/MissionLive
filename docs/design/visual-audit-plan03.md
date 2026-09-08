@@ -1,5 +1,7 @@
 # Auditoria visual — Plano 03
 
+> Registro histórico da auditoria inicial do Plano 03. Os achados abaixo descrevem o estado anterior ao refinamento e não representam automaticamente pendências atuais. Para a direção vigente, consulte `DESIGN.md` e `docs/design/DESIGN_SYSTEM.md`.
+
 Data da auditoria: 2026-09-01
 
 ## Método e evidências
