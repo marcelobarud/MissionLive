@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-02T18:00:00.000Z",
+  "title": "Design System: MissionLive",
+  "extensions": {
+    "colorMeta": {
+      "ink": { "role": "neutral", "displayName": "Green Graphite", "canonical": "#20332f", "tonalRamp": ["#14211e", "#20332f", "#30443e", "#536761", "#71827b", "#9aaca4", "#d8e3dd", "#f1f4f1"] },
+      "sage": { "role": "primary", "displayName": "Deep Sage", "canonical": "#335f53", "tonalRamp": ["#1b352f", "#25483f", "#335f53", "#39715b", "#5e8b79", "#9ab7a8", "#e5efea", "#f4f8f5"] },
+      "sage-soft": { "role": "secondary", "displayName": "Sage Wash", "canonical": "#e5efea", "tonalRamp": ["#335f53", "#527b6b", "#76978a", "#9ab7a8", "#b8c9c0", "#d6e1db", "#e5efea", "#f4f8f5"] },
+      "mist": { "role": "neutral", "displayName": "Mineral Mist", "canonical": "#f1f4f1", "tonalRamp": ["#20332f", "#536761", "#71827b", "#9aaca4", "#b8c9c0", "#d8e3dd", "#eef3f0", "#fbfcfa"] },
+      "paper": { "role": "neutral", "displayName": "Quiet Paper", "canonical": "#fbfcfa", "tonalRamp": ["#20332f", "#536761", "#71827b", "#9aaca4", "#b8c9c0", "#d8e3dd", "#f1f4f1", "#fbfcfa"] },
+      "sand": { "role": "state-warning", "displayName": "Warm Sand", "canonical": "#f4ede1", "tonalRamp": ["#6e4e2b", "#8d6b3e", "#a7895e", "#c4aa7f", "#ddc9a8", "#eadcc5", "#f4ede1", "#fbf8f1"] },
+      "clay": { "role": "state-danger", "displayName": "Soft Clay", "canonical": "#9d584f", "tonalRamp": ["#713d37", "#864940", "#9d584f", "#b8776d", "#ca958b", "#e0b9b1", "#f5e7e4", "#fcf5f3"] },
+      "line": { "role": "neutral", "displayName": "Fine Line", "canonical": "#d8e3dd", "tonalRamp": ["#536761", "#71827b", "#9aaca4", "#b8c9c0", "#d8e3dd", "#e3ebe6", "#eef3f0", "#fbfcfa"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Quiet Display", "purpose": "Greeting and route titles with calm authority." },
+      "label": { "displayName": "Editorial Label", "purpose": "Short orientation cues; never decorative copy." },
+      "body": { "displayName": "Readable Body", "purpose": "Descriptions, form content, dates, roles and user-entered text." }
+    },
+    "shadows": [
+      { "name": "ambient-surface", "value": "0 .35rem 1.25rem rgba(32,51,47,.055)", "purpose": "Quiet lift for raised surfaces." },
+      { "name": "surface-lift", "value": "0 .7rem 1.8rem rgba(32,51,47,.10)", "purpose": "Interaction feedback on primary actions." },
+      { "name": "overlay", "value": "0 1.5rem 4rem rgba(32,51,47,.18)", "purpose": "Modal and drawer separation." }
+    ],
+    "motion": [
+      { "name": "ease-fast", "value": "160ms ease", "purpose": "Color, border and focus-adjacent state changes." },
+      { "name": "ease-standard", "value": "220ms ease", "purpose": "Progress width and layout transitions." },
+      { "name": "reduced-motion", "value": "prefers-reduced-motion: reduce", "purpose": "Remove non-essential motion on request." }
+    ],
+    "breakpoints": [
+      { "name": "tablet", "value": "900px" },
+      { "name": "mobile", "value": "720px" },
+      { "name": "compact", "value": "420px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Primary create, save, submit and recovery action.",
+      "html": "<button class=\"ds-btn-primary\" type=\"button\">Criar meta</button>",
+      "css": ".ds-btn-primary { min-height: 2.9rem; padding: .65rem 1rem; border: 0; border-radius: .8rem; color: #fbfcfa; background: #335f53; font: 700 .9rem/1.2 Aptos, Segoe UI, sans-serif; cursor: pointer; transition: background-color 160ms ease, box-shadow 160ms ease, transform 160ms ease; } .ds-btn-primary:hover { background: #25483f; box-shadow: 0 .7rem 1.8rem rgba(32,51,47,.10); transform: translateY(-1px); } .ds-btn-primary:focus-visible { outline: 3px solid #76978a; outline-offset: 3px; }"
+    },
+    {
+      "name": "Quiet Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Secondary action that keeps the page calm.",
+      "html": "<button class=\"ds-btn-quiet\" type=\"button\">Cancelar</button>",
+      "css": ".ds-btn-quiet { min-height: 2.9rem; padding: .65rem 1rem; border: 1px solid #b8c9c0; border-radius: .8rem; color: #335f53; background: #fbfcfa; font: 700 .9rem/1.2 Aptos, Segoe UI, sans-serif; cursor: pointer; transition: background-color 160ms ease, border-color 160ms ease; } .ds-btn-quiet:hover { border-color: #335f53; background: #e5efea; } .ds-btn-quiet:focus-visible { outline: 3px solid #76978a; outline-offset: 3px; }"
+    },
+    {
+      "name": "Input Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Visible-label field with clear focus and calm surface contrast.",
+      "html": "<label class=\"ds-field\">Nome da meta<input class=\"ds-input\" type=\"text\" placeholder=\"Ex.: Ler 12 livros…\"></label>",
+      "css": ".ds-field { display: grid; gap: .45rem; color: #536761; font: 700 .8rem/1.2 Aptos, Segoe UI, sans-serif; } .ds-input { min-height: 2.9rem; padding: .65rem .8rem; border: 1px solid #b8c9c0; border-radius: .8rem; color: #20332f; background: #fbfcfa; font: 400 1rem/1.5 Aptos, Segoe UI, sans-serif; } .ds-input:focus-visible { outline: 3px solid #76978a; outline-offset: 2px; border-color: #335f53; }"
+    },
+    {
+      "name": "Navigation Item",
+      "kind": "nav",
+      "refersTo": "navigation",
+      "description": "Light rail route item with current-page and focus states.",
+      "html": "<a class=\"ds-nav-item\" href=\"#metas\" aria-current=\"page\"><span>Metas</span></a>",
+      "css": ".ds-nav-item { display: flex; align-items: center; min-height: 2.85rem; padding: .7rem .8rem; border-left: .2rem solid transparent; border-radius: 0 .65rem .65rem 0; color: #536761; text-decoration: none; transition: color 160ms ease, background-color 160ms ease, border-color 160ms ease; } .ds-nav-item:hover, .ds-nav-item[aria-current=\"page\"] { color: #20332f; background: #e5efea; border-left-color: #335f53; } .ds-nav-item:focus-visible { outline: 3px solid #76978a; outline-offset: 3px; }"
+    },
+    {
+      "name": "Progress Track",
+      "kind": "custom",
+      "refersTo": "progress",
+      "description": "Derived progress signal using bar, percentage and count together.",
+      "html": "<div class=\"ds-progress-track\"><strong>60%</strong><span class=\"ds-progress\"><i style=\"width:60%\"></i></span><small>3 de 5 passos</small></div>",
+      "css": ".ds-progress-track { display: grid; gap: .35rem; color: #536761; } .ds-progress { display: block; height: .35rem; overflow: hidden; border-radius: 999px; background: #d8e3dd; } .ds-progress i { display: block; height: 100%; border-radius: inherit; background: #39715b; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Calm Focus",
+    "overview": "MissionLive é uma mesa de trabalho tranquila para retomar intenções e avançar uma etapa por vez. A reformulação usa verde sálvia, papel, névoa mineral e grafite para criar foco sem perder energia, mantendo o conteúdo real e a densidade operacional do produto.",
+    "keyCharacteristics": [
+      "Paleta neutra e orgânica, com cor reservada para ação e estado.",
+      "Uma próxima ação dominante; o restante apoia a decisão.",
+      "Cards funcionais, regras finas e espaçamento generoso sem excesso de contêineres decorativos.",
+      "Controles largos, foco visível, contraste funcional e responsividade mobile-first."
+    ],
+    "rules": [
+      { "name": "The Calm Hierarchy Rule", "body": "Uma ação lidera cada tela; métricas e contexto permanecem legíveis, mas silenciosos.", "section": "colors" },
+      { "name": "The Surface Rule", "body": "Use papel, névoa e linhas para estruturar. Reserve elevação para superfícies realmente interativas ou sobrepostas.", "section": "elevation" },
+      { "name": "The Signal Rule", "body": "Progresso combina barra, percentual e contagem derivados; nenhum estado depende apenas de cor.", "section": "components" }
+    ],
+    "dos": [
+      "Usar sálvia profunda para ações primárias e destaque de continuidade.",
+      "Preservar o português real, a navegação existente e os estados de loading/error/empty/success.",
+      "Manter foco visível, áreas de toque confortáveis e redução de movimento.",
+      "Usar a mesma gramática de superfícies em Início, Metas, Equipes e formulários."
+    ],
+    "donts": [
+      "Não reintroduzir azul saturado, laranja, gradientes ou glassmorphism.",
+      "Não criar um card para cada dado quando uma seção aberta for mais clara.",
+      "Não remover ou alterar funcionalidades, contratos, permissões ou dados.",
+      "Não usar cor, sombra ou badge como decoração sem função semântica."
+    ]
+  }
+}
