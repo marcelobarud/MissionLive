@@ -3,10 +3,11 @@ import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import { formatReminderDateTime, goalStepPreview, homeGoalStepsSummary, isReminderTimeInFuture, MissionLiveWelcome, nextReminderMinimum, NotificationsPage, ParticipantProgressSection, reminderParticipants, ReminderPanel, reminderStepsForParticipant, Sidebar, toDateTimeLocal } from './app';
+import { DeviceNotificationsSection, formatReminderDateTime, goalStepPreview, homeGoalStepsSummary, isReminderTimeInFuture, MissionLiveWelcome, nextReminderMinimum, NotificationsPage, ParticipantProgressSection, reminderParticipants, ReminderPanel, reminderStepsForParticipant, Sidebar, toDateTimeLocal } from './app';
 import type { Goal, User } from './api';
 import { api } from './api';
 import type { Notification, ParticipantsProgress } from './api';
+import * as push from './push';
 
 const participantProgress: ParticipantsProgress = {
   totalParticipants: 3,
@@ -49,6 +50,14 @@ describe('MissionLive shell', () => {
     expect(view.queryByText('America/Sao_Paulo')).toBeNull();
     expect(view.queryByText(formatReminderDateTime('2026-09-09T15:30:00.000Z', 'America/Sao_Paulo'))).toBeNull();
     expect(view.getByRole('button', { name: 'Cancelar' }).className).toContain('ds-button-danger');
+    view.unmount();
+  });
+
+  it('usa a mesma variante secundária de Sessões para a ação de notificações', async () => {
+    vi.spyOn(push, 'getDevicePushState').mockResolvedValue({ supported: true, permission: 'granted', subscribed: true, serverEnabled: true });
+    const view = render(<DeviceNotificationsSection />);
+    await waitFor(() => expect(view.getByRole('button', { name: 'Desativar neste dispositivo' })).toBeTruthy());
+    expect(view.getByRole('button', { name: 'Desativar neste dispositivo' }).className).toContain('ds-button-secondary');
     view.unmount();
   });
 

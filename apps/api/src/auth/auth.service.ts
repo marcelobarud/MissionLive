@@ -1,10 +1,11 @@
-import { ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { hashToken, createToken } from './token.util';
 import { RegisterDto, LoginDto, ResetPasswordDto } from './auth.dto';
 import * as argon2 from 'argon2';
 import { publicUser } from './user.serializer';
+import { isValidIanaTimezone } from './timezone';
 
 @Injectable()
 export class AuthService {
@@ -42,6 +43,7 @@ export class AuthService {
 
   async logout(sessionId: string) { await this.prisma.session.update({ where: { id: sessionId }, data: { revokedAt: new Date() } }); }
   async updateProfile(userId: string, dto: import('./profile.dto').UpdateProfileDto) {
+    if (dto.timezone !== undefined && !isValidIanaTimezone(dto.timezone)) throw new BadRequestException('Invalid IANA timezone.');
     const current = await this.prisma.user.findUnique({ where: { id: userId } }); if (!current) throw new UnauthorizedException('User not found.');
     const user = await this.prisma.user.update({ where: { id: userId }, data: { name: dto.name?.trim(), avatarUrl: dto.avatarUrl, timezone: dto.timezone?.trim(), preferencesJson: dto.preferences ? JSON.stringify(dto.preferences) : undefined } }); return publicUser(user);
   }

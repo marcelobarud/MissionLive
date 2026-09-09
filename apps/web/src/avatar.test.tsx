@@ -44,6 +44,18 @@ describe('user avatars', () => {
     expect(onUpdated).toHaveBeenCalledWith(next);
   });
 
+  it('abre o seletor em dialog, fecha com ESC e restaura o foco', async () => {
+    const trigger = 'Escolher avatar';
+    render(<FeedbackProvider><AvatarManager user={{ id: 'user-1', email: 'ana@example.com', name: 'Ana' }} onUpdated={() => undefined} /></FeedbackProvider>);
+    const button = screen.getByRole('button', { name: trigger });
+    button.focus();
+    fireEvent.click(button);
+    expect(screen.getByRole('dialog', { name: 'Escolha seu avatar' })).toBeInTheDocument();
+    fireEvent.keyDown(document, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(document.activeElement).toBe(button);
+  });
+
   it('loads uploaded avatars through the API CORS boundary', () => {
     const html = renderToString(<UserAvatar user={{ name: 'Ana', avatar: { type: 'upload', presetId: null, url: '/media/avatars/user/file.webp' } }} />);
     expect(html).toContain('crossorigin="anonymous"');

@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { IconCamera, IconPhoto, IconPencil, IconTrash, IconUpload, IconUsersGroup, IconX } from '@tabler/icons-react';
 import { api, API_URL, Team, TeamDetail } from './api';
 import { useFeedback } from './feedback';
+import { useDialogFocus } from './dialog-focus';
 
 const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -47,8 +48,6 @@ export function TeamImagePicker({ onSelected }: { onSelected: (file: File | unde
 export function TeamImageManager({ team, onUpdated, onClose }: { team: TeamDetail; onUpdated: (team: TeamDetail) => void; onClose: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const dialogRef = useRef<HTMLElement>(null);
-  const previousFocus = useRef<HTMLElement | null>(null);
-  const onCloseRef = useRef(onClose);
   const titleId = useId();
   const descriptionId = useId();
   const [file, setFile] = useState<File>();
@@ -56,25 +55,7 @@ export function TeamImageManager({ team, onUpdated, onClose }: { team: TeamDetai
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const { confirm, toast } = useFeedback();
-  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
-  useEffect(() => {
-    previousFocus.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    const frame = window.requestAnimationFrame(() => dialogRef.current?.querySelector<HTMLElement>('[data-dialog-initial-focus]')?.focus());
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') { event.preventDefault(); onCloseRef.current(); return; }
-      if (event.key !== 'Tab' || !dialogRef.current) return;
-      const focusable = [...dialogRef.current.querySelectorAll<HTMLElement>('button, input, textarea, select, [href], [tabindex]:not([tabindex="-1"])')]
-        .filter((element) => !element.hasAttribute('disabled') && element.getAttribute('aria-hidden') !== 'true');
-      if (!focusable.length) return;
-      const first = focusable[0]; const last = focusable[focusable.length - 1];
-      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last.focus(); }
-      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
-    };
-    document.addEventListener('keydown', handleKeyDown);
-    const originalOverflow = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { window.cancelAnimationFrame(frame); document.removeEventListener('keydown', handleKeyDown); document.body.style.overflow = originalOverflow; previousFocus.current?.focus(); };
-  }, []);
+  useDialogFocus(onClose, dialogRef);
   useEffect(() => () => { if (preview) URL.revokeObjectURL(preview); }, [preview]);
   function select(event: ChangeEvent<HTMLInputElement>) {
     const next = event.target.files?.[0]; event.target.value = ''; if (!next) return;

@@ -1,8 +1,10 @@
-import { ChangeEvent, useEffect, useRef, useState } from 'react';
+import { ChangeEvent, useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Cropper, { Area } from 'react-easy-crop';
 import { IconCamera, IconPhoto, IconTrash, IconUpload, IconX } from '@tabler/icons-react';
 import { api, API_URL, Avatar, User } from './api';
 import { useFeedback } from './feedback';
+import { useDialogFocus } from './dialog-focus';
 
 export const AVATAR_PRESETS = [
   { id: 'avatar-01', label: 'Samurai', imageSrc: '/avatars/presets/avatar-preset-01-samurai.png' },
@@ -34,8 +36,8 @@ export function UserAvatar({ user, size = 'md', decorative = false, className = 
 }
 
 function AvatarDialog({ onClose, children, title }: { onClose: () => void; children: React.ReactNode; title: string }) {
-  useEffect(() => { const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') onClose(); }; document.addEventListener('keydown', onKey); return () => document.removeEventListener('keydown', onKey); }, [onClose]);
-  return <div className="avatar-dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><div className="avatar-dialog" role="dialog" aria-modal="true" aria-labelledby="avatar-dialog-title"><div className="avatar-dialog-header"><h2 id="avatar-dialog-title">{title}</h2><button className="icon-button" type="button" aria-label="Fechar" onClick={onClose}><IconX size={19} aria-hidden="true" /></button></div>{children}</div></div>;
+  const dialogRef = useRef<HTMLElement>(null); const titleId = useId(); useDialogFocus(onClose, dialogRef);
+  return createPortal(<div className="avatar-dialog-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><section className="panel avatar-dialog" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId}><div className="avatar-dialog-header"><h2 id={titleId}>{title}</h2><button className="avatar-dialog-close" type="button" aria-label="Fechar" title="Fechar" data-dialog-initial-focus onClick={onClose}><IconX size={19} aria-hidden="true" /></button></div>{children}</section></div>, document.body);
 }
 
 export function AvatarManager({ user, onUpdated }: { user: User; onUpdated: (user: User) => void }) {
