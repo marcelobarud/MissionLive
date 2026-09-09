@@ -10,6 +10,7 @@ export class CreateGoalDto {
   @IsDateString() startDate!: string;
   @IsOptional() @IsDateString() endDate?: string;
   @IsOptional() @IsUUID() teamId?: string;
+  @IsOptional() @IsIn(['NONE', 'DAILY']) recurrenceType?: string;
 }
 export class UpdateGoalDto extends CreateGoalDto {}
 export class CreateStepDto {

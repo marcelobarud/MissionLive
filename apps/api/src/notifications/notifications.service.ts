@@ -12,6 +12,7 @@ export type InternalNotificationInput = {
   goalId?: string | null;
   teamId?: string | null;
   reminderId?: string | null;
+  deliveryKey?: string | null;
 };
 
 @Injectable()

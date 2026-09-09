@@ -412,6 +412,14 @@ Conclusão automática:
 ### Meta sem steps
 Como não existe checklist para derivar conclusão, a meta pode ser concluída manualmente por usuário autorizado conforme política implementada, preservando o owner como autoridade final.
 
+### Metas diárias
+`Goal.recurrenceType` é um eixo independente do contexto individual, compartilhado ou de equipe e aceita `NONE` (padrão das metas existentes) ou `DAILY`. Metas diárias persistem o timezone IANA do criador em `recurrenceTimezone`, que não muda quando o perfil é alterado.
+
+Uma meta diária permanece com `Goal.status = active`. Cada data local válida possui uma `GoalDailyOccurrence` lazy, única por meta e data, e seus registros de `GoalDailyStepProgress` preservam o progresso individual daquele ciclo. Nenhum progresso anterior é resetado ou sobrescrito. A API deriva o progresso e `completedToday` da ocorrência atual; a conclusão automática e o owner override atuam somente nessa ocorrência. Datas futuras não são pré-criadas e a ocorrência atual usa a fronteira do timezone persistido.
+
+### Reminders recorrentes
+Reminders de metas normais continuam como `ONCE`. Metas diárias também aceitam `DAILY`, com `timeOfDay` no timezone fixado da meta. Após cada disparo, o reminder permanece `pending` e avança para a próxima data válida; ao final da janela ou quando o target deixa de participar, é desativado. Cada entrega usa uma `Notification.deliveryKey` única (`reminderId` para one-shot ou `reminderId:data-local` para daily), preservando idempotência sem impedir avisos diários distintos. Cada ocorrência continua gerando Aviso interno e tentativa de Web Push para o target.
+
 ## 15. Compartilhamento direto de metas
 
 Somente para metas sem `team_id`.
@@ -671,7 +679,7 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - convites de metas/equipes com token hash, expiração de 24 horas, aceite explícito, revogação e limite de três convidados em meta compartilhada;
 - equipes, memberships, roles e autorização no backend;
 - dashboard V2 escopado (progresso ativo, prazos, quase concluídas e distribuição por contexto/categoria) e endpoint de plano/entitlement de desenvolvimento;
-- reminders com timezone, datas futuras, cancelamento e migration própria; cada reminder distingue `creatorUserId` de `targetUserId` e pode apontar opcionalmente para um `GoalStep`; owner/admin/editor podem criar para participantes válidos, viewer somente para si, a aplicabilidade de `ALL_PARTICIPANTS`/`SPECIFIC_PARTICIPANT` é validada no backend, e a entrega interna/Web Push ocorre para o target; a área de lembretes lista somente itens `pending` ainda futuros, enquanto reminders vencidos permanecem no banco, são processados pelo backend em intervalo de aproximadamente um minuto e geram um único Aviso interno não lido com deep link para a meta; se o GoalStep for removido, a constraint `SetNull` preserva o reminder como lembrete geral da meta.
+- reminders com timezone, datas futuras, cancelamento e migration própria; cada reminder distingue `creatorUserId` de `targetUserId` e pode apontar opcionalmente para um `GoalStep`; owner/admin/editor podem criar para participantes válidos, viewer somente para si, a aplicabilidade de `ALL_PARTICIPANTS`/`SPECIFIC_PARTICIPANT` é validada no backend, e a entrega interna/Web Push ocorre para o target; reminders `ONCE` continuam sendo processados uma única vez, enquanto reminders `DAILY` de metas diárias permanecem pending, avançam para o próximo horário local válido e geram um Aviso interno e tentativa de Web Push por data; a idempotência usa `Notification.deliveryKey`, e se o GoalStep for removido, a constraint `SetNull` preserva o reminder como lembrete geral da meta.
 - subscriptions Web Push são vinculadas ao usuário por dispositivo/browser, com VAPID configurável por ambiente, invalidação de endpoints expirados e Service Worker web com navegação limitada a metas internas;
 - feed de atividade persistido, escopado por metas/equipes acessíveis, com eventos de domínio para metas, steps, equipes, convites, comentários e reações; `GET /activity` aceita paginação limitada por `limit`/`offset`, com o Dashboard consumindo 10 itens e o histórico completo em `/activities`;
 - comentários textuais por meta e reações limitadas a 👏, ❤️, 🎉 e 💪, com autorização de membership, moderação contextual, limite de tamanho, rate limit e sem HTML arbitrário;

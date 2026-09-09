@@ -38,7 +38,7 @@ describe('RemindersService delivery', () => {
 
     await service.processDue(now);
 
-    expect(notifications.createInternal).toHaveBeenCalledWith({ userId: 'user-a', type: 'reminder_due', title: 'Lembrete da meta', body: 'Correr 10 km\nVocê tem um lembrete desta meta.', goalId: 'goal-a', reminderId: 'reminder-1' }, tx);
+    expect(notifications.createInternal).toHaveBeenCalledWith({ userId: 'user-a', type: 'reminder_due', title: 'Lembrete da meta', body: 'Correr 10 km\nVocê tem um lembrete desta meta.', goalId: 'goal-a', reminderId: 'reminder-1', deliveryKey: 'reminder-1' }, tx);
     expect(tx.reminder.update).toHaveBeenCalledWith({ where: { id: 'reminder-1' }, data: { status: 'processed', deliveredAt: now } });
     expect(push.sendToUser).toHaveBeenCalledWith('user-a', { title: 'MissionLive', body: 'Correr 10 km Você tem um lembrete desta meta.', url: '/goals/goal-a', tag: 'missionlive-reminder-reminder-1' });
   });

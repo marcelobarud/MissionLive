@@ -65,7 +65,7 @@ describe('RemindersService target policy', () => {
 
     await service.processDue(now);
 
-    expect(notifications.createInternal).toHaveBeenCalledWith({ userId: 'member', type: 'reminder_due', title: 'Lembrete de tarefa', body: 'Correr 5 KM\nMeta: Preparação', goalId: 'goal-a', reminderId: 'reminder-1' }, tx);
+    expect(notifications.createInternal).toHaveBeenCalledWith({ userId: 'member', type: 'reminder_due', title: 'Lembrete de tarefa', body: 'Correr 5 KM\nMeta: Preparação', goalId: 'goal-a', reminderId: 'reminder-1', deliveryKey: 'reminder-1' }, tx);
     expect(push.sendToUser).toHaveBeenCalledWith('member', expect.objectContaining({ title: 'MissionLive', body: 'Correr 5 KM Meta: Preparação' }));
     expect(push.sendToUser).not.toHaveBeenCalledWith('owner', expect.anything());
 

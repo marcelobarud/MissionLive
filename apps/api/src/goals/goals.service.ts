@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateGoalDto, CreateStepDto, ListGoalsQueryDto, OverrideGoalDto, ProgressDto, ReorderStepsDto, UpdateGoalDto, UpdateMemberRoleDto, UpdateStepDto } from './goals.dto';
 import { ActivityService } from '../activity/activity.service';
 import { publicAvatar, publicIdentity } from '../auth/user.serializer';
+import { isValidTimezone, localDateAt, storedDateKey } from '../common/timezone';
 
 const EDITABLE_ROLES = new Set(['admin', 'editor']);
 const MANAGE_ROLES = new Set(['admin']);
@@ -11,7 +12,7 @@ const MEMBER_ROLES = new Set(['admin', 'editor', 'viewer']);
 export const STEP_ASSIGNMENT_MODES = ['ALL_PARTICIPANTS', 'SPECIFIC_PARTICIPANT'] as const;
 export type StepAssignmentMode = (typeof STEP_ASSIGNMENT_MODES)[number];
 
-type ProgressRecord = { userId: string; completed: boolean; completedAt?: Date | null };
+type ProgressRecord = { userId: string; goalStepId?: string; completed: boolean; completedAt?: Date | null };
 type ParticipantSource = {
   ownerUserId: string;
   members?: Array<{ userId: string }>;
@@ -20,6 +21,7 @@ type ParticipantSource = {
 type ParticipantUser = { id: string; name: string; avatarUrl: string | null; avatarType?: string | null; avatarPresetId?: string | null; avatarFileKey?: string | null };
 type ParticipantMember = { userId: string; role: string; user: ParticipantUser };
 type GoalStepRecord = { id: string; title: string; description?: string | null; position: number; assignmentMode?: string | null; assigneeUserId?: string | null; assigneeName?: string | null; assigneeUser?: ParticipantUser | null; progresses?: ProgressRecord[] };
+type DailyOccurrenceRecord = { id: string; localDate: string; completedAt?: Date | null; completionMode?: string | null; completedByUserId?: string | null; completionOverrideReason?: string | null; stepProgresses: ProgressRecord[] };
 type ParticipantProgressGoal = ParticipantSource & {
   owner?: ParticipantUser | null;
   members: ParticipantMember[];
@@ -33,6 +35,47 @@ export class GoalsService {
   constructor(private readonly prisma: PrismaService, @Optional() private readonly activity?: ActivityService) {}
 
   private async record(actorUserId: string, eventType: string, resource: { goalId?: string; teamId?: string; targetUserId?: string }, metadata?: Record<string, string | number | boolean>) { await this.activity?.record(actorUserId, eventType, resource, metadata); }
+
+  private isDaily(goal: { recurrenceType?: string | null }) { return goal.recurrenceType === 'DAILY'; }
+
+  private dailyTimezone(goal: { recurrenceTimezone?: string | null }) {
+    const timezone = goal.recurrenceTimezone?.trim();
+    if (!timezone || !isValidTimezone(timezone)) throw new BadRequestException('Daily goals require a valid IANA timezone.');
+    return timezone;
+  }
+
+  private dailyDateIsValid(goal: { startDate: Date; endDate?: Date | null }, localDate: string) {
+    const startDate = storedDateKey(goal.startDate);
+    const endDate = goal.endDate ? storedDateKey(goal.endDate) : undefined;
+    return localDate >= startDate && (!endDate || localDate <= endDate);
+  }
+
+  private async currentDailyOccurrences(goals: Array<{ id: string; recurrenceType?: string | null; recurrenceTimezone?: string | null }>) {
+    const targets = goals.filter((goal) => this.isDaily(goal)).map((goal) => ({ goalId: goal.id, localDate: localDateAt(new Date(), this.dailyTimezone(goal)) }));
+    const occurrences = new Map<string, DailyOccurrenceRecord>();
+    if (!targets.length) return occurrences;
+    const rows = await this.prisma.goalDailyOccurrence.findMany({ where: { OR: targets }, include: { stepProgresses: true } });
+    for (const row of rows) occurrences.set(row.goalId, row as DailyOccurrenceRecord);
+    return occurrences;
+  }
+
+  private dailyGoalWithProgress<T extends { recurrenceType?: string | null; steps: GoalStepRecord[] }>(goal: T, occurrence?: DailyOccurrenceRecord) {
+    if (!this.isDaily(goal)) return goal;
+    const progressByStep = new Map((occurrence?.stepProgresses ?? []).map((progress) => [progress.goalStepId, progress]));
+    return { ...goal, steps: goal.steps.map((step) => ({ ...step, progresses: progressByStep.has(step.id) ? [progressByStep.get(step.id)!] : [] })) };
+  }
+
+  private async recalculateDailyOccurrence(goalId: string, localDate: string, client: PrismaService | Prisma.TransactionClient = this.prisma) {
+    const goal = await client.goal.findUnique({ where: { id: goalId }, include: { members: true, team: { include: { members: true } }, steps: { orderBy: { position: 'asc' }, select: { id: true, assignmentMode: true, assigneeUserId: true } }, dailyOccurrences: { where: { localDate }, include: { stepProgresses: true } } } });
+    if (!goal || goal.recurrenceType !== 'DAILY' || goal.status !== 'active') return;
+    const participantIds = this.participantIds(goal);
+    if (goal.steps.some((step) => this.stepHasUnavailableAssignee(step as GoalStepRecord, participantIds))) return;
+    const occurrence = goal.dailyOccurrences[0] ?? await client.goalDailyOccurrence.upsert({ where: { goalId_localDate: { goalId, localDate } }, create: { goalId, localDate }, update: {} });
+    const stepProgresses = 'stepProgresses' in occurrence ? occurrence.stepProgresses : [];
+    const complete = goal.steps.length > 0 && [...participantIds].every((userId) => goal.steps.filter((step) => this.stepAppliesTo(step, userId, participantIds)).every((step) => stepProgresses.some((progress) => progress.goalStepId === step.id && progress.userId === userId && progress.completed)));
+    if (complete && !occurrence.completedAt) await client.goalDailyOccurrence.update({ where: { id: occurrence.id }, data: { completedAt: new Date(), completionMode: 'automatic', completedByUserId: goal.ownerUserId, completionOverrideReason: null } });
+    if (!complete && occurrence.completedAt) await client.goalDailyOccurrence.update({ where: { id: occurrence.id }, data: { completedAt: null, completionMode: null, completedByUserId: null, completionOverrideReason: null } });
+  }
 
   private accessWhere(userId: string, goalId?: string) {
     return { ...(goalId ? { id: goalId } : {}), OR: [{ ownerUserId: userId }, { members: { some: { userId } } }, { team: { ownerUserId: userId } }, { team: { members: { some: { userId } } } }] };
@@ -178,9 +221,10 @@ export class GoalsService {
     };
   }
 
-  private serialize<T extends ParticipantSource & { tagsJson: string; steps: Array<{ progresses?: ProgressRecord[] }> }>(goal: T, viewerUserId?: string) {
-    const participantIds = this.participantIds(goal);
-    const steps = goal.steps.map((step) => this.serializeStep(step as GoalStepRecord, participantIds, viewerUserId));
+  private serialize<T extends ParticipantSource & { tagsJson: string; steps: Array<{ progresses?: ProgressRecord[] }>; recurrenceType?: string | null }>(goal: T, viewerUserId?: string, dailyOccurrence?: DailyOccurrenceRecord) {
+    const hydratedGoal = this.dailyGoalWithProgress(goal as T & { steps: GoalStepRecord[] }, dailyOccurrence);
+    const participantIds = this.participantIds(hydratedGoal);
+    const steps = hydratedGoal.steps.map((step) => this.serializeStep(step as GoalStepRecord, participantIds, viewerUserId));
     const participantCount = participantIds.size;
     const applicableSteps = viewerUserId ? steps.filter((step) => this.stepAppliesTo(step, viewerUserId, participantIds)) : steps;
     const completedSteps = viewerUserId ? applicableSteps.filter((step) => step.progresses.some((progress) => progress.userId === viewerUserId && progress.completed)).length : steps.filter((step) => step.progresses.some((progress) => progress.completed)).length;
@@ -188,8 +232,8 @@ export class GoalsService {
     const completedParticipants = participantCount && steps.length && !unavailableSteps
       ? [...participantIds].filter((userId) => steps.filter((step) => this.stepAppliesTo(step, userId, participantIds)).every((step) => step.progresses.some((progress) => progress.userId === userId && progress.completed))).length
       : 0;
-    const { tagsJson, ...rest } = goal;
-    return sanitizeUserRelations({ ...rest, steps, tags: JSON.parse(tagsJson || '[]') as string[], progressSummary: { completedSteps, totalSteps: viewerUserId ? applicableSteps.length : steps.length, participantCount, completedParticipants, unavailableSteps }, participantsProgress: undefined });
+    const { tagsJson, ...rest } = hydratedGoal;
+    return sanitizeUserRelations({ ...rest, steps, tags: JSON.parse(tagsJson || '[]') as string[], progressSummary: { completedSteps, totalSteps: viewerUserId ? applicableSteps.length : steps.length, participantCount, completedParticipants, unavailableSteps }, participantsProgress: undefined, ...(this.isDaily(hydratedGoal) ? { completedToday: Boolean(dailyOccurrence?.completedAt), occurrenceLocalDate: dailyOccurrence?.localDate ?? null, completionMode: dailyOccurrence?.completionMode ?? null, completionOverrideReason: dailyOccurrence?.completionOverrideReason ?? null } : {}) });
   }
 
   private async role(userId: string, goalId: string) {
@@ -217,7 +261,8 @@ export class GoalsService {
     if (query.context === 'shared') filters.push({ teamId: null, members: { some: {} } });
     if (query.context === 'team') filters.push({ teamId: { not: null } });
     const goals = await this.prisma.goal.findMany({ where: { AND: [this.accessWhere(userId), ...filters] }, include: { category: true, team: { include: { members: true } }, members: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } } } }, steps: { orderBy: { position: 'asc' }, include: { progresses: { where: { userId } }, assigneeUser: { select: { id: true, name: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } } } } }, orderBy: query.sort === 'name' ? { name: 'asc' } : query.sort === 'deadline' ? { endDate: 'asc' } : { updatedAt: 'desc' } });
-    const serialized = goals.map((goal) => this.serialize(goal, userId));
+    const dailyOccurrences = await this.currentDailyOccurrences(goals);
+    const serialized = goals.map((goal) => this.serialize(goal, userId, dailyOccurrences.get(goal.id)));
     if (query.sort === 'progress-desc' || query.sort === 'progress-asc') serialized.sort((a, b) => { const aValue = a.progressSummary?.totalSteps ? Math.round(a.progressSummary.completedSteps / a.progressSummary.totalSteps * 100) : 0; const bValue = b.progressSummary?.totalSteps ? Math.round(b.progressSummary.completedSteps / b.progressSummary.totalSteps * 100) : 0; return query.sort === 'progress-desc' ? bValue - aValue : aValue - bValue; });
     return serialized;
   }
@@ -227,23 +272,33 @@ export class GoalsService {
     if (!goal) throw new NotFoundException('Goal not found.');
     const detailParticipants = goal.team || goal.members.length > 0;
     const steps = goal.steps.map((step) => ({ ...step, progresses: detailParticipants ? step.progresses : step.progresses.filter((progress) => progress.userId === userId) }));
-    const serialized = this.serialize({ ...goal, steps }, userId);
-    return detailParticipants ? { ...serialized, participantsProgress: this.participantProgress({ ...goal, steps }) } : serialized;
+    const dailyOccurrence = this.isDaily(goal) ? (await this.currentDailyOccurrences([goal])).get(goal.id) : undefined;
+    const displayGoal = this.dailyGoalWithProgress({ ...goal, steps }, dailyOccurrence);
+    const serialized = this.serialize(displayGoal, userId, dailyOccurrence);
+    return detailParticipants ? { ...serialized, participantsProgress: this.participantProgress(displayGoal) } : serialized;
   }
 
   async create(userId: string, dto: CreateGoalDto) {
     const { startDate, endDate } = this.dates(dto); const category = this.category(dto);
+    const recurrenceType = dto.recurrenceType ?? 'NONE';
+    let recurrenceTimezone: string | undefined;
+    if (recurrenceType === 'DAILY') {
+      const creator = await this.prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } });
+      recurrenceTimezone = creator?.timezone?.trim();
+      if (!recurrenceTimezone || !isValidTimezone(recurrenceTimezone)) throw new BadRequestException('Daily goals require a valid IANA timezone.');
+    }
     if (dto.teamId) {
       const team = await this.prisma.team.findFirst({ where: { id: dto.teamId, OR: [{ ownerUserId: userId }, { members: { some: { userId, role: { in: ['admin', 'editor'] } } } }] } });
       if (!team) throw new ForbiddenException('You cannot create goals in this team.');
     }
-    const goal = await this.prisma.goal.create({ data: { ownerUserId: userId, teamId: dto.teamId, name: dto.name.trim(), description: dto.description?.trim() || undefined, ...category, tagsJson: this.parseTags(dto.tags), startDate, endDate } });
+    const goal = await this.prisma.goal.create({ data: { ownerUserId: userId, teamId: dto.teamId, name: dto.name.trim(), description: dto.description?.trim() || undefined, ...category, tagsJson: this.parseTags(dto.tags), startDate, endDate, recurrenceType, recurrenceTimezone } });
     await this.record(userId, 'goal_created', { goalId: goal.id, teamId: goal.teamId ?? undefined });
     return this.get(userId, goal.id);
   }
 
   async update(userId: string, goalId: string, dto: UpdateGoalDto) {
     const access = await this.role(userId, goalId); if (access.role !== 'owner' && !EDITABLE_ROLES.has(access.role)) throw new ForbiddenException('You cannot edit this goal.');
+    if (dto.recurrenceType !== undefined && dto.recurrenceType !== (access.goal.recurrenceType ?? 'NONE')) throw new BadRequestException('A goal recurrence type cannot be changed after creation.');
     if (access.goal.teamId !== dto.teamId && dto.teamId !== undefined) throw new BadRequestException('A goal cannot change team context.');
     const { startDate, endDate } = this.dates(dto); const category = this.category(dto);
     await this.prisma.goal.update({ where: { id: goalId }, data: { name: dto.name.trim(), description: dto.description?.trim() || null, ...category, tagsJson: this.parseTags(dto.tags), startDate, endDate } });
@@ -259,10 +314,51 @@ export class GoalsService {
   async updateStep(userId: string, goalId: string, stepId: string, dto: UpdateStepDto) { const access = await this.role(userId, goalId); if (access.role !== 'owner' && !EDITABLE_ROLES.has(access.role)) throw new ForbiddenException('You cannot edit steps.'); const step = await this.prisma.goalStep.findFirst({ where: { id: stepId, goalId } }); if (!step) throw new NotFoundException('Step not found.'); const assignment = await this.assignmentData(userId, access.goal, dto, step as GoalStepRecord); await this.prisma.goalStep.update({ where: { id: stepId }, data: { title: dto.title.trim(), description: dto.description?.trim() || null, ...assignment } }); await this.recalculate(goalId); await this.record(userId, 'step_updated', { goalId }); return this.get(userId, goalId); }
   async removeStep(userId: string, goalId: string, stepId: string) { const access = await this.role(userId, goalId); if (access.role !== 'owner' && !EDITABLE_ROLES.has(access.role)) throw new ForbiddenException('You cannot edit steps.'); const step = await this.prisma.goalStep.findFirst({ where: { id: stepId, goalId } }); if (!step) throw new NotFoundException('Step not found.'); await this.prisma.$transaction(async (tx) => { await tx.goalStep.delete({ where: { id: stepId } }); const rest = await tx.goalStep.findMany({ where: { goalId }, orderBy: { position: 'asc' } }); for (const [position, item] of rest.entries()) await tx.goalStep.update({ where: { id: item.id }, data: { position: position + 100000 } }); for (const [position, item] of rest.entries()) await tx.goalStep.update({ where: { id: item.id }, data: { position } }); }); await this.recalculate(goalId); await this.record(userId, 'step_deleted', { goalId }); return this.get(userId, goalId); }
   async reorderSteps(userId: string, goalId: string, dto: ReorderStepsDto) { const access = await this.role(userId, goalId); if (access.role !== 'owner' && !EDITABLE_ROLES.has(access.role)) throw new ForbiddenException('You cannot edit steps.'); const steps = await this.prisma.goalStep.findMany({ where: { goalId }, select: { id: true } }); if (steps.length !== dto.stepIds.length || new Set(dto.stepIds).size !== steps.length || steps.some((step) => !dto.stepIds.includes(step.id))) throw new BadRequestException('stepIds must contain each goal step exactly once.'); await this.prisma.$transaction(async (tx) => { for (const [index, id] of dto.stepIds.entries()) await tx.goalStep.update({ where: { id }, data: { position: index + 100000 } }); for (const [index, id] of dto.stepIds.entries()) await tx.goalStep.update({ where: { id }, data: { position: index } }); }); await this.record(userId, 'steps_reordered', { goalId }); return this.get(userId, goalId); }
-  async setProgress(userId: string, goalId: string, stepId: string, dto: ProgressDto) { const access = await this.role(userId, goalId); const step = await this.prisma.goalStep.findFirst({ where: { id: stepId, goalId } }); if (!step) throw new NotFoundException('Step not found.'); const participantIds = this.participantIds(access.goal); if (!this.stepAppliesTo(step as GoalStepRecord, userId, participantIds)) throw new ForbiddenException('Only the responsible participant can update this step.'); await this.prisma.goalStepProgress.upsert({ where: { goalStepId_userId: { goalStepId: stepId, userId } }, update: { completed: dto.completed, completedAt: dto.completed ? new Date() : null }, create: { goalStepId: stepId, userId, completed: dto.completed, completedAt: dto.completed ? new Date() : null } }); await this.record(userId, dto.completed ? 'step_completed' : 'step_uncompleted', { goalId }, { stepId }); await this.recalculate(goalId); return this.get(userId, goalId); }
+  async setProgress(userId: string, goalId: string, stepId: string, dto: ProgressDto) {
+    const access = await this.role(userId, goalId); const step = await this.prisma.goalStep.findFirst({ where: { id: stepId, goalId } });
+    if (!step) throw new NotFoundException('Step not found.');
+    const participantIds = this.participantIds(access.goal);
+    if (!this.stepAppliesTo(step as GoalStepRecord, userId, participantIds)) throw new ForbiddenException('Only the responsible participant can update this step.');
+    if (this.isDaily(access.goal)) {
+      const timezone = this.dailyTimezone(access.goal);
+      const localDate = localDateAt(new Date(), timezone);
+      if (!this.dailyDateIsValid(access.goal, localDate)) throw new BadRequestException('This daily goal is not active on the current date.');
+      await this.prisma.$transaction(async (tx) => {
+        const occurrence = await tx.goalDailyOccurrence.upsert({ where: { goalId_localDate: { goalId, localDate } }, create: { goalId, localDate }, update: {} });
+        await tx.goalDailyStepProgress.upsert({ where: { occurrenceId_goalStepId_userId: { occurrenceId: occurrence.id, goalStepId: stepId, userId } }, update: { completed: dto.completed, completedAt: dto.completed ? new Date() : null }, create: { occurrenceId: occurrence.id, goalStepId: stepId, userId, completed: dto.completed, completedAt: dto.completed ? new Date() : null } });
+        await this.recalculateDailyOccurrence(goalId, localDate, tx);
+      });
+    } else {
+      await this.prisma.goalStepProgress.upsert({ where: { goalStepId_userId: { goalStepId: stepId, userId } }, update: { completed: dto.completed, completedAt: dto.completed ? new Date() : null }, create: { goalStepId: stepId, userId, completed: dto.completed, completedAt: dto.completed ? new Date() : null } });
+      await this.recalculate(goalId);
+    }
+    await this.record(userId, dto.completed ? 'step_completed' : 'step_uncompleted', { goalId }, { stepId });
+    return this.get(userId, goalId);
+  }
 
-  async recalculate(goalId: string) { const goal = await this.prisma.goal.findUnique({ where: { id: goalId }, include: { steps: { include: { progresses: true } }, members: true, team: { include: { members: true } } } }); if (!goal || goal.status !== 'active' || goal.steps.length === 0) return; const participants = this.participantIds(goal); if (goal.steps.some((step) => this.stepHasUnavailableAssignee(step as GoalStepRecord, participants))) return; const complete = [...participants].every((userId) => goal.steps.filter((step) => this.stepAppliesTo(step as GoalStepRecord, userId, participants)).every((step) => step.progresses.some((progress) => progress.userId === userId && progress.completed))); if (complete) await this.prisma.goal.update({ where: { id: goalId }, data: { status: 'completed', completedAt: new Date(), completionMode: 'automatic', completedByUserId: goal.ownerUserId } }); }
-  async override(userId: string, goalId: string, dto: OverrideGoalDto) { const goal = await this.prisma.goal.findFirst({ where: { id: goalId, ownerUserId: userId } }); if (!goal) throw new ForbiddenException('Only the goal owner can override completion.'); await this.prisma.$transaction([this.prisma.goal.update({ where: { id: goalId }, data: { status: 'completed', completedAt: new Date(), completionMode: 'owner_override', completedByUserId: userId, completionOverrideReason: dto.reason?.trim() || null } }), this.prisma.goalAuditEvent.create({ data: { goalId, actorUserId: userId, eventType: 'owner_override', reason: dto.reason?.trim() || null } })]); await this.record(userId, 'goal_owner_override', { goalId }, { reason: dto.reason?.trim() || '' }); return this.get(userId, goalId); }
+  async recalculate(goalId: string) {
+    const recurrence = await this.prisma.goal.findUnique({ where: { id: goalId }, select: { recurrenceType: true, recurrenceTimezone: true } });
+    if (this.isDaily(recurrence ?? {})) {
+      const localDate = localDateAt(new Date(), this.dailyTimezone(recurrence ?? {}));
+      await this.recalculateDailyOccurrence(goalId, localDate);
+      return;
+    }
+    const goal = await this.prisma.goal.findUnique({ where: { id: goalId }, include: { steps: { include: { progresses: true } }, members: true, team: { include: { members: true } } } }); if (!goal || goal.status !== 'active' || goal.steps.length === 0) return; const participants = this.participantIds(goal); if (goal.steps.some((step) => this.stepHasUnavailableAssignee(step as GoalStepRecord, participants))) return; const complete = [...participants].every((userId) => goal.steps.filter((step) => this.stepAppliesTo(step as GoalStepRecord, userId, participants)).every((step) => step.progresses.some((progress) => progress.userId === userId && progress.completed))); if (complete) await this.prisma.goal.update({ where: { id: goalId }, data: { status: 'completed', completedAt: new Date(), completionMode: 'automatic', completedByUserId: goal.ownerUserId } });
+  }
+  async override(userId: string, goalId: string, dto: OverrideGoalDto) {
+    const goal = await this.prisma.goal.findFirst({ where: { id: goalId, ownerUserId: userId } }); if (!goal) throw new ForbiddenException('Only the goal owner can override completion.');
+    if (this.isDaily(goal)) {
+      const localDate = localDateAt(new Date(), this.dailyTimezone(goal));
+      if (!this.dailyDateIsValid(goal, localDate)) throw new BadRequestException('This daily goal is not active on the current date.');
+      await this.prisma.$transaction(async (tx) => {
+        await tx.goalDailyOccurrence.upsert({ where: { goalId_localDate: { goalId, localDate } }, create: { goalId, localDate, completedAt: new Date(), completionMode: 'owner_override', completedByUserId: userId, completionOverrideReason: dto.reason?.trim() || null }, update: { completedAt: new Date(), completionMode: 'owner_override', completedByUserId: userId, completionOverrideReason: dto.reason?.trim() || null } });
+        await tx.goalAuditEvent.create({ data: { goalId, actorUserId: userId, eventType: 'owner_override', reason: dto.reason?.trim() || null } });
+      });
+    } else {
+      await this.prisma.$transaction([this.prisma.goal.update({ where: { id: goalId }, data: { status: 'completed', completedAt: new Date(), completionMode: 'owner_override', completedByUserId: userId, completionOverrideReason: dto.reason?.trim() || null } }), this.prisma.goalAuditEvent.create({ data: { goalId, actorUserId: userId, eventType: 'owner_override', reason: dto.reason?.trim() || null } })]);
+    }
+    await this.record(userId, 'goal_owner_override', { goalId }, { reason: dto.reason?.trim() || '' }); return this.get(userId, goalId);
+  }
   async getRole(userId: string, goalId: string) { const access = await this.role(userId, goalId); return access.role; }
   async rhythm(userId: string, goalId: string) {
     const goal = await this.get(userId, goalId); const now = Date.now(); const start = new Date(goal.startDate).valueOf(); const end = goal.endDate ? new Date(goal.endDate).valueOf() : 0;

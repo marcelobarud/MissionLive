@@ -53,6 +53,17 @@ describe('MissionLive shell', () => {
     view.unmount();
   });
 
+  it('exibe reminder diário como recorrência e mantém a tarefa direcionada', async () => {
+    const user: User = { id: 'user-a', name: 'Ana', email: 'ana@example.com', timezone: 'America/Sao_Paulo' };
+    const goal = { id: 'goal-daily', ownerUserId: user.id, name: 'Correr', status: 'active', recurrenceType: 'DAILY', steps: [] } as unknown as Goal;
+    vi.spyOn(api, 'reminders').mockResolvedValue([{ id: 'reminder-daily', creatorUserId: user.id, targetUserId: user.id, goalId: goal.id, remindAt: '2026-09-10T10:00:00.000Z', timezone: 'America/Sao_Paulo', recurrenceType: 'DAILY', timeOfDay: '07:00', status: 'pending', goalStep: { id: 'step-1', title: 'Correr 5 KM' }, target: { id: user.id, name: user.name } }]);
+    const view = render(<MemoryRouter><ReminderPanel goal={goal} user={user} /></MemoryRouter>);
+
+    await waitFor(() => expect(view.getByText('07:00 · Todos os dias')).toBeTruthy());
+    expect(view.getByText('Correr 5 KM')).toBeTruthy();
+    view.unmount();
+  });
+
   it('usa a mesma variante secundária de Sessões para a ação de notificações', async () => {
     vi.spyOn(push, 'getDevicePushState').mockResolvedValue({ supported: true, permission: 'granted', subscribed: true, serverEnabled: true });
     const view = render(<DeviceNotificationsSection />);
