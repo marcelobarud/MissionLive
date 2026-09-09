@@ -1,8 +1,10 @@
 import { RemindersService } from '../src/reminders/reminders.service';
 
-function reminderRecord(overrides: Partial<{ id: string; userId: string; goalId: string; name: string; status: string }> = {}) {
-  return { id: overrides.id ?? 'reminder-1', userId: overrides.userId ?? 'user-a', goalId: overrides.goalId ?? 'goal-a', name: overrides.name ?? 'Correr 10 km', status: overrides.status ?? 'pending' };
+function reminderRecord(overrides: Partial<{ id: string; creatorUserId: string; targetUserId: string; goalId: string; status: string }> = {}) {
+  return { id: overrides.id ?? 'reminder-1', creatorUserId: overrides.creatorUserId ?? 'user-a', targetUserId: overrides.targetUserId ?? 'user-a', goalId: overrides.goalId ?? 'goal-a', status: overrides.status ?? 'pending' };
 }
+
+function goalRecord() { return { id: 'goal-a', name: 'Correr 10 km', ownerUserId: 'user-a', teamId: null, members: [], team: null }; }
 
 function setup() {
   const tx = { reminder: { updateMany: jest.fn(), findUnique: jest.fn(), update: jest.fn() } };
@@ -30,15 +32,15 @@ describe('RemindersService delivery', () => {
     const now = new Date('2026-09-08T12:00:00.000Z');
     prisma.reminder.findMany.mockResolvedValue([{ id: 'reminder-1' }]);
     tx.reminder.updateMany.mockResolvedValue({ count: 1 });
-    tx.reminder.findUnique.mockResolvedValue({ ...reminderRecord(), goal: { id: 'goal-a', name: 'Correr 10 km' } });
+    tx.reminder.findUnique.mockResolvedValue({ ...reminderRecord(), goal: goalRecord(), goalStep: null });
     notifications.createInternal.mockResolvedValue({ id: 'notification-1' });
     tx.reminder.update.mockResolvedValue({});
 
     await service.processDue(now);
 
-    expect(notifications.createInternal).toHaveBeenCalledWith({ userId: 'user-a', type: 'reminder_due', title: 'Lembrete da meta', body: 'Correr 10 km\nVocê definiu um lembrete para esta meta.', goalId: 'goal-a', reminderId: 'reminder-1' }, tx);
+    expect(notifications.createInternal).toHaveBeenCalledWith({ userId: 'user-a', type: 'reminder_due', title: 'Lembrete da meta', body: 'Correr 10 km\nVocê tem um lembrete desta meta.', goalId: 'goal-a', reminderId: 'reminder-1' }, tx);
     expect(tx.reminder.update).toHaveBeenCalledWith({ where: { id: 'reminder-1' }, data: { status: 'processed', deliveredAt: now } });
-    expect(push.sendToUser).toHaveBeenCalledWith('user-a', { title: 'MissionLive · Lembrete da meta', body: 'Correr 10 km Você definiu um lembrete para esta meta.', url: '/goals/goal-a', tag: 'missionlive-reminder-reminder-1' });
+    expect(push.sendToUser).toHaveBeenCalledWith('user-a', { title: 'MissionLive', body: 'Correr 10 km Você tem um lembrete desta meta.', url: '/goals/goal-a', tag: 'missionlive-reminder-reminder-1' });
   });
 
   it('não duplica quando outra execução já obteve a posse do reminder', async () => {
@@ -56,7 +58,7 @@ describe('RemindersService delivery', () => {
     const { service, prisma, tx, notifications, push } = setup();
     prisma.reminder.findMany.mockResolvedValue([{ id: 'reminder-1' }]);
     tx.reminder.updateMany.mockResolvedValue({ count: 1 });
-    tx.reminder.findUnique.mockResolvedValue({ ...reminderRecord(), goal: { id: 'goal-a', name: 'Correr 10 km' } });
+    tx.reminder.findUnique.mockResolvedValue({ ...reminderRecord(), goal: goalRecord(), goalStep: null });
     notifications.createInternal.mockResolvedValue({ id: 'notification-1' });
     tx.reminder.update.mockResolvedValue({});
     push.sendToUser.mockRejectedValue(new Error('push indisponível'));

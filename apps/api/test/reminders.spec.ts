@@ -1,8 +1,8 @@
 import { RemindersService } from '../src/reminders/reminders.service';
 
 function setup() {
-  const prisma = { reminder: { findMany: jest.fn(), create: jest.fn() } };
-  const goals = { get: jest.fn() };
+  const prisma = { reminder: { findMany: jest.fn(), create: jest.fn() }, goal: { findUnique: jest.fn() } };
+  const goals = { get: jest.fn(), getRole: jest.fn() };
   const notifications = { createInternal: jest.fn() };
   const push = { sendToUser: jest.fn() };
   const service = new RemindersService(prisma as never, goals as never, notifications as never, push as never);
@@ -19,9 +19,7 @@ describe('RemindersService', () => {
 
     await service.list('user-a');
 
-    expect(prisma.reminder.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { userId: 'user-a', status: 'pending', remindAt: { gt: new Date('2026-09-09T12:00:00.000Z') } },
-    }));
+    expect(prisma.reminder.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { OR: [{ creatorUserId: 'user-a' }, { targetUserId: 'user-a' }], status: 'pending', remindAt: { gt: new Date('2026-09-09T12:00:00.000Z') } } }));
   });
 
   it.each([
@@ -30,6 +28,8 @@ describe('RemindersService', () => {
   ])('rejeita horário passado ou atual (%s)', async (remindAt) => {
     const { service, goals, prisma } = setup();
     goals.get.mockResolvedValue({ status: 'active' });
+    goals.getRole.mockResolvedValue('owner');
+    prisma.goal.findUnique.mockResolvedValue({ id: 'goal-a', name: 'Meta', status: 'active', ownerUserId: 'user-a', teamId: null, members: [], team: null, steps: [] });
 
     await expect(service.create('user-a', { goalId: 'goal-a', remindAt, timezone: 'America/Sao_Paulo' })).rejects.toThrow('Reminder must be scheduled in the future.');
     expect(prisma.reminder.create).not.toHaveBeenCalled();
@@ -38,12 +38,14 @@ describe('RemindersService', () => {
   it('aceita horário futuro e preserva o fuso informado', async () => {
     const { service, goals, prisma } = setup();
     goals.get.mockResolvedValue({ status: 'active' });
+    goals.getRole.mockResolvedValue('owner');
+    prisma.goal.findUnique.mockResolvedValue({ id: 'goal-a', name: 'Meta', status: 'active', ownerUserId: 'user-a', teamId: null, members: [], team: null, steps: [] });
     prisma.reminder.create.mockResolvedValue({ id: 'reminder-1' });
 
     await service.create('user-a', { goalId: 'goal-a', remindAt: '2026-09-09T12:01:00.000Z', timezone: 'America/Sao_Paulo' });
 
     expect(prisma.reminder.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ userId: 'user-a', goalId: 'goal-a', timezone: 'America/Sao_Paulo', status: 'pending', remindAt: new Date('2026-09-09T12:01:00.000Z') }),
+      data: expect.objectContaining({ creatorUserId: 'user-a', targetUserId: 'user-a', goalId: 'goal-a', timezone: 'America/Sao_Paulo', status: 'pending', remindAt: new Date('2026-09-09T12:01:00.000Z') }),
     }));
   });
 });

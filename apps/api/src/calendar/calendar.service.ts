@@ -9,7 +9,7 @@ export class CalendarService {
     const start = from ? new Date(from) : new Date(); const end = to ? new Date(to) : new Date(start.valueOf() + 31 * 86_400_000);
     if (Number.isNaN(start.valueOf()) || Number.isNaN(end.valueOf()) || end < start) throw new BadRequestException('Invalid calendar range.');
     const goals = await this.goals.list(userId, { from: start.toISOString(), to: end.toISOString(), sort: 'deadline' });
-    const reminders = await this.prisma.reminder.findMany({ where: { userId, status: { not: 'cancelled' }, remindAt: { gte: start, lte: end } }, include: { goal: { select: { id: true, name: true } } }, orderBy: { remindAt: 'asc' } });
+    const reminders = await this.prisma.reminder.findMany({ where: { targetUserId: userId, status: 'pending', remindAt: { gte: start, lte: end } }, include: { goal: { select: { id: true, name: true } } }, orderBy: { remindAt: 'asc' } });
     return { from: start.toISOString(), to: end.toISOString(), goals, reminders };
   }
 }

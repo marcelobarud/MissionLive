@@ -3,7 +3,7 @@ import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import { formatReminderDateTime, goalStepPreview, homeGoalStepsSummary, isReminderTimeInFuture, MissionLiveWelcome, nextReminderMinimum, NotificationsPage, ParticipantProgressSection, ReminderPanel, Sidebar, toDateTimeLocal } from './app';
+import { formatReminderDateTime, goalStepPreview, homeGoalStepsSummary, isReminderTimeInFuture, MissionLiveWelcome, nextReminderMinimum, NotificationsPage, ParticipantProgressSection, reminderParticipants, ReminderPanel, reminderStepsForParticipant, Sidebar, toDateTimeLocal } from './app';
 import type { Goal, User } from './api';
 import { api } from './api';
 import type { Notification, ParticipantsProgress } from './api';
@@ -30,8 +30,7 @@ function LocationProbe() {
 describe('MissionLive shell', () => {
   it('formata lembretes com data e hora e valida apenas horários futuros', () => {
     const now = new Date('2026-09-09T12:00:00.000Z');
-    expect(formatReminderDateTime('2026-09-09T15:30:00.000Z', 'America/Sao_Paulo')).toContain('09/09/2026');
-    expect(formatReminderDateTime('2026-09-09T15:30:00.000Z', 'America/Sao_Paulo')).toContain('12:30');
+    expect(formatReminderDateTime('2026-09-09T15:30:00.000Z', 'America/Sao_Paulo')).toBe('09/09/2026 · 12:30');
     expect(nextReminderMinimum(now)).toBe(toDateTimeLocal(new Date(now.getTime() + 60_000)));
     expect(isReminderTimeInFuture(toDateTimeLocal(now), now)).toBe(false);
     expect(isReminderTimeInFuture(toDateTimeLocal(new Date(now.getTime() + 60_000)), now)).toBe(true);
@@ -41,8 +40,8 @@ describe('MissionLive shell', () => {
     const user: User = { id: 'user-a', name: 'Ana', email: 'ana@example.com', timezone: 'America/Sao_Paulo' };
     const goal = { id: 'goal-a', name: 'Correr', status: 'active', steps: [] } as unknown as Goal;
     vi.spyOn(api, 'reminders').mockResolvedValue([
-      { id: 'reminder-pending', goalId: 'goal-a', remindAt: '2099-09-09T15:30:00.000Z', timezone: 'America/Sao_Paulo', status: 'pending' },
-      { id: 'reminder-processed', goalId: 'goal-a', remindAt: '2026-09-09T15:30:00.000Z', timezone: 'America/Sao_Paulo', status: 'processed' },
+      { id: 'reminder-pending', creatorUserId: 'user-a', targetUserId: 'user-a', goalId: 'goal-a', remindAt: '2099-09-09T15:30:00.000Z', timezone: 'America/Sao_Paulo', status: 'pending', target: { id: 'user-a', name: 'Ana' } },
+      { id: 'reminder-processed', creatorUserId: 'user-a', targetUserId: 'user-a', goalId: 'goal-a', remindAt: '2026-09-09T15:30:00.000Z', timezone: 'America/Sao_Paulo', status: 'processed' },
     ]);
     const view = render(<MemoryRouter><ReminderPanel goal={goal} user={user} /></MemoryRouter>);
 
@@ -50,6 +49,30 @@ describe('MissionLive shell', () => {
     expect(view.queryByText('America/Sao_Paulo')).toBeNull();
     expect(view.queryByText(formatReminderDateTime('2026-09-09T15:30:00.000Z', 'America/Sao_Paulo'))).toBeNull();
     expect(view.getByRole('button', { name: 'Cancelar' }).className).toContain('ds-button-danger');
+    view.unmount();
+  });
+
+  it('deriva participantes e tarefas aplicáveis para o formulário de reminder', () => {
+    const owner: User = { id: 'user-owner', name: 'Marcelo', email: 'marcelo@example.com' };
+    const member: User = { id: 'user-member', name: 'Teste03', email: 'teste03@example.com' };
+    const goal = { id: 'goal-a', ownerUserId: owner.id, owner, name: 'Corrida', status: 'active', members: [{ id: 'member-1', user: member, role: 'viewer' }], steps: [{ id: 'step-all', title: 'Beber água', position: 0, assignmentMode: 'ALL_PARTICIPANTS' }, { id: 'step-specific', title: 'Correr 5 KM', position: 1, assignmentMode: 'SPECIFIC_PARTICIPANT', assigneeUserId: member.id }] } as unknown as Goal;
+
+    expect(reminderParticipants(goal).map((participant) => participant.name)).toEqual(['Marcelo', 'Teste03']);
+    expect(reminderStepsForParticipant(goal, owner.id).map((step) => step.title)).toEqual(['Beber água']);
+    expect(reminderStepsForParticipant(goal, member.id).map((step) => step.title)).toEqual(['Beber água', 'Correr 5 KM']);
+  });
+
+  it('não oferece seleção de outros participantes para viewer', async () => {
+    const viewer: User = { id: 'user-viewer', name: 'Teste03', email: 'teste03@example.com' };
+    const owner: User = { id: 'user-owner', name: 'Marcelo', email: 'marcelo@example.com' };
+    const goal = { id: 'goal-a', ownerUserId: owner.id, owner, name: 'Corrida', status: 'active', members: [{ id: 'member-1', user: viewer, role: 'viewer' }], steps: [{ id: 'step-all', title: 'Beber água', position: 0, assignmentMode: 'ALL_PARTICIPANTS' }, { id: 'step-owner', title: 'Correr 5 KM', position: 1, assignmentMode: 'SPECIFIC_PARTICIPANT', assigneeUserId: owner.id }] } as unknown as Goal;
+    vi.spyOn(api, 'reminders').mockResolvedValue([]);
+    const view = render(<MemoryRouter><ReminderPanel goal={goal} user={viewer} /></MemoryRouter>);
+
+    await waitFor(() => expect(view.getByText('Responsável')).toBeTruthy());
+    expect(view.getAllByRole('combobox')).toHaveLength(1);
+    expect(view.getByRole('option', { name: 'Beber água' })).toBeTruthy();
+    expect(view.queryByRole('option', { name: 'Correr 5 KM' })).toBeNull();
     view.unmount();
   });
 
