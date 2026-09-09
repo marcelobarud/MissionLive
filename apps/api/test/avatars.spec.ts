@@ -14,6 +14,11 @@ describe('AvatarsService', () => {
     expect(prisma.user.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: fakeUser().id }, data: expect.objectContaining({ avatarType: 'PRESET' }) }));
   });
 
+  it('rejects a preset outside the allowlist', async () => {
+    const service = new AvatarsService(fakePrisma() as never, fakeStorage());
+    await expect(service.setPreset(fakeUser().id, 'avatar-11')).rejects.toBeInstanceOf(BadRequestException);
+  });
+
   it.each(['image/gif', 'image/svg+xml', 'text/plain'])('rejects unsupported MIME %s', async (mimetype) => {
     const service = new AvatarsService(fakePrisma() as never, fakeStorage());
     await expect(service.upload(fakeUser().id, { buffer: Buffer.from('bad'), size: 3, mimetype })).rejects.toBeInstanceOf(BadRequestException);

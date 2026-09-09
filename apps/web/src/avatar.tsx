@@ -1,12 +1,21 @@
 import { ChangeEvent, useEffect, useRef, useState } from 'react';
 import Cropper, { Area } from 'react-easy-crop';
-import NiceAvatar, { genConfig } from 'react-nice-avatar';
 import { IconCamera, IconPhoto, IconTrash, IconUpload, IconX } from '@tabler/icons-react';
 import { api, API_URL, Avatar, User } from './api';
 import { useFeedback } from './feedback';
 
-export const AVATAR_PRESETS = Array.from({ length: 10 }, (_, index) => ({ id: `avatar-${String(index + 1).padStart(2, '0')}`, seed: `missionlive-avatar-${index + 1}` }));
-const PRESET_CONFIGS = new Map(AVATAR_PRESETS.map((preset) => [preset.id, genConfig(preset.seed)]));
+export const AVATAR_PRESETS = [
+  { id: 'avatar-01', label: 'Samurai', imageSrc: '/avatars/presets/avatar-preset-01-samurai.png' },
+  { id: 'avatar-02', label: 'Ninja', imageSrc: '/avatars/presets/avatar-preset-02-ninja.png' },
+  { id: 'avatar-03', label: 'Cachorro', imageSrc: '/avatars/presets/avatar-preset-03-cachorro.png' },
+  { id: 'avatar-04', label: 'Gato', imageSrc: '/avatars/presets/avatar-preset-04-gato.png' },
+  { id: 'avatar-05', label: 'Sapo', imageSrc: '/avatars/presets/avatar-preset-05-sapo.png' },
+  { id: 'avatar-06', label: 'Galo', imageSrc: '/avatars/presets/avatar-preset-06-galo.png' },
+  { id: 'avatar-07', label: 'Corredor', imageSrc: '/avatars/presets/avatar-preset-07-corredor.png' },
+  { id: 'avatar-08', label: 'Homem de terno', imageSrc: '/avatars/presets/avatar-preset-08-homem-terno.png' },
+  { id: 'avatar-09', label: 'Mulher de terno', imageSrc: '/avatars/presets/avatar-preset-09-mulher-terno.png' },
+  { id: 'avatar-10', label: 'Avião', imageSrc: '/avatars/presets/avatar-preset-10-aviao.png' },
+] as const;
 type AvatarIdentity = Pick<User, 'name'> & { avatar?: Avatar; avatarUrl?: string | null };
 
 export function avatarInitials(name: string) { return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || '?'; }
@@ -19,7 +28,8 @@ export function UserAvatar({ user, size = 'md', decorative = false, className = 
   const avatarPixels = { xs: 28, sm: 35, md: 38, lg: 72, xl: 92 }[size];
   if (!broken && avatar?.type === 'upload' && avatar.url) return <img className={classes} width={avatarPixels} height={avatarPixels} src={avatar.url.startsWith('/') ? `${API_URL}${avatar.url}` : avatar.url} alt={label ?? ''} aria-hidden={decorative} crossOrigin="anonymous" onError={() => setBroken(true)} />;
   if (!broken && avatar?.type === 'google' && avatar.url) return <img className={classes} width={avatarPixels} height={avatarPixels} src={avatar.url} alt={label ?? ''} aria-hidden={decorative} referrerPolicy="no-referrer" onError={() => setBroken(true)} />;
-  if (avatar?.type === 'preset' && avatar.presetId && PRESET_CONFIGS.has(avatar.presetId)) return <NiceAvatar className={classes} aria-hidden={decorative} {...PRESET_CONFIGS.get(avatar.presetId)} />;
+  const preset = avatar?.type === 'preset' ? AVATAR_PRESETS.find((item) => item.id === avatar.presetId) : undefined;
+  if (!broken && preset) return <img className={classes} width={avatarPixels} height={avatarPixels} src={preset.imageSrc} alt={label ?? ''} aria-hidden={decorative} onError={() => setBroken(true)} />;
   return <span className={`${classes} user-avatar-fallback`} aria-label={label} aria-hidden={decorative}>{avatarInitials(user.name)}</span>;
 }
 
@@ -35,7 +45,7 @@ export function AvatarManager({ user, onUpdated }: { user: User; onUpdated: (use
   const { confirm, toast } = useFeedback();
   async function choosePreset(id: string) { setSaving(true); setError(''); try { onUpdated(await api.setAvatarPreset(id)); setMode(null); toast({ title: 'Avatar atualizado.', tone: 'success' }); } catch (err) { setError(err instanceof Error ? err.message : 'Não foi possível atualizar o avatar.'); } finally { setSaving(false); } }
   async function remove() { await confirm({ title: 'Remover avatar?', description: 'O perfil voltará a usar as iniciais ou a foto do Google, quando disponível.', tone: 'danger', confirmLabel: 'Remover', onConfirm: async () => { onUpdated(await api.removeAvatar()); toast({ title: 'Avatar removido.', tone: 'success' }); } }); }
-  return <section className="panel avatar-manager"><div className="avatar-manager-preview"><UserAvatar user={user} size="xl" /><div><p className="eyebrow">AVATAR</p><h2>{user.avatar?.type === 'preset' ? 'Avatar predefinido' : user.avatar?.type === 'upload' ? 'Foto de perfil' : 'Sua identidade'}</h2><p className="muted">Escolha uma ilustração ou envie uma foto quadrada.</p></div></div><div className="avatar-manager-actions"><button className="button button-secondary" type="button" onClick={() => { setError(''); setMode('presets'); }}><IconPhoto size={17} aria-hidden="true" />Escolher avatar</button><button className="button button-secondary" type="button" onClick={() => { setError(''); setMode('photo'); }}><IconUpload size={17} aria-hidden="true" />Enviar foto</button>{(user.avatar?.type === 'preset' || user.avatar?.type === 'upload') && <button className="button button-secondary danger-button" type="button" onClick={() => { void remove(); }}><IconTrash size={16} aria-hidden="true" />Remover</button>}</div>{error && <p className="form-error" role="alert">{error}</p>}{mode === 'presets' && <AvatarDialog title="Escolha seu avatar" onClose={() => setMode(null)}><div className="avatar-preset-grid">{AVATAR_PRESETS.map((preset) => <button className={user.avatar?.presetId === preset.id ? 'avatar-preset is-selected' : 'avatar-preset'} type="button" key={preset.id} aria-label={`Avatar ${preset.id.slice(-2)}`} disabled={saving} onClick={() => { void choosePreset(preset.id); }}><NiceAvatar className="avatar-preset-art" aria-hidden="true" {...PRESET_CONFIGS.get(preset.id)} /></button>)}</div><p className="muted avatar-dialog-hint">A seleção é salva imediatamente.</p></AvatarDialog>}{mode === 'photo' && <PhotoDialog onClose={() => setMode(null)} onUpdated={(next) => { onUpdated(next); setMode(null); toast({ title: 'Foto atualizada.', tone: 'success' }); }} onError={setError} />}</section>;
+  return <section className="panel avatar-manager"><div className="avatar-manager-preview"><UserAvatar user={user} size="xl" /><div><p className="eyebrow">AVATAR</p><h2>{user.avatar?.type === 'preset' ? 'Avatar predefinido' : user.avatar?.type === 'upload' ? 'Foto de perfil' : 'Sua identidade'}</h2><p className="muted">Escolha uma ilustração ou envie uma foto quadrada.</p></div></div><div className="avatar-manager-actions"><button className="button button-secondary" type="button" onClick={() => { setError(''); setMode('presets'); }}><IconPhoto size={17} aria-hidden="true" />Escolher avatar</button><button className="button button-secondary" type="button" onClick={() => { setError(''); setMode('photo'); }}><IconUpload size={17} aria-hidden="true" />Enviar foto</button>{(user.avatar?.type === 'preset' || user.avatar?.type === 'upload') && <button className="button button-secondary danger-button" type="button" onClick={() => { void remove(); }}><IconTrash size={16} aria-hidden="true" />Remover</button>}</div>{error && <p className="form-error" role="alert">{error}</p>}{mode === 'presets' && <AvatarDialog title="Escolha seu avatar" onClose={() => setMode(null)}><div className="avatar-preset-grid">{AVATAR_PRESETS.map((preset) => <button className={user.avatar?.presetId === preset.id ? 'avatar-preset is-selected' : 'avatar-preset'} type="button" key={preset.id} aria-label={`Avatar ${preset.label}`} disabled={saving} onClick={() => { void choosePreset(preset.id); }}><img className="avatar-preset-art" width="256" height="256" src={preset.imageSrc} alt="" aria-hidden="true" /></button>)}</div><p className="muted avatar-dialog-hint">A seleção é salva imediatamente.</p></AvatarDialog>}{mode === 'photo' && <PhotoDialog onClose={() => setMode(null)} onUpdated={(next) => { onUpdated(next); setMode(null); toast({ title: 'Foto atualizada.', tone: 'success' }); }} onError={setError} />}</section>;
 }
 
 async function cropToFile(source: string, area: Area) {
