@@ -1,10 +1,11 @@
 /* @vitest-environment jsdom */
 import { renderToString } from 'react-dom/server';
-import { describe, expect, it } from 'vitest';
-import { fireEvent, render } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
-import { goalStepPreview, homeGoalStepsSummary, MissionLiveWelcome, ParticipantProgressSection, Sidebar } from './app';
-import type { ParticipantsProgress } from './api';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { fireEvent, render, waitFor } from '@testing-library/react';
+import { MemoryRouter, useLocation } from 'react-router-dom';
+import { goalStepPreview, homeGoalStepsSummary, MissionLiveWelcome, NotificationsPage, ParticipantProgressSection, Sidebar } from './app';
+import { api } from './api';
+import type { Notification, ParticipantsProgress } from './api';
 
 const participantProgress: ParticipantsProgress = {
   totalParticipants: 3,
@@ -18,6 +19,12 @@ const participantProgress: ParticipantsProgress = {
     { userId: 'user-c', name: 'Teste C', avatarUrl: null, role: 'editor', completedSteps: 0, totalSteps: 3, percentage: 0, completed: false, status: 'not-started', steps: [{ id: 'step-1', title: 'Definir escopo', position: 0, completed: false, completedAt: null }] },
   ],
 };
+
+afterEach(() => vi.restoreAllMocks());
+
+function LocationProbe() {
+  return <span data-testid="location">{useLocation().pathname}</span>;
+}
 
 describe('MissionLive shell', () => {
   it('resume passos ativos com a mesma semântica do progresso e trata metas sem passos', () => {
@@ -46,7 +53,7 @@ describe('MissionLive shell', () => {
   });
 
   it('renders the authenticated sidebar with account actions', () => {
-    const html = renderToString(<MemoryRouter><Sidebar user={{ id: 'user-a', name: 'Ana', email: 'ana@example.com' }} open onClose={() => undefined} onLogout={() => undefined} /></MemoryRouter>);
+    const html = renderToString(<MemoryRouter><Sidebar user={{ id: 'user-a', name: 'Ana', email: 'ana@example.com' }} open onClose={() => undefined} onLogout={() => undefined} unreadCount={3} /></MemoryRouter>);
     expect(html).toContain('Navegação principal');
     expect(html).toContain('Início');
     expect(html).toContain('Metas');
@@ -54,6 +61,58 @@ describe('MissionLive shell', () => {
     expect(html).toContain('Ana');
     expect(html).toContain('Sair');
     expect(html).toContain('Fechar menu');
+    expect(html).toContain('>3</span>');
+  });
+
+  it('separa avisos lidos e não lidos e sincroniza marcar todos', async () => {
+    const notifications: Notification[] = [
+      { id: 'notification-unread', type: 'comment_created', title: 'Aviso novo', body: 'Há uma atualização na meta.', goalId: null, teamId: null, readAt: null, createdAt: '2026-09-08T12:00:00.000Z' },
+      { id: 'notification-read', type: 'goal_updated', title: 'Aviso lido', body: 'Uma meta foi atualizada.', goalId: null, teamId: null, readAt: '2026-09-07T12:00:00.000Z', createdAt: '2026-09-07T12:00:00.000Z' },
+    ];
+    vi.spyOn(api, 'notifications').mockResolvedValue(notifications);
+    vi.spyOn(api, 'unreadNotifications').mockResolvedValue({ count: 1 });
+    const readAll = vi.spyOn(api, 'readAllNotifications').mockResolvedValue({ read: true });
+    const refreshUnread = vi.fn(async () => undefined);
+    let currentUnread = 1;
+    const updateUnread = (value: number | ((current: number) => number)) => { currentUnread = typeof value === 'function' ? value(currentUnread) : value; };
+    const view = render(<MemoryRouter><NotificationsPage unreadCount={currentUnread} onUnreadCountChange={updateUnread} onRefreshUnreadCount={refreshUnread} /></MemoryRouter>);
+
+    await waitFor(() => expect(view.getByText('Aviso novo')).toBeTruthy());
+    expect(view.queryByText('Aviso lido')).toBeNull();
+    expect(view.getByRole('tab', { name: /Não lidos/ }).getAttribute('aria-selected')).toBe('true');
+
+    fireEvent.click(view.getByRole('tab', { name: 'Lidos' }));
+    expect(view.getByText('Aviso lido')).toBeTruthy();
+    expect(view.queryByText('Aviso novo')).toBeNull();
+
+    fireEvent.click(view.getByRole('tab', { name: /Não lidos/ }));
+    fireEvent.click(view.getByRole('button', { name: 'Marcar todos como lidos' }));
+    await waitFor(() => expect(readAll).toHaveBeenCalledOnce());
+    expect(currentUnread).toBe(0);
+    expect(view.queryByText('Aviso novo')).toBeNull();
+    fireEvent.click(view.getByRole('tab', { name: 'Lidos' }));
+    expect(view.getByText('Aviso novo')).toBeTruthy();
+    expect(view.getByText('Aviso lido')).toBeTruthy();
+    expect(refreshUnread).toHaveBeenCalled();
+  });
+
+  it('marca um aviso individual como lido e preserva o deep link', async () => {
+    const unread: Notification = { id: 'notification-goal', type: 'goal_updated', title: 'Meta atualizada', body: 'A meta recebeu uma atualização.', goalId: 'goal-1', teamId: null, readAt: null, createdAt: '2026-09-08T12:00:00.000Z' };
+    const read: Notification = { ...unread, readAt: '2026-09-08T12:01:00.000Z' };
+    vi.spyOn(api, 'notifications').mockResolvedValue([unread]);
+    vi.spyOn(api, 'unreadNotifications').mockResolvedValue({ count: 1 });
+    const markRead = vi.spyOn(api, 'readNotification').mockResolvedValue(read);
+    const refreshUnread = vi.fn(async () => undefined);
+    let currentUnread = 1;
+    const updateUnread = (value: number | ((current: number) => number)) => { currentUnread = typeof value === 'function' ? value(currentUnread) : value; };
+    const view = render(<MemoryRouter><NotificationsPage unreadCount={currentUnread} onUnreadCountChange={updateUnread} onRefreshUnreadCount={refreshUnread} /><LocationProbe /></MemoryRouter>);
+
+    await waitFor(() => expect(view.getByText('Meta atualizada')).toBeTruthy());
+    fireEvent.click(view.getByRole('button', { name: /Meta atualizada/ }));
+    await waitFor(() => expect(markRead).toHaveBeenCalledWith('notification-goal'));
+    expect(currentUnread).toBe(0);
+    expect(refreshUnread).toHaveBeenCalled();
+    await waitFor(() => expect(view.getByTestId('location').textContent).toBe('/goals/goal-1'));
   });
 
   it('renders and expands participant progress in read-only mode', () => {

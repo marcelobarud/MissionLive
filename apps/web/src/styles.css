@@ -906,6 +906,29 @@ h2 { color: var(--text-primary); font-size: 1.18rem; line-height: 1.22; }
   .home-portrait-mark { right: 28%; bottom: 12%; width: 4.25rem; height: 4.25rem; font-size: 2.7rem; }
   h1 { font-size: 2.65rem; }
 }
+
+/* Notifications: explicit read state, compact filtering, and an action above the list. */
+.notifications-page .ds-page-header { margin-bottom: 1.5rem; }
+.notification-tabs { display: inline-flex; gap: .25rem; margin-bottom: 1rem; padding: .25rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-subtle); }
+.notification-tab { display: inline-flex; align-items: center; justify-content: center; gap: .45rem; min-height: var(--control-height); padding: .65rem .85rem; border: 0; border-radius: calc(var(--radius-md) - .15rem); color: var(--text-secondary); background: transparent; font-size: .84rem; font-weight: 750; cursor: pointer; touch-action: manipulation; }
+.notification-tab:hover { color: var(--text-primary); background: var(--surface-raised); }
+.notification-tab[aria-selected="true"] { color: var(--primary-active); background: var(--surface-raised); box-shadow: 0 1px .35rem rgba(32,51,47,.08); }
+.notification-tab-count { display: inline-flex; align-items: center; justify-content: center; min-width: 1.35rem; min-height: 1.35rem; padding: 0 .3rem; border-radius: var(--radius-pill, 999px); color: var(--text-inverse); background: var(--primary); font-size: .7rem; font-variant-numeric: tabular-nums; }
+.notification-toolbar { display: flex; justify-content: flex-end; min-height: var(--control-height); margin-bottom: .75rem; }
+.notification-list { display: grid; gap: .65rem; }
+.notification-row { margin-bottom: 0; border-left-width: 1px !important; }
+.notification-row-meta { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+.notification-row strong, .notification-row > span { overflow-wrap: anywhere; }
+.notification-row-meta > span { color: var(--text-muted); font-size: .7rem; font-weight: 750; }
+.notification-row:not(.read) .notification-row-meta > span { color: var(--primary); }
+.notification-feedback { margin: 0 0 .8rem; }
+.notification-empty { margin-top: .75rem; }
+@media (max-width: 520px) {
+  .notification-tabs { display: flex; width: 100%; }
+  .notification-tab { flex: 1; }
+  .notification-toolbar { justify-content: stretch; }
+  .notification-toolbar .ds-button { width: 100%; }
+}
 @media (prefers-reduced-motion: reduce) {
   .page, .ds-spinner, .loader { animation: none; }
   .goal-card:hover, .ds-button:hover:not(:disabled), .button:hover:not(:disabled), .next-step-track:hover { transform: none; }
