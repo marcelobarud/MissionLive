@@ -266,10 +266,18 @@ Ao final de cada entrega relevante:
 - revisar diff;
 - garantir que a documentação normativa afetada esteja atualizada;
 - deixar árvore consistente;
-- criar commit semântico. O formato de fase só deve ser usado quando um plano histórico for explicitamente retomado.
+- criar commit seguindo Conventional Commits, com tipo semântico correto e descrição em pt-BR;
+- usar o tipo que melhor representa a mudança: `feat` para funcionalidade, `fix` para correção, `chore` para manutenção, `refactor` para refatoração, `test` para testes e `docs` para documentação;
+- manter a descrição curta, objetiva e no imperativo ou presente, sem misturar idiomas e sem usar mensagens genéricas;
+- não usar o formato de fase em commits, salvo quando um plano histórico for explicitamente retomado.
 
-Formato sugerido:
-`Fase N — <descrição curta>`
+Formato obrigatório:
+`<tipo>: <descrição curta em pt-BR>`
+
+Exemplos:
+- `feat: adiciona filtros aos avisos`
+- `fix: corrige isolamento das metas compartilhadas`
+- `chore: atualiza configuração local`
 
 Não fazer push remoto sem solicitação explícita.
 
