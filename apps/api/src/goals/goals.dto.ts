@@ -1,4 +1,4 @@
-import { ArrayMaxSize, IsArray, IsBoolean, IsDateString, IsIn, IsOptional, IsString, IsUUID, Length } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, IsUUID, Length, Max, Min } from 'class-validator';
 import { Transform } from 'class-transformer';
 
 export class CreateGoalDto {
@@ -33,4 +33,15 @@ export class ListGoalsQueryDto {
   @IsOptional() @IsDateString() from?: string;
   @IsOptional() @IsDateString() to?: string;
   @IsOptional() @IsIn(['recent', 'name', 'deadline', 'progress-desc', 'progress-asc']) sort?: string;
+}
+
+export class CreateGoalPhotoDto {
+  @IsString() @Length(1, 120) title!: string;
+  @IsString() @Length(1, 1000) description!: string;
+  @IsOptional() @IsUUID() goalStepId?: string;
+}
+
+export class ListGoalPhotosQueryDto {
+  @IsOptional() @Transform(({ value }) => Number(value)) @IsInt() @Min(0) offset = 0;
+  @IsOptional() @Transform(({ value }) => Number(value)) @IsInt() @Min(1) @Max(24) limit = 24;
 }

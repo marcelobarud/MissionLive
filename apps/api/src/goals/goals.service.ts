@@ -1,10 +1,12 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException, Optional } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Inject, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateGoalDto, CreateStepDto, ListGoalsQueryDto, OverrideGoalDto, ProgressDto, ReorderStepsDto, UpdateGoalDto, UpdateMemberRoleDto, UpdateStepDto } from './goals.dto';
+import { CreateGoalDto, CreateGoalPhotoDto, CreateStepDto, ListGoalPhotosQueryDto, ListGoalsQueryDto, OverrideGoalDto, ProgressDto, ReorderStepsDto, UpdateGoalDto, UpdateMemberRoleDto, UpdateStepDto } from './goals.dto';
 import { ActivityService } from '../activity/activity.service';
 import { publicAvatar, publicIdentity } from '../auth/user.serializer';
 import { isValidTimezone, localDateAt, storedDateKey } from '../common/timezone';
+import { GOAL_PHOTO_STORAGE, GoalPhotoStorage } from './goal-photo-storage';
+import sharp from 'sharp';
 
 const EDITABLE_ROLES = new Set(['admin', 'editor']);
 const MANAGE_ROLES = new Set(['admin']);
@@ -32,7 +34,8 @@ function sanitizeUserRelations<T>(value: T): T { if (!value || typeof value !== 
 
 @Injectable()
 export class GoalsService {
-  constructor(private readonly prisma: PrismaService, @Optional() private readonly activity?: ActivityService) {}
+  private readonly logger = new Logger(GoalsService.name);
+  constructor(private readonly prisma: PrismaService, @Optional() private readonly activity?: ActivityService, @Optional() @Inject(GOAL_PHOTO_STORAGE) private readonly photoStorage?: GoalPhotoStorage) {}
 
   private async record(actorUserId: string, eventType: string, resource: { goalId?: string; teamId?: string; targetUserId?: string }, metadata?: Record<string, string | number | boolean>) { await this.activity?.record(actorUserId, eventType, resource, metadata); }
 
@@ -307,7 +310,22 @@ export class GoalsService {
   }
 
   async cancel(userId: string, goalId: string) { const access = await this.role(userId, goalId); if (access.role !== 'owner' && !MANAGE_ROLES.has(access.role)) throw new ForbiddenException('You cannot cancel this goal.'); await this.prisma.goal.update({ where: { id: goalId }, data: { status: 'cancelled' } }); await this.record(userId, 'goal_cancelled', { goalId }); return { cancelled: true }; }
-  async hardDelete(userId: string, goalId: string) { const goal = await this.prisma.goal.findUnique({ where: { id: goalId }, select: { ownerUserId: true } }); if (!goal) throw new NotFoundException('Goal not found.'); if (goal.ownerUserId !== userId) throw new ForbiddenException('Only the goal owner can permanently delete this goal.'); try { await this.prisma.$transaction(async (tx) => { await tx.notification.deleteMany({ where: { goalId } }); await tx.goal.delete({ where: { id: goalId } }); }); } catch (error) { if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') throw new NotFoundException('Goal not found.'); throw error; } return { deleted: true }; }
+  async hardDelete(userId: string, goalId: string) {
+    const goal = await this.prisma.goal.findUnique({ where: { id: goalId }, select: { ownerUserId: true } });
+    if (!goal) throw new NotFoundException('Goal not found.');
+    if (goal.ownerUserId !== userId) throw new ForbiddenException('Only the goal owner can permanently delete this goal.');
+    const photoRows = this.prisma.goalPhoto ? await this.prisma.goalPhoto.findMany({ where: { goalId }, select: { imageFileKey: true, thumbnailFileKey: true } }) : [];
+    try {
+      await this.prisma.$transaction(async (tx) => { await tx.notification.deleteMany({ where: { goalId } }); await tx.goal.delete({ where: { id: goalId } }); });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') throw new NotFoundException('Goal not found.');
+      throw error;
+    }
+    for (const photo of photoRows) for (const key of [photo.imageFileKey, photo.thumbnailFileKey]) {
+      try { await this.photoStorage?.delete(key); } catch { this.logger.warn('Não foi possível remover um arquivo de galeria após excluir a meta.'); }
+    }
+    return { deleted: true };
+  }
   async archive(userId: string, goalId: string) { const access = await this.role(userId, goalId); if (access.role !== 'owner' && !MANAGE_ROLES.has(access.role)) throw new ForbiddenException('Only the owner or an admin can archive this goal.'); await this.prisma.goal.update({ where: { id: goalId }, data: { status: 'archived' } }); await this.record(userId, 'goal_archived', { goalId }); return { archived: true }; }
 
   async addStep(userId: string, goalId: string, dto: CreateStepDto) { const access = await this.role(userId, goalId); if (access.role !== 'owner' && !EDITABLE_ROLES.has(access.role)) throw new ForbiddenException('You cannot edit steps.'); const last = await this.prisma.goalStep.aggregate({ where: { goalId }, _max: { position: true } }); const assignment = await this.assignmentData(userId, access.goal, dto); await this.prisma.goalStep.create({ data: { goalId, title: dto.title.trim(), description: dto.description?.trim() || undefined, position: (last._max.position ?? -1) + 1, ...assignment } }); await this.record(userId, 'step_created', { goalId }); return this.get(userId, goalId); }
@@ -359,6 +377,102 @@ export class GoalsService {
     }
     await this.record(userId, 'goal_owner_override', { goalId }, { reason: dto.reason?.trim() || '' }); return this.get(userId, goalId);
   }
+  private serializePhoto(photo: { id: string; title: string; description: string; goalId: string; authorUserId: string; goalStepTitleSnapshot: string | null; imageFileKey: string; thumbnailFileKey: string; quotaSlot: number; createdAt: Date; author: ParticipantUser; goalStep?: { id: string } | null; dailyOccurrence?: { localDate: string } | null }, userId: string, role: string) {
+    const taskTitle = photo.goalStepTitleSnapshot ?? (photo.goalStep ? 'Tarefa vinculada' : null);
+    return {
+      id: photo.id,
+      title: photo.title,
+      description: photo.description,
+      author: { id: photo.author.id, name: photo.author.name, avatarUrl: photo.author.avatarUrl ?? null, avatar: publicAvatar(photo.author) },
+      task: taskTitle ? { id: photo.goalStep?.id ?? null, title: taskTitle, removed: !photo.goalStep } : null,
+      occurrenceLocalDate: photo.dailyOccurrence?.localDate ?? null,
+      createdAt: photo.createdAt,
+      thumbnailUrl: `/goals/${photo.goalId}/photos/${photo.id}/thumbnail`,
+      imageUrl: `/goals/${photo.goalId}/photos/${photo.id}/image`,
+      canDelete: photo.authorUserId === userId || role === 'owner' || role === 'admin',
+    };
+  }
+
+  async listPhotos(userId: string, goalId: string, query: ListGoalPhotosQueryDto) {
+    const access = await this.role(userId, goalId);
+    const limit = Math.min(24, Math.max(1, Number(query.limit) || 24));
+    const offset = Math.max(0, Number(query.offset) || 0);
+    const rows = await this.prisma.goalPhoto.findMany({ where: { goalId }, include: { author: { select: { id: true, name: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } }, goalStep: { select: { id: true } }, dailyOccurrence: { select: { localDate: true } } }, orderBy: { createdAt: 'desc' }, skip: offset, take: limit + 1 });
+    const hasMore = rows.length > limit;
+    return { items: rows.slice(0, limit).map((photo) => this.serializePhoto(photo, userId, access.role)), nextOffset: hasMore ? offset + limit : null, hasMore };
+  }
+
+  private async processPhoto(file: Express.Multer.File) {
+    if (!file?.buffer || !file.size || file.size > 5 * 1024 * 1024) throw new BadRequestException('A foto deve ter no máximo 5 MB.');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) throw new BadRequestException('Envie uma imagem JPEG, PNG ou WebP.');
+    try {
+      const metadata = await sharp(file.buffer, { failOn: 'error', animated: true }).metadata();
+      const expectedMime = metadata.format === 'jpeg' ? 'image/jpeg' : metadata.format === 'png' ? 'image/png' : metadata.format === 'webp' ? 'image/webp' : undefined;
+      if (!expectedMime || file.mimetype !== expectedMime || (metadata.pages ?? 1) > 1 || !metadata.width || !metadata.height || metadata.width > 10000 || metadata.height > 10000 || metadata.width * metadata.height > 40_000_000) throw new Error('invalid image');
+      const image = await sharp(file.buffer).rotate().resize({ width: 1920, height: 1920, fit: 'inside', withoutEnlargement: true }).webp({ quality: 86 }).toBuffer();
+      const thumbnail = await sharp(file.buffer).rotate().resize({ width: 480, height: 320, fit: 'cover', position: 'attention' }).webp({ quality: 80 }).toBuffer();
+      return { image, thumbnail };
+    } catch { throw new BadRequestException('A imagem é inválida ou não pôde ser processada.'); }
+  }
+
+  async addPhoto(userId: string, goalId: string, dto: CreateGoalPhotoDto, file: Express.Multer.File) {
+    const access = await this.role(userId, goalId);
+    if (access.goal.status !== 'active') throw new BadRequestException('Fotos só podem ser adicionadas enquanto a meta está ativa.');
+    const title = dto.title?.trim(); const description = dto.description?.trim();
+    if (!title || title.length > 120 || !description || description.length > 1000) throw new BadRequestException('Informe título e descrição dentro dos limites permitidos.');
+    if (!this.photoStorage) throw new BadRequestException('O armazenamento da galeria não está configurado.');
+    const processed = await this.processPhoto(file);
+    let imageFileKey = ''; let thumbnailFileKey = '';
+    try {
+      imageFileKey = await this.photoStorage.save(goalId, 'image', processed.image);
+      thumbnailFileKey = await this.photoStorage.save(goalId, 'thumbnail', processed.thumbnail);
+      const photo = await this.prisma.$transaction(async (tx) => {
+        const step = dto.goalStepId ? await tx.goalStep.findFirst({ where: { id: dto.goalStepId, goalId } }) : null;
+        if (dto.goalStepId && !step) throw new NotFoundException('Tarefa não encontrada nesta meta.');
+        const participantIds = this.participantIds(access.goal);
+        if (step && !this.stepAppliesTo(step as GoalStepRecord, userId, participantIds)) throw new ForbiddenException('Somente o responsável pode publicar nesta tarefa.');
+        let dailyOccurrenceId: string | null = null;
+        if (this.isDaily(access.goal)) {
+          const localDate = localDateAt(new Date(), this.dailyTimezone(access.goal));
+          if (!this.dailyDateIsValid(access.goal, localDate)) throw new BadRequestException('Esta meta diária não está ativa na data atual.');
+          const occurrence = await tx.goalDailyOccurrence.upsert({ where: { goalId_localDate: { goalId, localDate } }, create: { goalId, localDate }, update: {} });
+          dailyOccurrenceId = occurrence.id;
+        }
+        const quotaScopeKey = `${goalId}:${dailyOccurrenceId ? `occurrence:${dailyOccurrenceId}` : 'general'}:${step ? `step:${step.id}` : 'gallery'}`;
+        for (const quotaSlot of [1, 2, 3]) {
+          try {
+            return await tx.goalPhoto.create({ data: { goalId, authorUserId: userId, goalStepId: step?.id ?? null, dailyOccurrenceId, goalStepTitleSnapshot: step?.title ?? null, title, description, imageFileKey, thumbnailFileKey, quotaScopeKey, quotaSlot }, include: { author: { select: { id: true, name: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } }, goalStep: { select: { id: true } }, dailyOccurrence: { select: { localDate: true } } } });
+          } catch (error) {
+            if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') throw error;
+          }
+        }
+        throw new BadRequestException('Você já publicou 3 fotos neste escopo.');
+      });
+      return this.serializePhoto(photo, userId, access.role);
+    } catch (error) {
+      for (const key of [imageFileKey, thumbnailFileKey]) if (key) try { await this.photoStorage.delete(key); } catch { this.logger.warn('Não foi possível limpar um arquivo temporário da galeria.'); }
+      throw error;
+    }
+  }
+
+  async removePhoto(userId: string, goalId: string, photoId: string) {
+    const access = await this.role(userId, goalId);
+    const photo = await this.prisma.goalPhoto.findFirst({ where: { id: photoId, goalId }, select: { authorUserId: true, imageFileKey: true, thumbnailFileKey: true } });
+    if (!photo) throw new NotFoundException('Foto não encontrada.');
+    if (photo.authorUserId !== userId && access.role !== 'owner' && access.role !== 'admin') throw new ForbiddenException('Você não pode excluir esta foto.');
+    await this.prisma.goalPhoto.delete({ where: { id: photoId } });
+    for (const key of [photo.imageFileKey, photo.thumbnailFileKey]) try { await this.photoStorage?.delete(key); } catch { this.logger.warn('Não foi possível remover um arquivo da galeria.'); }
+    return { deleted: true };
+  }
+
+  async photoMedia(userId: string, goalId: string, photoId: string, thumbnail: boolean) {
+    await this.role(userId, goalId);
+    if (!this.photoStorage) throw new NotFoundException('Foto não encontrada.');
+    const photo = await this.prisma.goalPhoto.findFirst({ where: { id: photoId, goalId }, select: { imageFileKey: true, thumbnailFileKey: true } });
+    if (!photo) throw new NotFoundException('Foto não encontrada.');
+    try { return await this.photoStorage.read(thumbnail ? photo.thumbnailFileKey : photo.imageFileKey); } catch { throw new NotFoundException('Foto não encontrada.'); }
+  }
+
   async getRole(userId: string, goalId: string) { const access = await this.role(userId, goalId); return access.role; }
   async rhythm(userId: string, goalId: string) {
     const goal = await this.get(userId, goalId); const now = Date.now(); const start = new Date(goal.startDate).valueOf(); const end = goal.endDate ? new Date(goal.endDate).valueOf() : 0;

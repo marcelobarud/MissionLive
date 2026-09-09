@@ -347,6 +347,16 @@ Não implementar na V1:
 - peso;
 - XP.
 
+### Galeria de fotos das metas
+
+A V1 possui uma galeria de memórias visuais por meta. Cada publicação contém uma única imagem, título obrigatório de até 120 caracteres e descrição obrigatória de até 1000 caracteres. A imagem aceita JPEG, PNG ou WebP de até 5 MB, é validada com Sharp, rotacionada pela orientação, sanitizada e convertida para WebP; a aplicação mantém imagem principal e miniatura.
+
+As referências dos arquivos ficam em `GoalPhoto`; os binários ficam no storage separado de galeria (`GOAL_PHOTO_STORAGE_DIR` ou `apps/api/var/goal-photos`). O acesso aos arquivos ocorre somente por rotas autenticadas e autorizadas, nunca por caminho físico.
+
+Qualquer participante com acesso à meta pode publicar no escopo geral. Em passo `ALL_PARTICIPANTS`, qualquer participante aplicável pode associar a foto; em `SPECIFIC_PARTICIPANT`, somente o responsável pode associá-la. Cada autor possui no máximo três fotos por escopo, usando slots persistidos e únicos para manter a quota segura sob concorrência em SQLite/PostgreSQL. Em metas diárias, o backend determina a ocorrência atual pelo timezone IANA persistido na meta, e a quota é reiniciada por ocorrência.
+
+A publicação é permitida enquanto a meta está ativa. Usuários podem excluir as próprias fotos; owner e admin podem moderar fotos de terceiros. A remoção do passo preserva a foto e o título histórico; a exclusão permanente da meta remove os registros e tenta limpar os arquivos associados.
+
 ## 13. Progresso individual
 
 ### `goal_step_progress`

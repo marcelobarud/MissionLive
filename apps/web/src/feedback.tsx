@@ -203,3 +203,5 @@ export function useFeedback() {
   if (!context) throw new Error('useFeedback deve ser usado dentro de FeedbackProvider.');
   return context;
 }
+
+export function useOptionalFeedback() { return useContext(FeedbackContext); }
