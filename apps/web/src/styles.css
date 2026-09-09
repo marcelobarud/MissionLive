@@ -923,11 +923,20 @@ h2 { color: var(--text-primary); font-size: 1.18rem; line-height: 1.22; }
 .notification-row:not(.read) .notification-row-meta > span { color: var(--primary); }
 .notification-feedback { margin: 0 0 .8rem; }
 .notification-empty { margin-top: .75rem; }
+.push-permission-prompt { display: grid; gap: 1rem; margin-top: .9rem; padding: 1rem; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-subtle); }
+.push-permission-prompt strong { color: var(--text-primary); }
+.push-permission-prompt p { margin: .35rem 0 0; color: var(--text-secondary); }
+.push-permission-prompt .action-row { margin-top: 0; }
+.push-settings { display: grid; gap: 1rem; margin-top: 1.25rem; }
+.push-settings-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.push-settings-heading h2 { margin: 0; }
+.push-settings-heading p { margin: .35rem 0 0; }
 @media (max-width: 520px) {
   .notification-tabs { display: flex; width: 100%; }
   .notification-tab { flex: 1; }
   .notification-toolbar { justify-content: stretch; }
   .notification-toolbar .ds-button { width: 100%; }
+  .push-settings-heading { flex-direction: column; }
 }
 @media (prefers-reduced-motion: reduce) {
   .page, .ds-spinner, .loader { animation: none; }

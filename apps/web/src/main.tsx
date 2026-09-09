@@ -6,3 +6,5 @@ import { FeedbackProvider } from './feedback';
 import './styles.css';
 
 createRoot(document.getElementById('root')!).render(<StrictMode><BrowserRouter><FeedbackProvider><App /></FeedbackProvider></BrowserRouter></StrictMode>);
+
+if ('serviceWorker' in navigator) void navigator.serviceWorker.register('/sw.js').catch(() => undefined);

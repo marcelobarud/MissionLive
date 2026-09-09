@@ -671,7 +671,8 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - convites de metas/equipes com token hash, expiração de 24 horas, aceite explícito, revogação e limite de três convidados em meta compartilhada;
 - equipes, memberships, roles e autorização no backend;
 - dashboard V2 escopado (progresso ativo, prazos, quase concluídas e distribuição por contexto/categoria) e endpoint de plano/entitlement de desenvolvimento;
-- reminders individuais com timezone, datas futuras, cancelamento e migration própria;
+- reminders individuais com timezone, datas futuras, cancelamento e migration própria; reminders vencidos são processados pelo backend em intervalo de aproximadamente um minuto, geram um único Aviso interno não lido com deep link para a meta e tentam Web Push independentemente por subscription;
+- subscriptions Web Push são vinculadas ao usuário por dispositivo/browser, com VAPID configurável por ambiente, invalidação de endpoints expirados e Service Worker web com navegação limitada a metas internas;
 - feed de atividade persistido, escopado por metas/equipes acessíveis, com eventos de domínio para metas, steps, equipes, convites, comentários e reações; `GET /activity` aceita paginação limitada por `limit`/`offset`, com o Dashboard consumindo 10 itens e o histórico completo em `/activities`;
 - comentários textuais por meta e reações limitadas a 👏, ❤️, 🎉 e 💪, com autorização de membership, moderação contextual, limite de tamanho, rate limit e sem HTML arbitrário;
 - templates oficiais e pessoais, uso com revisão explícita das datas, duplicação sem progresso/membros/convites/comentários/atividade/conclusão;
@@ -689,9 +690,10 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - preview e aceite de convite em `/invite/<token>`;
 - recuperação e redefinição de senha em desenvolvimento;
 - páginas de modelos, calendário/timeline e indicador de ritmo no detalhe da meta;
-- onboarding pulável, perfil/preferências, sessões e notificações internas com deep links;
+- onboarding pulável, perfil/preferências, sessões e notificações internas com deep links; o perfil mostra o estado das notificações do navegador e o primeiro reminder pode oferecer ativação contextual sem solicitar permissão automaticamente;
 - navegação responsiva mobile-first com estados de loading, erro e vazio; o shell autenticado usa sidebar fixa no desktop/tablet e drawer acessível no mobile, sem duplicar a navegação no topo;
 - Design System V1 em `apps/web/src/design-system.tsx`, com Button, IconButton, Input, Textarea, Select, Checkbox, FormField, Card, Panel, Section, PageHeader, EmptyState, Spinner, ProgressBar e Badge;
+- Service Worker em `apps/web/public/sw.js` recebe Web Push, exibe notificações do sistema e aceita somente deep links internos de metas;
 - tokens visuais centralizados em `apps/web/src/styles.css`, documentados em `docs/design/DESIGN_SYSTEM.md`, usando neutros minerais, verde-sálvia, escala de espaçamento, raios, alturas, foco, estados semânticos e reduced motion;
 - direção visual consolidada como “Calm Focus”: workspace claro, navegação leve, grafite esverdeado, verde-sálvia para ação/progresso, títulos de alto contraste e superfícies contidas, sem redesign por decoração;
 - shell com sidebar lateral, acesso explícito ao perfil e logout separado, CTA único para criação de equipe, empty state de modelos, navegação mensal do calendário e badge de notificações não lidas.
@@ -704,6 +706,7 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 
 - a interface web ainda não possui edição/cancelamento de membros de meta nem listagem persistida de convites já criados após recarregar a página; o gerenciamento avançado continua disponível na API;
 - recuperação de senha usa token local no desenvolvimento e ainda não possui entrega de e-mail em produção;
+- Web Push depende de VAPID configurado no ambiente e de suporte/permissão do navegador; sem isso os Avisos internos continuam funcionando normalmente;
 - compartilhamento usa Web Share API quando disponível, com cópia para clipboard e atalhos de e-mail/WhatsApp/Telegram como fallback.
 
 Essas diferenças são limitações de superfície da interface, não autorização implícita: o backend continua sendo a autoridade para escopo, roles e alterações sensíveis.

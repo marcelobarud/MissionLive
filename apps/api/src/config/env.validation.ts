@@ -25,6 +25,13 @@ export function validateEnvironment(env: Record<string, unknown>) {
   const apiHost = String(env.API_HOST ?? '127.0.0.1').trim();
   if (!apiHost || /[\s/:]/.test(apiHost)) throw new Error('API_HOST must be a host name or IP address without a protocol or port.');
   const corsOrigins = parseCorsOrigins(env.CORS_ORIGINS, webOrigin);
+  const vapidPublicKey = String(env.VAPID_PUBLIC_KEY ?? '').trim();
+  const vapidPrivateKey = String(env.VAPID_PRIVATE_KEY ?? '').trim();
+  const vapidSubject = String(env.VAPID_SUBJECT ?? '').trim();
+  const vapidConfigured = [vapidPublicKey, vapidPrivateKey, vapidSubject].filter(Boolean).length;
+  if (vapidConfigured > 0 && vapidConfigured < 3) throw new Error('VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY and VAPID_SUBJECT must be configured together.');
+  if (nodeEnv === 'production' && vapidConfigured !== 3) throw new Error('VAPID credentials must be configured in production.');
+  if (vapidSubject && !/^(mailto:[^\s@]+@[^\s@]+|https?:\/\/[^\s]+)$/.test(vapidSubject)) throw new Error('VAPID_SUBJECT must be a mailto or HTTP(S) URL.');
   return {
     ...env,
     NODE_ENV: nodeEnv,
@@ -34,5 +41,8 @@ export function validateEnvironment(env: Record<string, unknown>) {
     WEB_ORIGIN: webOrigin,
     CORS_ORIGINS: corsOrigins.join(','),
     SESSION_SECRET: sessionSecret,
+    VAPID_PUBLIC_KEY: vapidPublicKey,
+    VAPID_PRIVATE_KEY: vapidPrivateKey,
+    VAPID_SUBJECT: vapidSubject,
   };
 }

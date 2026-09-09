@@ -22,4 +22,13 @@ describe('validateEnvironment', () => {
     expect(() => validateEnvironment({ NODE_ENV: 'test', WEB_ORIGIN: 'http://localhost:5173,http://192.0.2.20:5173' })).toThrow('WEB_ORIGIN');
     expect(() => validateEnvironment({ NODE_ENV: 'test', CORS_ORIGINS: 'not-a-url' })).toThrow('CORS_ORIGINS');
   });
+
+  it('exige as três configurações VAPID juntas', () => {
+    expect(() => validateEnvironment({ NODE_ENV: 'test', VAPID_PUBLIC_KEY: 'public' })).toThrow('VAPID_PUBLIC_KEY');
+    expect(() => validateEnvironment({ NODE_ENV: 'test', VAPID_PUBLIC_KEY: 'public', VAPID_PRIVATE_KEY: 'private', VAPID_SUBJECT: 'invalid' })).toThrow('VAPID_SUBJECT');
+  });
+
+  it('exige VAPID em produção', () => {
+    expect(() => validateEnvironment({ NODE_ENV: 'production', SESSION_SECRET: 'a'.repeat(32) })).toThrow('VAPID');
+  });
 });

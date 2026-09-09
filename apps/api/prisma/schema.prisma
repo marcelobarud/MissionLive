@@ -42,6 +42,7 @@ model User {
   reactions          Reaction[]
   goalTemplates      GoalTemplate[]
   notifications      Notification[]
+  pushSubscriptions  PushSubscription[]
   onboardingCompletedAt DateTime?
   preferencesJson    String            @default("{}")
 }
@@ -292,6 +293,7 @@ model Reminder {
   updatedAt   DateTime @updatedAt
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   goal        Goal     @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  notification Notification?
   @@index([userId, status, remindAt])
   @@index([goalId])
 }
@@ -367,10 +369,25 @@ model Notification {
   body      String
   goalId    String?
   teamId    String?
+  reminderId String? @unique
   readAt    DateTime?
   createdAt DateTime @default(now())
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reminder  Reminder? @relation(fields: [reminderId], references: [id], onDelete: Cascade)
   @@index([userId, readAt, createdAt])
   @@index([goalId])
   @@index([teamId])
+}
+
+model PushSubscription {
+  id        String   @id @default(uuid())
+  userId    String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@index([userId, revokedAt])
 }
