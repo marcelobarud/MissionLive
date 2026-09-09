@@ -21,7 +21,7 @@ export class RemindersService implements OnModuleInit, OnModuleDestroy {
 
   private futureDate(value: string) { const date = new Date(value); if (Number.isNaN(date.valueOf()) || date <= new Date()) throw new BadRequestException('Reminder must be scheduled in the future.'); return date; }
 
-  async list(userId: string) { return this.prisma.reminder.findMany({ where: { userId, status: { not: 'cancelled' } }, include: { goal: { select: { id: true, name: true, status: true, endDate: true } } }, orderBy: { remindAt: 'asc' } }); }
+  async list(userId: string) { return this.prisma.reminder.findMany({ where: { userId, status: 'pending', remindAt: { gt: new Date() } }, include: { goal: { select: { id: true, name: true, status: true, endDate: true } } }, orderBy: { remindAt: 'asc' } }); }
 
   async create(userId: string, dto: CreateReminderDto) { const goal = await this.goals.get(userId, dto.goalId); if (goal.status !== 'active') throw new BadRequestException('Reminders can only be added to active goals.'); const reminder = await this.prisma.reminder.create({ data: { userId, goalId: dto.goalId, remindAt: this.futureDate(dto.remindAt), timezone: dto.timezone.trim(), status: 'pending' }, include: { goal: { select: { id: true, name: true, status: true, endDate: true } } } }); return reminder; }
 

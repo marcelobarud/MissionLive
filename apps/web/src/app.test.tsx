@@ -3,7 +3,8 @@ import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import { goalStepPreview, homeGoalStepsSummary, MissionLiveWelcome, NotificationsPage, ParticipantProgressSection, Sidebar } from './app';
+import { formatReminderDateTime, goalStepPreview, homeGoalStepsSummary, isReminderTimeInFuture, MissionLiveWelcome, nextReminderMinimum, NotificationsPage, ParticipantProgressSection, ReminderPanel, Sidebar, toDateTimeLocal } from './app';
+import type { Goal, User } from './api';
 import { api } from './api';
 import type { Notification, ParticipantsProgress } from './api';
 
@@ -27,6 +28,31 @@ function LocationProbe() {
 }
 
 describe('MissionLive shell', () => {
+  it('formata lembretes com data e hora e valida apenas horários futuros', () => {
+    const now = new Date('2026-09-09T12:00:00.000Z');
+    expect(formatReminderDateTime('2026-09-09T15:30:00.000Z', 'America/Sao_Paulo')).toContain('09/09/2026');
+    expect(formatReminderDateTime('2026-09-09T15:30:00.000Z', 'America/Sao_Paulo')).toContain('12:30');
+    expect(nextReminderMinimum(now)).toBe(toDateTimeLocal(new Date(now.getTime() + 60_000)));
+    expect(isReminderTimeInFuture(toDateTimeLocal(now), now)).toBe(false);
+    expect(isReminderTimeInFuture(toDateTimeLocal(new Date(now.getTime() + 60_000)), now)).toBe(true);
+  });
+
+  it('exibe somente lembretes pendentes sem fuso técnico e usa o botão do design system', async () => {
+    const user: User = { id: 'user-a', name: 'Ana', email: 'ana@example.com', timezone: 'America/Sao_Paulo' };
+    const goal = { id: 'goal-a', name: 'Correr', status: 'active', steps: [] } as unknown as Goal;
+    vi.spyOn(api, 'reminders').mockResolvedValue([
+      { id: 'reminder-pending', goalId: 'goal-a', remindAt: '2099-09-09T15:30:00.000Z', timezone: 'America/Sao_Paulo', status: 'pending' },
+      { id: 'reminder-processed', goalId: 'goal-a', remindAt: '2026-09-09T15:30:00.000Z', timezone: 'America/Sao_Paulo', status: 'processed' },
+    ]);
+    const view = render(<MemoryRouter><ReminderPanel goal={goal} user={user} /></MemoryRouter>);
+
+    await waitFor(() => expect(view.getByText(formatReminderDateTime('2099-09-09T15:30:00.000Z', 'America/Sao_Paulo'))).toBeTruthy());
+    expect(view.queryByText('America/Sao_Paulo')).toBeNull();
+    expect(view.queryByText(formatReminderDateTime('2026-09-09T15:30:00.000Z', 'America/Sao_Paulo'))).toBeNull();
+    expect(view.getByRole('button', { name: 'Cancelar' }).className).toContain('ds-button-danger');
+    view.unmount();
+  });
+
   it('resume passos ativos com a mesma semântica do progresso e trata metas sem passos', () => {
     const partialGoal = { steps: [{ id: 'step-1', title: 'Primeiro', position: 0 }], progressSummary: { completedSteps: 1, totalSteps: 2, participantCount: 1, completedParticipants: 0 } } as unknown as Parameters<typeof homeGoalStepsSummary>[0];
     const completeGoal = { steps: [{ id: 'step-1', title: 'Primeiro', position: 0 }], progressSummary: { completedSteps: 3, totalSteps: 3, participantCount: 1, completedParticipants: 1 } } as unknown as Parameters<typeof homeGoalStepsSummary>[0];
