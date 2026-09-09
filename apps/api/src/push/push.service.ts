@@ -8,6 +8,7 @@ import { PushSubscriptionDto } from './push.dto';
 export type ReminderPushPayload = { title: string; body: string; url: string; tag?: string };
 
 function statusCodeOf(error: unknown) { return typeof error === 'object' && error !== null && 'statusCode' in error ? Number((error as { statusCode?: unknown }).statusCode) : undefined; }
+function configValue(value: string | undefined) { return (value ?? '').trim().replace(/^['"]|['"]$/g, ''); }
 
 @Injectable()
 export class PushService {
@@ -15,9 +16,9 @@ export class PushService {
   private readonly configured: boolean;
 
   constructor(private readonly prisma: PrismaService, config: ConfigService) {
-    this.publicKey = config.get<string>('VAPID_PUBLIC_KEY')?.trim() ?? '';
-    const privateKey = config.get<string>('VAPID_PRIVATE_KEY')?.trim() ?? '';
-    const subject = config.get<string>('VAPID_SUBJECT')?.trim() ?? '';
+    this.publicKey = configValue(config.get<string>('VAPID_PUBLIC_KEY'));
+    const privateKey = configValue(config.get<string>('VAPID_PRIVATE_KEY'));
+    const subject = configValue(config.get<string>('VAPID_SUBJECT'));
     this.configured = Boolean(this.publicKey && privateKey && subject);
     if (this.configured) webpush.setVapidDetails(subject, this.publicKey, privateKey);
   }
