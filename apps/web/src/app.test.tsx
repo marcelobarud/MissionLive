@@ -94,16 +94,59 @@ describe('MissionLive shell', () => {
     expect(homeGoalStepsSummary(emptyGoal)).toEqual({ label: 'Sem passos', ariaLabel: 'Meta sem passos' });
   });
 
-  it('limita a prévia a cinco passos e prioriza os concluídos', () => {
+  it('prioriza os três primeiros passos pendentes em ordem estrutural', () => {
     const goal = { steps: [
       { id: 'step-1', title: 'Pendente 1', position: 0, progresses: [] },
-      { id: 'step-2', title: 'Concluído 1', position: 1, progresses: [{ userId: 'user-a', completed: true }] },
-      { id: 'step-3', title: 'Pendente 2', position: 2, progresses: [] },
-      { id: 'step-4', title: 'Concluído 2', position: 3, progresses: [{ userId: 'user-a', completed: true }] },
-      { id: 'step-5', title: 'Pendente 3', position: 4, progresses: [] },
-      { id: 'step-6', title: 'Pendente 4', position: 5, progresses: [] },
+      { id: 'step-2', title: 'Pendente 2', position: 1, progresses: [] },
+      { id: 'step-3', title: 'Pendente 3', position: 2, progresses: [] },
+      { id: 'step-4', title: 'Pendente 4', position: 3, progresses: [] },
     ] } as unknown as Parameters<typeof goalStepPreview>[0];
-    expect(goalStepPreview(goal).map((step) => step.title)).toEqual(['Concluído 1', 'Concluído 2', 'Pendente 1', 'Pendente 2', 'Pendente 3']);
+    expect(goalStepPreview(goal).map((step) => step.title)).toEqual(['Pendente 1', 'Pendente 2', 'Pendente 3']);
+  });
+
+  it('mantém pendentes e respeita a posição depois da priorização', () => {
+    const goal = { steps: [
+      { id: 'step-1', title: 'Concluído 1', position: 0, progresses: [{ userId: 'user-a', completed: true }] },
+      { id: 'step-2', title: 'Pendente 1', position: 1, progresses: [] },
+      { id: 'step-3', title: 'Concluído 2', position: 2, progresses: [{ userId: 'user-a', completed: true }] },
+      { id: 'step-4', title: 'Pendente 2', position: 3, progresses: [] },
+      { id: 'step-5', title: 'Pendente 3', position: 4, progresses: [] },
+    ] } as unknown as Parameters<typeof goalStepPreview>[0];
+    expect(goalStepPreview(goal).map((step) => step.title)).toEqual(['Pendente 1', 'Pendente 2', 'Pendente 3']);
+  });
+
+  it('preenche uma prévia com uma pendente usando os passos concluídos anteriores', () => {
+    const goal = { steps: [
+      { id: 'step-1', title: 'Concluído 1', position: 0, progresses: [{ userId: 'user-a', completed: true }] },
+      { id: 'step-2', title: 'Concluído 2', position: 1, progresses: [{ userId: 'user-a', completed: true }] },
+      { id: 'step-3', title: 'Concluído 3', position: 2, progresses: [{ userId: 'user-a', completed: true }] },
+      { id: 'step-4', title: 'Concluído 4', position: 3, progresses: [{ userId: 'user-a', completed: true }] },
+      { id: 'step-5', title: 'Pendente', position: 4, progresses: [] },
+    ] } as unknown as Parameters<typeof goalStepPreview>[0];
+    expect(goalStepPreview(goal).map((step) => step.title)).toEqual(['Concluído 3', 'Concluído 4', 'Pendente']);
+  });
+
+  it('mostra os três últimos passos quando a meta está totalmente concluída', () => {
+    const goal = { steps: [1, 2, 3, 4, 5].map((position) => ({ id: `step-${position}`, title: `Passo ${position}`, position, progresses: [{ userId: 'user-a', completed: true }] })) } as unknown as Parameters<typeof goalStepPreview>[0];
+    expect(goalStepPreview(goal).map((step) => step.title)).toEqual(['Passo 3', 'Passo 4', 'Passo 5']);
+  });
+
+  it('mostra todos os passos quando existem no máximo três aplicáveis', () => {
+    const goal = { steps: [
+      { id: 'step-1', title: 'Pendente', position: 0, progresses: [] },
+      { id: 'step-2', title: 'Concluído', position: 1, progresses: [{ userId: 'user-a', completed: true }] },
+    ] } as unknown as Parameters<typeof goalStepPreview>[0];
+    expect(goalStepPreview(goal).map((step) => step.title)).toEqual(['Pendente', 'Concluído']);
+  });
+
+  it('remove da prévia os passos não aplicáveis ao usuário atual', () => {
+    const goal = { steps: [
+      { id: 'step-1', title: 'Todos 1', position: 0, applicable: true, progresses: [] },
+      { id: 'step-2', title: 'Outro participante', position: 1, applicable: false, progresses: [] },
+      { id: 'step-3', title: 'Todos 2', position: 2, applicable: true, progresses: [] },
+      { id: 'step-4', title: 'Todos 3', position: 3, applicable: true, progresses: [] },
+    ] } as unknown as Parameters<typeof goalStepPreview>[0];
+    expect(goalStepPreview(goal).map((step) => step.title)).toEqual(['Todos 1', 'Todos 2', 'Todos 3']);
   });
 
   it('renders the welcome message', () => {

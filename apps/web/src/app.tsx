@@ -37,7 +37,24 @@ function ContextBadge({ goal }: { goal: Goal }) { return <DSBadge tone={goal.tea
 function goalStats(goal: Goal) { const done = goal.progressSummary?.completedSteps ?? goal.steps.filter((step) => step.progresses?.some((progress) => progress.completed)).length; const total = goal.progressSummary?.totalSteps ?? goal.steps.length; return { done, total, percentage: percent(done, total) }; }
 export function homeGoalStepsSummary(goal: Goal) { const { done, total } = goalStats(goal); return total ? { label: `${done}/${total} passos`, ariaLabel: `${done} concluídos, ${total - done} faltantes` } : { label: 'Sem passos', ariaLabel: 'Meta sem passos' }; }
 function isStepCompleted(step: Goal['steps'][number]) { return step.progresses?.some((progress) => progress.completed) ?? false; }
-export function goalStepPreview(goal: Goal) { return [...goal.steps].sort((a, b) => Number(isStepCompleted(b)) - Number(isStepCompleted(a)) || a.position - b.position).slice(0, 5); }
+export function goalStepPreview(goal: Goal) {
+  const applicableSteps = goal.steps.filter((step) => step.applicable !== false).sort((a, b) => a.position - b.position);
+  if (applicableSteps.length <= 3) return applicableSteps;
+
+  const pendingSteps = applicableSteps.filter((step) => !isStepCompleted(step));
+  if (pendingSteps.length === 0) return applicableSteps.slice(-3);
+  if (pendingSteps.length >= 3) return pendingSteps.slice(0, 3);
+
+  const completedSteps = applicableSteps.filter(isStepCompleted);
+  const firstPendingPosition = pendingSteps[0].position;
+  const previousCompleted = completedSteps.filter((step) => step.position < firstPendingPosition).sort((a, b) => b.position - a.position);
+  const remainingCompleted = completedSteps.filter((step) => step.position >= firstPendingPosition).sort((a, b) => {
+    const aDistance = Math.min(...pendingSteps.map((pending) => Math.abs(a.position - pending.position)));
+    const bDistance = Math.min(...pendingSteps.map((pending) => Math.abs(b.position - pending.position)));
+    return aDistance - bDistance || a.position - b.position;
+  });
+  return [...pendingSteps, ...previousCompleted, ...remainingCompleted].slice(0, 3).sort((a, b) => a.position - b.position);
+}
 function uniqueGoals(groups: Goal[][]) { const seen = new Set<string>(); return groups.flat().filter((goal) => { if (seen.has(goal.id)) return false; seen.add(goal.id); return true; }); }
 function CompletionState({ mode }: { mode?: string | null }) { return <div className="completion-state"><IconCircleCheck size={30} stroke={1.8} aria-hidden="true" /><strong>Meta concluída</strong><small>{mode === 'owner_override' ? 'Encerrada pelo owner.' : 'Você chegou ao marco.'}</small></div>; }
 function MilestoneHint({ done, total }: { done: number; total: number }) { if (!total) return <p className="muted">Adicione um passo para transformar a intenção em movimento.</p>; if (done === total) return <p className="milestone-hint">Tudo concluído. Esse marco é seu.</p>; if (done / total >= .75) return <p className="milestone-hint">Quase lá — falta pouco para concluir.</p>; if (done > 0) return <p className="milestone-hint">Bom ritmo — cada passo conta.</p>; return <p className="muted">Comece pelo primeiro passo.</p>; }
