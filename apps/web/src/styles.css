@@ -1231,7 +1231,7 @@ body { overflow-x: hidden; }
 .goals-page .goal-card:first-child { border-top-color: transparent; }
 .goals-page .goal-card:first-child:hover, .goals-page .goal-card:first-child:focus-visible { border-top-color: var(--primary); }
 
-.goal-gallery { display: flex; flex-direction: column; gap: 1rem; }
+.goal-gallery { display: flex; flex-direction: column; gap: 1rem; padding: var(--card-padding-lg); }
 .goal-gallery h2 { text-wrap: balance; }
 .goal-gallery .panel-heading { align-items: flex-start; }
 .goal-gallery .panel-heading h2 { margin: .2rem 0 .25rem; }
@@ -1256,10 +1256,50 @@ body { overflow-x: hidden; }
 .goal-photo-detail p { margin: 0 0 .55rem; white-space: pre-wrap; }
 .goal-photo-detail small { display: block; margin-top: .25rem; }
 
+/* Gallery dialogs need a bounded viewport and an inner scroll area on every device. */
+.feedback-backdrop {
+  align-items: center;
+  justify-items: center;
+  overflow-y: auto;
+  padding: max(var(--page-padding-mobile), env(safe-area-inset-top)) max(var(--page-padding-mobile), env(safe-area-inset-right)) max(var(--page-padding-mobile), env(safe-area-inset-bottom)) max(var(--page-padding-mobile), env(safe-area-inset-left));
+}
+.ds-dialog {
+  min-height: 0;
+  max-height: calc(100vh - 2rem);
+  max-height: calc(100dvh - 2rem);
+  overflow: hidden;
+}
+.ds-dialog-content {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+  -webkit-overflow-scrolling: touch;
+}
+.goal-photo-form .ds-dialog-actions {
+  position: sticky;
+  bottom: 0;
+  margin-top: .25rem;
+  padding-top: .75rem;
+  background: var(--surface-raised);
+}
+
 @media (max-width: 720px) {
+  .goal-gallery { padding: var(--card-padding-md); }
   .goal-gallery .panel-heading { flex-direction: column; }
   .goal-gallery .panel-heading > button { width: 100%; }
   .goal-gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
   .goal-photo-card-copy { padding: .6rem; }
   .goal-gallery-error { align-items: flex-start; flex-direction: column; }
+}
+
+@media (max-width: 520px) {
+  .feedback-backdrop {
+    align-items: center;
+    padding: max(.75rem, env(safe-area-inset-top)) max(.75rem, env(safe-area-inset-right)) max(.75rem, env(safe-area-inset-bottom)) max(.75rem, env(safe-area-inset-left));
+  }
+  .ds-dialog {
+    max-height: calc(100vh - 1.5rem);
+    max-height: calc(100dvh - 1.5rem);
+  }
 }
