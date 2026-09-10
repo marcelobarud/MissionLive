@@ -1,4 +1,5 @@
 import { createContext, FormEvent, ReactNode, useCallback, useContext, useEffect, useId, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { IconAlertTriangle, IconCheck, IconInfoCircle, IconX } from '@tabler/icons-react';
 import { Button, IconButton, Input, Select, Textarea } from './design-system';
 
@@ -110,7 +111,7 @@ function DialogShell({ title, description, tone = 'info', children, onClose }: {
     };
   }, []);
 
-  return <div className="feedback-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><div className="ds-dialog" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={description ? descriptionId : undefined}><div className={`feedback-dialog-icon feedback-dialog-icon-${tone}`}>{dialogIcon(tone)}</div><div className="ds-dialog-content"><h2 id={titleId}>{title}</h2>{description && <p id={descriptionId}>{description}</p>}{children}</div></div></div>;
+  return createPortal(<div className="feedback-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><div className="ds-dialog" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={description ? descriptionId : undefined}><div className={`feedback-dialog-icon feedback-dialog-icon-${tone}`}>{dialogIcon(tone)}</div><div className="ds-dialog-content"><h2 id={titleId}>{title}</h2>{description && <p id={descriptionId}>{description}</p>}{children}</div></div></div>, document.body);
 }
 
 export function Dialog({ open, title, description, tone = 'info', onClose, children }: { open: boolean; title: string; description?: string; tone?: FeedbackTone; onClose: () => void; children: ReactNode }) {
