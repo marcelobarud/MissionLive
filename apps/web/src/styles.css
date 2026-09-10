@@ -1442,22 +1442,8 @@ body { overflow-x: hidden; }
   }
 }
 
-/* Goal detail hierarchy: the checklist is the primary workspace; supporting tools follow it. */
-.page.narrow:has(> .steps-panel) { display: flex; flex-direction: column; }
-.page.narrow:has(> .steps-panel) > .back-link { order: 1; }
-.page.narrow:has(> .steps-panel) > .detail-heading { order: 2; }
-.page.narrow:has(> .steps-panel) > .form-card { order: 3; }
-.page.narrow:has(> .steps-panel) > .detail-summary { order: 4; }
-.page.narrow:has(> .steps-panel) > .steps-panel { order: 5; border-left: .3rem solid var(--primary); box-shadow: var(--shadow-sm); }
-.page.narrow:has(> .steps-panel) > .completion-state,
-.page.narrow:has(> .steps-panel) > .override-note { order: 6; }
-.page.narrow:has(> .steps-panel) > .rhythm-panel,
-.page.narrow:has(> .steps-panel) > .reminder-panel,
-.page.narrow:has(> .steps-panel) > .comments-panel,
-.page.narrow:has(> .steps-panel) > .participant-progress-panel,
-.page.narrow:has(> .steps-panel) > .action-stack,
-.page.narrow:has(> .steps-panel) > .invite-card,
-.page.narrow:has(> .steps-panel) > .state-panel { order: 10; }
+/* Goal detail hierarchy is represented by the DOM so mobile and desktop share the same reading order. */
+.page.narrow:has(> .steps-panel) > .steps-panel { border-left: .3rem solid var(--primary); box-shadow: var(--shadow-sm); }
 
 /* Keep the summary operational and quiet when there is no usable rhythm signal. */
 .page.narrow:has(> .steps-panel) > .detail-summary { gap: .45rem; padding: .8rem 1rem; border-left: 0; }
