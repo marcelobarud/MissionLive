@@ -1627,11 +1627,15 @@ body { overflow-x: hidden; }
   }
   .share-links {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
   }
   .share-links a {
     justify-content: center;
+    width: 100%;
     min-height: var(--control-height-small);
+    padding-inline: .35rem;
+    text-align: center;
   }
   .team-track-state > span {
     display: grid;
@@ -1647,11 +1651,5 @@ body { overflow-x: hidden; }
   .team-track-state small {
     width: 100%;
     text-align: right;
-  }
-}
-
-@media (max-width: 420px) {
-  .share-links {
-    grid-template-columns: minmax(0, 1fr);
   }
 }
