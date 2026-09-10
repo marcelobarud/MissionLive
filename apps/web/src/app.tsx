@@ -1,7 +1,7 @@
 import { FormEvent, KeyboardEvent as ReactKeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { IconAlarm, IconArchive, IconArrowDown, IconArrowUp, IconBell, IconBrandTelegram, IconBrandWhatsapp, IconCalendar, IconChevronDown, IconChevronLeft, IconChevronRight, IconChevronUp, IconCircle, IconCircleCheck, IconHome, IconLogout, IconMail, IconMenu2, IconPencil, IconPlus, IconSearch, IconShieldLock, IconTargetArrow, IconTemplate, IconTrash, IconUserPlus, IconUsersGroup, IconX } from '@tabler/icons-react';
-import { AdminOverview, api, API_URL, ActivityEvent, ActivityPage, CalendarData, Category, Comment, Dashboard, Goal, GoalTemplate, ParticipantProgress, Reminder, Rhythm, Team, TeamDetail, User } from './api';
+import { AdminOverview, AdminUser, AdminUserDetail, AdminUserStatus, AdminUsersResponse, api, API_URL, ActivityEvent, ActivityPage, CalendarData, Category, Comment, Dashboard, Goal, GoalTemplate, ParticipantProgress, Reminder, Rhythm, Team, TeamDetail, User } from './api';
 import type { Notification as NotificationItem } from './api';
 import { DevicePushState, disableDevicePush, enableDevicePush, getDevicePushState } from './push';
 import { Badge as DSBadge, Button as DSButton, Checkbox as DSCheckbox, EmptyState as DSEmptyState, FormField as DSFormField, PageHeader as DSPageHeader, Panel as DSPanel, ProgressBar as DSProgressBar, Select as DSSelect, Spinner as DSSpinner } from './design-system';
@@ -278,6 +278,83 @@ function AdminMetricPanel({ title, total, details, labelledBy }: { title: string
   return <DSPanel className="admin-metric-panel" aria-labelledby={labelledBy}><h2 id={labelledBy}>{title}</h2><div className="admin-metric-primary"><strong>{total}</strong><span>Total</span></div>{details.length > 0 && <dl className="admin-metric-details">{details.map((detail) => <div key={detail.label}><dt>{detail.label}</dt><dd>{detail.value}</dd></div>)}</dl>}</DSPanel>;
 }
 
+function AdminNavigation() {
+  return <nav className="admin-navigation" aria-label="Navegação da administração"><NavLink to="/admin" end>Visão geral</NavLink><NavLink to="/admin/users">Usuários</NavLink></nav>;
+}
+
+function adminUserStatusLabel(status: AdminUserStatus) { return status === 'active' ? 'Ativo' : 'Desativado'; }
+function adminUserRoleLabel(role: User['platformRole']) { return role === 'SUPER_ADMIN' ? 'Superadministrador' : role === 'ADMIN' ? 'Administrador' : 'Usuário'; }
+
+function AdminUserRow({ item, busy, onStatusChange }: { item: AdminUser; busy: boolean; onStatusChange: (item: AdminUser) => void }) {
+  return <tr>
+    <td data-label="Usuário"><div className="admin-user-primary"><strong>{item.name}</strong><small>{item.email}</small></div></td>
+    <td data-label="Status"><span className={`admin-user-status admin-user-status-${item.status}`}>{adminUserStatusLabel(item.status)}</span></td>
+    <td data-label="Tipo">{adminUserRoleLabel(item.platformRole)}</td>
+    <td data-label="Cadastro"><time dateTime={item.createdAt}>{formatDate(item.createdAt)}</time></td>
+    <td data-label="Ações"><div className="admin-user-actions"><NavLink className="ds-button ds-button-secondary" to={`/admin/users/${encodeURIComponent(item.id)}`}>Ver detalhes</NavLink>{item.platformRole === 'USER' && <button className="admin-user-status-action" type="button" disabled={busy} onClick={() => onStatusChange(item)}>{busy ? 'Atualizando…' : item.status === 'active' ? 'Desativar' : 'Reativar'}</button>}</div></td>
+  </tr>;
+}
+
+export function AdminUsersPage({ user }: { user: User }) {
+  const canAccess = isPlatformAdminUser(user);
+  const [searchInput, setSearchInput] = useState('');
+  const [statusFilter, setStatusFilter] = useState<AdminUserStatus | ''>('');
+  const [filters, setFilters] = useState<{ search: string; status: AdminUserStatus | '' }>({ search: '', status: '' });
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState<AdminUsersResponse>();
+  const [error, setError] = useState('');
+  const [statusBusyId, setStatusBusyId] = useState<string>();
+  const { confirm, toast } = useFeedback();
+  useEffect(() => { const timer = window.setTimeout(() => { setFilters({ search: searchInput.trim().replace(/\s+/g, ' '), status: statusFilter }); setPage(1); }, 300); return () => window.clearTimeout(timer); }, [searchInput, statusFilter]);
+  const load = useCallback(() => {
+    setError('');
+    setData(undefined);
+    let cancelled = false;
+    void api.adminUsers({ page, pageSize: 20, search: filters.search || undefined, status: filters.status || undefined }).then((next) => { if (cancelled) return; setData(next); if (next.pagination.page !== page) setPage(next.pagination.page); }).catch((err: unknown) => { if (!cancelled) setError(messageOf(err, 'Não foi possível carregar os usuários.')); });
+    return () => { cancelled = true; };
+  }, [filters, page]);
+  useEffect(() => { if (canAccess) return load(); }, [canAccess, load]);
+  async function changeStatus(item: AdminUser) {
+    const nextStatus: AdminUserStatus = item.status === 'active' ? 'disabled' : 'active';
+    await confirm({ title: nextStatus === 'disabled' ? 'Desativar usuário?' : 'Reativar usuário?', description: nextStatus === 'disabled' ? 'A conta perderá acesso ao MissionLive e suas sessões ativas serão encerradas.' : 'A conta voltará a poder acessar o MissionLive. Nenhuma sessão será criada automaticamente.', tone: nextStatus === 'disabled' ? 'danger' : 'warning', confirmLabel: nextStatus === 'disabled' ? 'Desativar usuário' : 'Reativar usuário', onConfirm: async () => { setStatusBusyId(item.id); try { const result = await api.updateAdminUserStatus(item.id, nextStatus); toast({ title: result.changed ? (nextStatus === 'disabled' ? 'Usuário desativado.' : 'Usuário reativado.') : 'Nenhuma alteração necessária.', tone: 'success' }); void load(); } catch (err) { throw new Error(messageOf(err, 'Não foi possível atualizar o status do usuário.')); } finally { setStatusBusyId(undefined); } } });
+  }
+  if (!canAccess) return <Navigate to="/" replace />;
+  if (error) return <section className="page admin-page"><PageHeading eyebrow="ADMINISTRAÇÃO" title="Usuários" subtitle="Gerencie o acesso das contas do MissionLive." /><AdminNavigation /><ErrorState message={error} onRetry={() => { void load(); }} /></section>;
+  if (!data) return <section className="page admin-page"><PageHeading eyebrow="ADMINISTRAÇÃO" title="Usuários" subtitle="Gerencie o acesso das contas do MissionLive." /><AdminNavigation /><LoadingState /></section>;
+  const hasSearch = Boolean(filters.search);
+  return <section className="page admin-page admin-users-page">
+    <PageHeading eyebrow="ADMINISTRAÇÃO" title="Usuários" subtitle="Gerencie o acesso das contas do MissionLive." />
+    <AdminNavigation />
+    <div className="panel admin-users-filters" role="group" aria-label="Filtros de usuários">
+      <label className="admin-users-search"><span>Buscar</span><input name="admin-user-search" autoComplete="off" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Buscar por nome ou e-mail…" /></label>
+      <label><span>Status</span><select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as AdminUserStatus | '')}><option value="">Todos</option><option value="active">Ativos</option><option value="disabled">Desativados</option></select></label>
+    </div>
+    {data.items.length === 0 ? <DSEmptyState title="Nenhum usuário encontrado" description={hasSearch ? 'Tente buscar por outro nome ou e-mail.' : 'As contas do MissionLive aparecerão aqui.'} /> : <div className="panel admin-users-table-shell"><table className="admin-users-table"><caption className="sr-only">Usuários da plataforma</caption><thead><tr><th scope="col">Usuário</th><th scope="col">Status</th><th scope="col">Tipo</th><th scope="col">Cadastro</th><th scope="col">Ações</th></tr></thead><tbody>{data.items.map((item) => <AdminUserRow item={item} busy={statusBusyId === item.id} onStatusChange={(next) => { void changeStatus(next); }} key={item.id} />)}</tbody></table></div>}
+    {data.pagination.totalPages > 0 && <nav className="admin-pagination" aria-label="Paginação de usuários"><DSButton variant="secondary" type="button" disabled={data.pagination.page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}><IconChevronLeft size={16} stroke={1.9} aria-hidden="true" />Anterior</DSButton><span>Página {data.pagination.page} de {data.pagination.totalPages} · {data.pagination.totalItems} usuários</span><DSButton variant="secondary" type="button" disabled={data.pagination.page >= data.pagination.totalPages} onClick={() => setPage((current) => current + 1)}>Próxima<IconChevronRight size={16} stroke={1.9} aria-hidden="true" /></DSButton></nav>}
+  </section>;
+}
+
+export function AdminUserDetailPage({ user }: { user: User }) {
+  const canAccess = isPlatformAdminUser(user);
+  const { userId } = useParams() as { userId: string };
+  const [data, setData] = useState<AdminUserDetail>();
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const { confirm, toast } = useFeedback();
+  const load = useCallback(() => { setError(''); return api.adminUser(userId).then(setData).catch((err: unknown) => setError(messageOf(err, 'Não foi possível carregar os detalhes do usuário.'))); }, [userId]);
+  useEffect(() => { if (canAccess) void load(); }, [canAccess, load]);
+  if (!canAccess) return <Navigate to="/" replace />;
+  if (error) return <section className="page narrow admin-page"><NavLink className="back-link" to="/admin/users"><IconChevronLeft size={17} stroke={1.9} aria-hidden="true" />Voltar para usuários</NavLink><PageHeading eyebrow="ADMINISTRAÇÃO" title="Detalhes do usuário" subtitle="Informações operacionais seguras da conta." /><AdminNavigation /><ErrorState message={error} onRetry={() => { void load(); }} /></section>;
+  if (!data) return <section className="page narrow admin-page"><NavLink className="back-link" to="/admin/users"><IconChevronLeft size={17} stroke={1.9} aria-hidden="true" />Voltar para usuários</NavLink><PageHeading eyebrow="ADMINISTRAÇÃO" title="Detalhes do usuário" subtitle="Informações operacionais seguras da conta." /><AdminNavigation /><LoadingState /></section>;
+  const item = data.user;
+  const currentStats = data.stats;
+  async function changeStatus() {
+    const nextStatus: AdminUserStatus = item.status === 'active' ? 'disabled' : 'active';
+    await confirm({ title: nextStatus === 'disabled' ? 'Desativar usuário?' : 'Reativar usuário?', description: nextStatus === 'disabled' ? 'A conta perderá acesso ao MissionLive e suas sessões ativas serão encerradas.' : 'A conta voltará a poder acessar o MissionLive. Nenhuma sessão será criada automaticamente.', tone: nextStatus === 'disabled' ? 'danger' : 'warning', confirmLabel: nextStatus === 'disabled' ? 'Desativar usuário' : 'Reativar usuário', onConfirm: async () => { setBusy(true); try { const result = await api.updateAdminUserStatus(item.id, nextStatus); setData({ user: result.user, stats: currentStats }); toast({ title: result.changed ? (nextStatus === 'disabled' ? 'Usuário desativado.' : 'Usuário reativado.') : 'Nenhuma alteração necessária.', tone: 'success' }); } catch (err) { throw new Error(messageOf(err, 'Não foi possível atualizar o status do usuário.')); } finally { setBusy(false); } } });
+  }
+  return <section className="page narrow admin-page admin-user-detail-page"><NavLink className="back-link" to="/admin/users"><IconChevronLeft size={17} stroke={1.9} aria-hidden="true" />Voltar para usuários</NavLink><PageHeading eyebrow="ADMINISTRAÇÃO / USUÁRIOS" title={item.name} subtitle="Informações operacionais seguras da conta." /><AdminNavigation /><DSPanel className="admin-user-detail-panel"><div className="admin-user-detail-heading"><div><h2>{item.name}</h2><p>{item.email}</p></div><span className={`admin-user-status admin-user-status-${item.status}`}>{adminUserStatusLabel(item.status)}</span></div><dl className="admin-user-detail-grid"><div><dt>Status</dt><dd>{adminUserStatusLabel(item.status)}</dd></div><div><dt>Tipo de conta</dt><dd>{adminUserRoleLabel(item.platformRole)}</dd></div><div><dt>Cadastro</dt><dd><time dateTime={item.createdAt}>{formatDate(item.createdAt)}</time></dd></div></dl>{item.platformRole === 'USER' && <div className="admin-user-detail-actions"><DSButton variant={item.status === 'active' ? 'danger' : 'secondary'} type="button" disabled={busy} onClick={() => { void changeStatus(); }}>{busy ? 'Atualizando…' : item.status === 'active' ? 'Desativar usuário' : 'Reativar usuário'}</DSButton></div>}</DSPanel><DSPanel className="admin-user-stats-panel"><div className="section-heading"><div><p className="eyebrow">RESUMO OPERACIONAL</p><h2>Uso da plataforma</h2></div></div><dl className="admin-user-stats-grid"><div><dt>Metas criadas</dt><dd>{data.stats.goalsCreated}</dd></div><div><dt>Equipes</dt><dd>{data.stats.teams}</dd></div><div><dt>Fotos publicadas</dt><dd>{data.stats.photos}</dd></div></dl></DSPanel></section>;
+}
+
 export function AdminPage({ user }: { user: User }) {
   const canAccess = isPlatformAdminUser(user);
   const [data, setData] = useState<AdminOverview>();
@@ -285,9 +362,9 @@ export function AdminPage({ user }: { user: User }) {
   const load = useCallback(() => { setError(''); return api.adminOverview().then(setData).catch((err: unknown) => setError(messageOf(err, 'Não foi possível carregar o painel administrativo.'))); }, []);
   useEffect(() => { if (canAccess) void load(); }, [canAccess, load]);
   if (!canAccess) return <Navigate to="/" replace />;
-  if (error) return <section className="page admin-page"><ErrorState message={error} onRetry={() => { void load(); }} /></section>;
-  if (!data) return <section className="page admin-page"><LoadingState /></section>;
-  return <section className="page admin-page"><PageHeading eyebrow="ADMINISTRAÇÃO" title="Visão geral" subtitle="Acompanhe o estado geral do MissionLive." /><div className="admin-overview-grid" aria-label="Resumo da plataforma"><AdminMetricPanel title="Usuários" total={data.users.total} labelledBy="admin-users-title" details={[{ label: 'Ativos', value: data.users.active }, { label: 'Novos neste mês', value: data.users.newThisMonth }]} /><AdminMetricPanel title="Metas" total={data.goals.total} labelledBy="admin-goals-title" details={[{ label: 'Ativas', value: data.goals.active }, { label: 'Concluídas', value: data.goals.completed }]} /><AdminMetricPanel title="Equipes" total={data.teams.total} labelledBy="admin-teams-title" details={[]} /><AdminMetricPanel title="Fotos" total={data.photos.total} labelledBy="admin-photos-title" details={[]} /></div></section>;
+  if (error) return <section className="page admin-page"><PageHeading eyebrow="ADMINISTRAÇÃO" title="Visão geral" subtitle="Acompanhe o estado geral do MissionLive." /><AdminNavigation /><ErrorState message={error} onRetry={() => { void load(); }} /></section>;
+  if (!data) return <section className="page admin-page"><PageHeading eyebrow="ADMINISTRAÇÃO" title="Visão geral" subtitle="Acompanhe o estado geral do MissionLive." /><AdminNavigation /><LoadingState /></section>;
+  return <section className="page admin-page"><PageHeading eyebrow="ADMINISTRAÇÃO" title="Visão geral" subtitle="Acompanhe o estado geral do MissionLive." /><AdminNavigation /><div className="admin-overview-grid" aria-label="Resumo da plataforma"><AdminMetricPanel title="Usuários" total={data.users.total} labelledBy="admin-users-title" details={[{ label: 'Ativos', value: data.users.active }, { label: 'Novos neste mês', value: data.users.newThisMonth }]} /><AdminMetricPanel title="Metas" total={data.goals.total} labelledBy="admin-goals-title" details={[{ label: 'Ativas', value: data.goals.active }, { label: 'Concluídas', value: data.goals.completed }]} /><AdminMetricPanel title="Equipes" total={data.teams.total} labelledBy="admin-teams-title" details={[]} /><AdminMetricPanel title="Fotos" total={data.photos.total} labelledBy="admin-photos-title" details={[]} /></div></section>;
 }
 
 function DashboardPage({ user }: { user: User }) {
@@ -337,7 +414,7 @@ export function App() {
   useEffect(() => { if (!mobileSidebarOpen) return; const handleKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') setMobileSidebarOpen(false); }; const previousOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden'; document.addEventListener('keydown', handleKeyDown); return () => { document.body.style.overflow = previousOverflow; document.removeEventListener('keydown', handleKeyDown); }; }, [mobileSidebarOpen]);
   useEffect(() => { if (!mobileSidebarOpen && sidebarWasOpen.current) menuButtonRef.current?.focus(); sidebarWasOpen.current = mobileSidebarOpen; }, [mobileSidebarOpen]); useEffect(() => { setMobileSidebarOpen(false); }, [location.pathname]);
   if (user === undefined) return <LoadingState />; if (!user) return <AuthScreen onAuthenticated={(nextUser) => { setUser(nextUser); if (location.pathname.startsWith('/invite/')) navigate(location.pathname); }} />;
-  return <><a className="skip-link" href="#main-content">Pular para o conteúdo</a><div className="app-shell"><Sidebar user={user} open={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} onLogout={() => { void api.logout().finally(() => setUser(null)); setMobileSidebarOpen(false); }} unreadCount={notificationUnreadCount} /><div className="app-main"><header className="topbar mobile-topbar"><button ref={menuButtonRef} className="mobile-menu-button" type="button" aria-label="Abrir menu" aria-controls="app-sidebar" aria-expanded={mobileSidebarOpen} onClick={() => setMobileSidebarOpen(true)}><IconMenu2 size={21} stroke={1.9} aria-hidden="true" /></button><NavLink className="mobile-brand" to="/"><BrandLogo variant="dark" /></NavLink></header><>{!user.onboardingCompletedAt && !location.pathname.startsWith('/invite/') && <OnboardingPrompt onComplete={() => setUser({ ...user, onboardingCompletedAt: new Date().toISOString() })} />}</><main id="main-content"><Routes><Route path="/" element={<DashboardPage user={user} />} /><Route path="/activities" element={<ActivitiesPage />} /><Route path="/goals" element={<GoalsPage />} /><Route path="/goals/new" element={<NewGoalPage />} /><Route path="/goals/:goalId" element={<GoalDetailPage user={user} />} /><Route path="/teams" element={<TeamsPage />} /><Route path="/templates" element={<TemplatesPage />} /><Route path="/calendar" element={<CalendarPage />} /><Route path="/notifications" element={<NotificationsPage unreadCount={notificationUnreadCount} onUnreadCountChange={setNotificationUnreadCount} onRefreshUnreadCount={refreshNotificationUnreadCount} />} /><Route path="/profile" element={<ProfilePage user={user} onUpdated={setUser} />} /><Route path="/admin" element={<AdminPage user={user} />} /><Route path="/teams/new" element={<NewTeamPage user={user} />} /><Route path="/teams/:teamId" element={<TeamDetailPage />} /><Route path="/invite/:token" element={<InvitePage />} /><Route path="*" element={<DashboardPage user={user} />} /></Routes></main></div></div></>;
+  return <><a className="skip-link" href="#main-content">Pular para o conteúdo</a><div className="app-shell"><Sidebar user={user} open={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} onLogout={() => { void api.logout().finally(() => setUser(null)); setMobileSidebarOpen(false); }} unreadCount={notificationUnreadCount} /><div className="app-main"><header className="topbar mobile-topbar"><button ref={menuButtonRef} className="mobile-menu-button" type="button" aria-label="Abrir menu" aria-controls="app-sidebar" aria-expanded={mobileSidebarOpen} onClick={() => setMobileSidebarOpen(true)}><IconMenu2 size={21} stroke={1.9} aria-hidden="true" /></button><NavLink className="mobile-brand" to="/"><BrandLogo variant="dark" /></NavLink></header><>{!user.onboardingCompletedAt && !location.pathname.startsWith('/invite/') && <OnboardingPrompt onComplete={() => setUser({ ...user, onboardingCompletedAt: new Date().toISOString() })} />}</><main id="main-content"><Routes><Route path="/" element={<DashboardPage user={user} />} /><Route path="/activities" element={<ActivitiesPage />} /><Route path="/goals" element={<GoalsPage />} /><Route path="/goals/new" element={<NewGoalPage />} /><Route path="/goals/:goalId" element={<GoalDetailPage user={user} />} /><Route path="/teams" element={<TeamsPage />} /><Route path="/templates" element={<TemplatesPage />} /><Route path="/calendar" element={<CalendarPage />} /><Route path="/notifications" element={<NotificationsPage unreadCount={notificationUnreadCount} onUnreadCountChange={setNotificationUnreadCount} onRefreshUnreadCount={refreshNotificationUnreadCount} />} /><Route path="/profile" element={<ProfilePage user={user} onUpdated={setUser} />} /><Route path="/admin" element={<AdminPage user={user} />} /><Route path="/admin/users" element={<AdminUsersPage user={user} />} /><Route path="/admin/users/:userId" element={<AdminUserDetailPage user={user} />} /><Route path="/teams/new" element={<NewTeamPage user={user} />} /><Route path="/teams/:teamId" element={<TeamDetailPage />} /><Route path="/invite/:token" element={<InvitePage />} /><Route path="*" element={<DashboardPage user={user} />} /></Routes></main></div></div></>;
 }
 
 function GoalsPage() {

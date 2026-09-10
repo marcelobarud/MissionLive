@@ -222,6 +222,9 @@ Persistir hash do token, não o token puro.
 - Credenciais e e-mails administrativos locais não devem ser armazenados neste documento, versionados no repositório ou reutilizados em produção.
 - A primeira superfície administrativa é `/admin`, acessível a `ADMIN` e `SUPER_ADMIN`; ela exibe somente métricas agregadas da plataforma e não concede acesso global ao conteúdo privado das metas.
 - `GET /admin/overview` deriva a sessão autenticada, exige administrador de plataforma e retorna contagens de usuários, metas, equipes e fotos; usuários ativos usam `status = active`, novos usuários usam o mês UTC corrente e fotos contam registros de `GoalPhoto` uma única vez.
+- A gestão administrativa de usuários está disponível em `/admin/users`, exclusivamente para `ADMIN` e `SUPER_ADMIN`; a listagem usa busca, filtro de status e paginação server-side e retorna somente `id`, nome, e-mail, status, `platformRole` e data de cadastro.
+- `GET /admin/users/:userId` expõe apenas detalhes operacionais seguros e contagens agregadas de metas próprias, equipes e fotos, sem campos privados, conteúdo de metas ou credenciais.
+- `PATCH /admin/users/:userId/status` permite a administradores ativar/desativar somente contas `USER`, nunca a própria conta ou contas administrativas; ao desativar, revoga todas as sessões ativas na mesma transação e registra `AdminAuditLog`. Reativação não cria sessão automaticamente e operações idempotentes não geram auditoria duplicada.
 
 ## 9. Metas
 
@@ -693,6 +696,7 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - convites de metas/equipes com token hash, expiração de 24 horas, aceite explícito, revogação e limite de três convidados em meta compartilhada;
 - equipes, memberships, roles e autorização no backend;
 - autorização global de plataforma com `GET /admin/overview`, métricas agregadas de usuários/metas/equipes/fotos e acesso restrito a `ADMIN`/`SUPER_ADMIN`, sem carregamento de registros privados;
+- gerenciamento administrativo de usuários em `/admin/users`, com listagem server-side paginada, busca/filtro, detalhes agregados seguros, ativação/desativação apenas de contas `USER`, revogação transacional de sessões e auditoria das transições reais;
 - dashboard V2 escopado (progresso ativo, prazos, quase concluídas e distribuição por contexto/categoria) e endpoint de plano/entitlement de desenvolvimento;
 - reminders com timezone, datas futuras, cancelamento e migration própria; cada reminder distingue `creatorUserId` de `targetUserId` e pode apontar opcionalmente para um `GoalStep`; owner/admin/editor podem criar para participantes válidos, viewer somente para si, a aplicabilidade de `ALL_PARTICIPANTS`/`SPECIFIC_PARTICIPANT` é validada no backend, e a entrega interna/Web Push ocorre para o target; reminders `ONCE` continuam sendo processados uma única vez, enquanto reminders `DAILY` de metas diárias permanecem pending, avançam para o próximo horário local válido e geram um Aviso interno e tentativa de Web Push por data; a idempotência usa `Notification.deliveryKey`, e se o GoalStep for removido, a constraint `SetNull` preserva o reminder como lembrete geral da meta.
 - subscriptions Web Push são vinculadas ao usuário por dispositivo/browser, com VAPID configurável por ambiente, invalidação de endpoints expirados e Service Worker web com navegação limitada a metas internas;
@@ -716,6 +720,7 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - onboarding pulável, perfil/preferências, sessões e notificações internas com deep links; o perfil mostra o estado das notificações do navegador e o primeiro reminder pode oferecer ativação contextual sem solicitar permissão automaticamente; o cadastro inicial permanece curto e o perfil permite completar depois telefone, data de nascimento, país, região/UF e cidade;
 - navegação responsiva mobile-first com estados de loading, erro e vazio; o shell autenticado usa sidebar fixa no desktop/tablet e drawer acessível no mobile, sem duplicar a navegação no topo;
 - painel administrativo em `/admin`, com item de sidebar condicional para `ADMIN`/`SUPER_ADMIN`, cabeçalho “Visão geral” e quatro blocos responsivos de métricas agregadas;
+- área administrativa de usuários em `/admin/users`, com navegação interna, tabela responsiva que se transforma em cards no mobile, busca, filtros, paginação, detalhes operacionais e confirmação para alteração de status;
 - Design System V1 em `apps/web/src/design-system.tsx`, com Button, IconButton, Input, Textarea, Select, Checkbox, FormField, Card, Panel, Section, PageHeader, EmptyState, Spinner, ProgressBar e Badge;
 - Service Worker em `apps/web/public/sw.js` recebe Web Push, exibe notificações do sistema e aceita somente deep links internos de metas;
 - tokens visuais centralizados em `apps/web/src/styles.css`, documentados em `docs/design/DESIGN_SYSTEM.md`, usando neutros minerais, verde-sálvia, escala de espaçamento, raios, alturas, foco, estados semânticos e reduced motion;

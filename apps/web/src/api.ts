@@ -15,6 +15,11 @@ export type Team = { id: string; ownerUserId: string; owner?: User; name: string
 export type TeamDetail = Omit<Team, 'goals'> & { goals: Goal[] };
 export type Dashboard = { counts: { completed: number; open: number; thisMonth: number; thisYear: number; total: number; completionRate: number; activeProgress: number }; categoryBreakdown: { label: string; count: number }[]; contextBreakdown: { label: string; count: number }[]; upcomingDeadlines: Goal[]; overdueGoals: Goal[]; nearlyCompleteGoals: Goal[]; completionTimeline: { label: string; count: number }[]; recentGoals: Goal[] };
 export type AdminOverview = { users: { total: number; active: number; newThisMonth: number }; goals: { total: number; active: number; completed: number }; teams: { total: number }; photos: { total: number } };
+export type AdminUserStatus = 'active' | 'disabled';
+export type AdminUser = { id: string; name: string; email: string; status: AdminUserStatus; platformRole: PlatformRole; createdAt: string };
+export type AdminUsersResponse = { items: AdminUser[]; pagination: { page: number; pageSize: number; totalItems: number; totalPages: number } };
+export type AdminUserDetail = { user: AdminUser; stats: { goalsCreated: number; teams: number; photos: number } };
+export type AdminUserStatusResponse = { user: AdminUser; changed: boolean };
 export type Invite = { id: string; targetType: string; expiresAt: string; url?: string };
 export type Reminder = { id: string; creatorUserId: string; targetUserId: string; goalId: string; goalStepId?: string | null; remindAt: string; timezone: string; status: string; recurrenceType?: 'ONCE' | 'DAILY'; timeOfDay?: string | null; creator?: Pick<User, 'id' | 'name' | 'avatarUrl'>; target?: Pick<User, 'id' | 'name' | 'avatarUrl'>; goalStep?: { id: string; title: string } | null; goal?: { id: string; name: string; status: string; endDate?: string | null } };
 export type GoalPhoto = { id: string; title: string; description: string; author: Pick<User, 'id' | 'name' | 'avatarUrl'> & { avatar?: Avatar }; task: { id: string | null; title: string; removed?: boolean } | null; occurrenceLocalDate?: string | null; createdAt: string; thumbnailUrl: string; imageUrl: string; canDelete: boolean };
@@ -45,6 +50,9 @@ export const api = {
   categories: () => request<Category[]>('/categories'),
   dashboard: () => request<Dashboard>('/dashboard'),
   adminOverview: () => request<AdminOverview>('/admin/overview'),
+  adminUsers: (query: { page?: number; pageSize?: number; search?: string; status?: AdminUserStatus } = {}) => { const params = new URLSearchParams(); if (query.page !== undefined) params.set('page', String(query.page)); if (query.pageSize !== undefined) params.set('pageSize', String(query.pageSize)); if (query.search) params.set('search', query.search); if (query.status) params.set('status', query.status); const suffix = params.toString() ? `?${params.toString()}` : ''; return request<AdminUsersResponse>(`/admin/users${suffix}`); },
+  adminUser: (id: string) => request<AdminUserDetail>(`/admin/users/${encodeURIComponent(id)}`),
+  updateAdminUserStatus: (id: string, status: AdminUserStatus) => request<AdminUserStatusResponse>(`/admin/users/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   goals: (query: Record<string, string | undefined> = {}) => { const params = new URLSearchParams(); for (const [key, value] of Object.entries(query)) if (value) params.set(key, value); const suffix = params.toString() ? `?${params.toString()}` : ''; return request<Goal[]>(`/goals${suffix}`); },
   goal: (id: string) => request<Goal>(`/goals/${id}`),
   createGoal: (body: Record<string, unknown>) => request<Goal>('/goals', json(body)),
