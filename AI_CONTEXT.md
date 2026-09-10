@@ -225,6 +225,12 @@ Persistir hash do token, não o token puro.
 - A gestão administrativa de usuários está disponível em `/admin/users`, exclusivamente para `ADMIN` e `SUPER_ADMIN`; a listagem usa busca, filtro de status e paginação server-side e retorna somente `id`, nome, e-mail, status, `platformRole` e data de cadastro.
 - `GET /admin/users/:userId` expõe apenas detalhes operacionais seguros e contagens agregadas de metas próprias, equipes e fotos, sem campos privados, conteúdo de metas ou credenciais.
 - `PATCH /admin/users/:userId/status` permite a administradores ativar/desativar somente contas `USER`, nunca a própria conta ou contas administrativas; ao desativar, revoga todas as sessões ativas na mesma transação e registra `AdminAuditLog`. Reativação não cria sessão automaticamente e operações idempotentes não geram auditoria duplicada.
+- A gestão de administradores está disponível em `/admin/administrators`, acessível para `ADMIN` e `SUPER_ADMIN`; a listagem busca somente contas com `platformRole = ADMIN` ou `SUPER_ADMIN`, inclui contas desativadas e retorna apenas campos operacionais seguros.
+- `ADMIN` pode consultar, pesquisar, paginar e abrir detalhes mínimos dos administradores, mas não pode promover, rebaixar, desativar ou reativar contas administrativas. `SUPER_ADMIN` pode executar essas ações pelo backend.
+- Candidatos para adição são buscados no servidor somente entre usuários `USER` ativos, com termo mínimo de dois caracteres e limite de dez resultados. A promoção inicial é exclusivamente `USER → ADMIN`.
+- As transições globais permitidas são `USER → ADMIN`, `ADMIN → USER`, `ADMIN → SUPER_ADMIN` e `SUPER_ADMIN → ADMIN`; não é permitido promover diretamente `USER → SUPER_ADMIN`, repetir o mesmo papel ou alterar o próprio papel.
+- A plataforma deve manter pelo menos um `SUPER_ADMIN` ativo. O último superadministrador ativo não pode ser rebaixado nem desativado; a validação ocorre na mesma transação da alteração. Desativar qualquer administrador revoga todas as suas sessões e audita a mudança; reativar não restaura sessões antigas.
+- Todas as promoções, rebaixamentos e mudanças de status administrativo são registradas em `AdminAuditLog` com ator, alvo e metadados da transição. Essas capacidades não concedem bypass de privacidade nem alteram roles contextuais de metas/equipes.
 
 ## 9. Metas
 

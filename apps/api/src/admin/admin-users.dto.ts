@@ -1,5 +1,5 @@
 import { Transform, Type } from 'class-transformer';
-import { IsIn, IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, IsUUID, Max, Min, MinLength } from 'class-validator';
 
 export type AdminUserStatus = 'active' | 'disabled';
 
@@ -17,4 +17,18 @@ export class UpdateAdminUserStatusDto {
 
 export class AdminUserIdParamDto {
   @IsUUID() userId!: string;
+}
+
+export class ListAdminAdministratorsQueryDto {
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page = 1;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(100) pageSize = 20;
+  @IsOptional() @Transform(({ value }) => typeof value === 'string' ? value.trim() : value) @IsString() search?: string;
+}
+
+export class AdminAdministratorCandidateQueryDto {
+  @Transform(({ value }) => typeof value === 'string' ? value.trim() : value) @IsString() @MinLength(2) search!: string;
+}
+
+export class UpdateAdminPlatformRoleDto {
+  @IsString() @IsIn(['USER', 'ADMIN', 'SUPER_ADMIN']) platformRole!: string;
 }

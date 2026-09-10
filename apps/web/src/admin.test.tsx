@@ -3,8 +3,8 @@ import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
-import { AdminPage, AdminUserDetailPage, AdminUsersPage, Sidebar } from './app';
-import { api, AdminOverview, AdminUserDetail, AdminUsersResponse, User } from './api';
+import { AdminAdministratorDetailPage, AdminAdministratorsPage, AdminPage, AdminUserDetailPage, AdminUsersPage, Sidebar } from './app';
+import { api, AdminAdministratorDetail, AdminAdministratorsResponse, AdminOverview, AdminUserDetail, AdminUsersResponse, User } from './api';
 import { FeedbackProvider } from './feedback';
 
 const overview: AdminOverview = {
@@ -16,6 +16,7 @@ const overview: AdminOverview = {
 
 const user: User = { id: 'user-1', name: 'Ana', email: 'ana@example.com', platformRole: 'USER' };
 const usersPage: AdminUsersResponse = { items: [{ id: 'user-2', name: 'Bruno', email: 'bruno@example.com', status: 'active', platformRole: 'USER', createdAt: '2026-09-10T12:00:00.000Z' }, { id: 'admin-1', name: 'Carla', email: 'carla@example.com', status: 'active', platformRole: 'ADMIN', createdAt: '2026-09-09T12:00:00.000Z' }], pagination: { page: 1, pageSize: 20, totalItems: 2, totalPages: 1 } };
+const administratorsPage: AdminAdministratorsResponse = { items: [{ id: 'super-1', name: 'Diana', email: 'diana@example.com', status: 'active', platformRole: 'SUPER_ADMIN', createdAt: '2026-09-10T12:00:00.000Z' }, { id: 'admin-1', name: 'Carla', email: 'carla@example.com', status: 'disabled', platformRole: 'ADMIN', createdAt: '2026-09-09T12:00:00.000Z' }], pagination: { page: 1, pageSize: 20, totalItems: 2, totalPages: 1 } };
 
 afterEach(() => { cleanup(); vi.restoreAllMocks(); });
 
@@ -128,5 +129,55 @@ describe('painel administrativo', () => {
     expect(view.getByRole('button', { name: 'Desativar usuário' })).toBeTruthy();
     expect(view.queryByText('passwordHash')).toBeNull();
     view.unmount();
+  });
+
+  it('lista administradores para ADMIN em modo somente leitura', async () => {
+    const request = vi.spyOn(api, 'adminAdministrators').mockResolvedValue(administratorsPage);
+    const view = render(<FeedbackProvider><MemoryRouter><AdminAdministratorsPage user={{ ...user, platformRole: 'ADMIN' }} /></MemoryRouter></FeedbackProvider>);
+
+    await waitFor(() => expect(view.getByRole('heading', { level: 1, name: 'Administradores' })).toBeTruthy());
+    expect(view.getByText('Diana')).toBeTruthy();
+    expect(view.getByText('Superadministrador')).toBeTruthy();
+    expect(view.getByText('Desativado')).toBeTruthy();
+    expect(view.getByRole('link', { name: 'Administradores' })).toBeTruthy();
+    expect(view.queryByRole('button', { name: 'Adicionar administrador' })).toBeNull();
+    expect(view.queryByRole('button', { name: 'Promover a superadministrador' })).toBeNull();
+    expect(request).toHaveBeenCalledWith({ page: 1, pageSize: 20, search: undefined });
+    view.unmount();
+  });
+
+  it('permite ao SUPER_ADMIN buscar candidato e confirma a promoção', async () => {
+    vi.spyOn(api, 'adminAdministrators').mockResolvedValue(administratorsPage);
+    const candidates = vi.spyOn(api, 'adminAdministratorCandidates').mockResolvedValue({ items: [{ id: 'user-3', name: 'Eduardo', email: 'eduardo@example.com', status: 'active', platformRole: 'USER', createdAt: '2026-09-08T12:00:00.000Z' }] });
+    const promote = vi.spyOn(api, 'updateAdminAdministratorRole').mockResolvedValue({ user: { ...administratorsPage.items[1], id: 'user-3', name: 'Eduardo', email: 'eduardo@example.com', platformRole: 'ADMIN' }, changed: true });
+    const view = render(<FeedbackProvider><MemoryRouter><AdminAdministratorsPage user={{ ...user, id: 'super-actor', platformRole: 'SUPER_ADMIN' }} /></MemoryRouter></FeedbackProvider>);
+
+    await waitFor(() => expect(view.getByRole('button', { name: 'Adicionar administrador' })).toBeTruthy());
+    fireEvent.click(view.getByRole('button', { name: 'Adicionar administrador' }));
+    expect(view.getByRole('dialog', { name: 'Adicionar administrador' })).toBeTruthy();
+    fireEvent.change(view.getByPlaceholderText('Buscar usuário…'), { target: { value: 'Edu' } });
+    await waitFor(() => expect(candidates).toHaveBeenCalledWith('Edu'), { timeout: 1000 });
+    await waitFor(() => expect(view.getByRole('button', { name: /Eduardo/ })).toBeTruthy());
+    fireEvent.click(view.getByRole('button', { name: /Eduardo/ }));
+    await waitFor(() => expect(view.getByRole('heading', { name: 'Adicionar administrador?' })).toBeTruthy());
+    fireEvent.click(view.getByRole('button', { name: 'Adicionar' }));
+    await waitFor(() => expect(promote).toHaveBeenCalledWith('user-3', 'ADMIN'));
+    view.unmount();
+  });
+
+  it('não consulta administradores para usuário comum e mantém detalhe sem campos privados', async () => {
+    const listRequest = vi.spyOn(api, 'adminAdministrators');
+    const view = render(<FeedbackProvider><MemoryRouter><AdminAdministratorsPage user={user} /></MemoryRouter></FeedbackProvider>);
+    expect(listRequest).not.toHaveBeenCalled();
+    view.unmount();
+
+    const detail: AdminAdministratorDetail = { user: administratorsPage.items[0] };
+    vi.spyOn(api, 'adminAdministrator').mockResolvedValue(detail);
+    const detailView = render(<FeedbackProvider><MemoryRouter initialEntries={['/admin/administrators/super-1']}><Routes><Route path="/admin/administrators/:userId" element={<AdminAdministratorDetailPage user={{ ...user, platformRole: 'ADMIN' }} />} /></Routes></MemoryRouter></FeedbackProvider>);
+    await waitFor(() => expect(detailView.getByRole('heading', { level: 1, name: 'Diana' })).toBeTruthy());
+    expect(detailView.getByText('Papel de plataforma')).toBeTruthy();
+    expect(detailView.queryByText('passwordHash')).toBeNull();
+    expect(detailView.queryByRole('button', { name: 'Desativar' })).toBeNull();
+    detailView.unmount();
   });
 });

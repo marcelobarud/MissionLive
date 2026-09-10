@@ -20,6 +20,9 @@ export type AdminUser = { id: string; name: string; email: string; status: Admin
 export type AdminUsersResponse = { items: AdminUser[]; pagination: { page: number; pageSize: number; totalItems: number; totalPages: number } };
 export type AdminUserDetail = { user: AdminUser; stats: { goalsCreated: number; teams: number; photos: number } };
 export type AdminUserStatusResponse = { user: AdminUser; changed: boolean };
+export type AdminAdministratorsResponse = { items: AdminUser[]; pagination: { page: number; pageSize: number; totalItems: number; totalPages: number } };
+export type AdminAdministratorDetail = { user: AdminUser };
+export type AdminAdministratorCandidatesResponse = { items: AdminUser[] };
 export type Invite = { id: string; targetType: string; expiresAt: string; url?: string };
 export type Reminder = { id: string; creatorUserId: string; targetUserId: string; goalId: string; goalStepId?: string | null; remindAt: string; timezone: string; status: string; recurrenceType?: 'ONCE' | 'DAILY'; timeOfDay?: string | null; creator?: Pick<User, 'id' | 'name' | 'avatarUrl'>; target?: Pick<User, 'id' | 'name' | 'avatarUrl'>; goalStep?: { id: string; title: string } | null; goal?: { id: string; name: string; status: string; endDate?: string | null } };
 export type GoalPhoto = { id: string; title: string; description: string; author: Pick<User, 'id' | 'name' | 'avatarUrl'> & { avatar?: Avatar }; task: { id: string | null; title: string; removed?: boolean } | null; occurrenceLocalDate?: string | null; createdAt: string; thumbnailUrl: string; imageUrl: string; canDelete: boolean };
@@ -53,6 +56,11 @@ export const api = {
   adminUsers: (query: { page?: number; pageSize?: number; search?: string; status?: AdminUserStatus } = {}) => { const params = new URLSearchParams(); if (query.page !== undefined) params.set('page', String(query.page)); if (query.pageSize !== undefined) params.set('pageSize', String(query.pageSize)); if (query.search) params.set('search', query.search); if (query.status) params.set('status', query.status); const suffix = params.toString() ? `?${params.toString()}` : ''; return request<AdminUsersResponse>(`/admin/users${suffix}`); },
   adminUser: (id: string) => request<AdminUserDetail>(`/admin/users/${encodeURIComponent(id)}`),
   updateAdminUserStatus: (id: string, status: AdminUserStatus) => request<AdminUserStatusResponse>(`/admin/users/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  adminAdministrators: (query: { page?: number; pageSize?: number; search?: string } = {}) => { const params = new URLSearchParams(); if (query.page !== undefined) params.set('page', String(query.page)); if (query.pageSize !== undefined) params.set('pageSize', String(query.pageSize)); if (query.search) params.set('search', query.search); const suffix = params.toString() ? `?${params.toString()}` : ''; return request<AdminAdministratorsResponse>(`/admin/administrators${suffix}`); },
+  adminAdministrator: (id: string) => request<AdminAdministratorDetail>(`/admin/administrators/${encodeURIComponent(id)}`),
+  adminAdministratorCandidates: (search: string) => request<AdminAdministratorCandidatesResponse>(`/admin/administrators/candidates?search=${encodeURIComponent(search)}`),
+  updateAdminAdministratorRole: (id: string, platformRole: PlatformRole) => request<{ user: AdminUser; changed: boolean }>(`/admin/administrators/${encodeURIComponent(id)}/role`, { method: 'PATCH', body: JSON.stringify({ platformRole }) }),
+  updateAdminAdministratorStatus: (id: string, status: AdminUserStatus) => request<AdminUserStatusResponse>(`/admin/administrators/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
   goals: (query: Record<string, string | undefined> = {}) => { const params = new URLSearchParams(); for (const [key, value] of Object.entries(query)) if (value) params.set(key, value); const suffix = params.toString() ? `?${params.toString()}` : ''; return request<Goal[]>(`/goals${suffix}`); },
   goal: (id: string) => request<Goal>(`/goals/${id}`),
   createGoal: (body: Record<string, unknown>) => request<Goal>('/goals', json(body)),

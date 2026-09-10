@@ -6,7 +6,7 @@ import { AdminAuditService } from './admin-audit.service';
 import { AdminUserStatus, ListAdminUsersQueryDto } from './admin-users.dto';
 import { normalizePlatformRole, PLATFORM_AUDIT_ACTIONS, requirePlatformAdmin } from './platform-role';
 
-const adminUserSelect = {
+export const adminUserSelect = {
   id: true,
   name: true,
   email: true,
@@ -15,7 +15,7 @@ const adminUserSelect = {
   createdAt: true,
 } satisfies Prisma.UserSelect;
 
-type AdminUserRecord = Prisma.UserGetPayload<{ select: typeof adminUserSelect }>;
+export type AdminUserRecord = Prisma.UserGetPayload<{ select: typeof adminUserSelect }>;
 
 export type AdminUserItem = {
   id: string;
@@ -26,11 +26,11 @@ export type AdminUserItem = {
   createdAt: Date;
 };
 
-function normalizeSearch(value?: string) {
+export function normalizeSearch(value?: string) {
   return value?.trim().replace(/\s+/g, ' ') || undefined;
 }
 
-function toItem(user: AdminUserRecord): AdminUserItem {
+export function toAdminUserItem(user: AdminUserRecord): AdminUserItem {
   return {
     id: user.id,
     name: user.name,
@@ -64,7 +64,7 @@ export class AdminUsersService {
       take: pageSize,
       select: adminUserSelect,
     });
-    return { items: items.map(toItem), pagination: { page, pageSize, totalItems, totalPages } };
+    return { items: items.map(toAdminUserItem), pagination: { page, pageSize, totalItems, totalPages } };
   }
 
   async detail(userId: string) {
@@ -75,7 +75,7 @@ export class AdminUsersService {
       this.prisma.team.count({ where: { OR: [{ ownerUserId: userId }, { members: { some: { userId } } }] } }),
       this.prisma.goalPhoto.count({ where: { authorUserId: userId } }),
     ]);
-    return { user: toItem(user), stats: { goalsCreated, teams, photos } };
+    return { user: toAdminUserItem(user), stats: { goalsCreated, teams, photos } };
   }
 
   async updateStatus(actor: AuthUser, userId: string, nextStatus: AdminUserStatus) {
@@ -86,7 +86,7 @@ export class AdminUsersService {
     if (!target) throw new NotFoundException('Usuário não encontrado.');
     if (normalizePlatformRole(target.platformRole) !== 'USER') throw new ForbiddenException('Administradores não podem ser gerenciados nesta operação.');
     if (target.status !== 'active' && target.status !== 'disabled') throw new ConflictException('O estado atual da conta não pode ser gerenciado.');
-    if (target.status === nextStatus) return { user: toItem(target), changed: false };
+    if (target.status === nextStatus) return { user: toAdminUserItem(target), changed: false };
 
     const action = nextStatus === 'disabled' ? PLATFORM_AUDIT_ACTIONS.USER_DISABLED : PLATFORM_AUDIT_ACTIONS.USER_REACTIVATED;
     const result = await this.prisma.$transaction(async (tx) => {
@@ -96,6 +96,6 @@ export class AdminUsersService {
       await this.audit.record({ actorUserId: actor.id, action, targetUserId: userId, metadata: { previousStatus: target.status, nextStatus } }, tx);
       return { ...target, status: nextStatus };
     });
-    return { user: toItem(result), changed: true };
+    return { user: toAdminUserItem(result), changed: true };
   }
 }

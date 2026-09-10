@@ -1,11 +1,13 @@
 import { FormEvent, KeyboardEvent as ReactKeyboardEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { IconAlarm, IconArchive, IconArrowDown, IconArrowUp, IconBell, IconBrandTelegram, IconBrandWhatsapp, IconCalendar, IconChevronDown, IconChevronLeft, IconChevronRight, IconChevronUp, IconCircle, IconCircleCheck, IconHome, IconLogout, IconMail, IconMenu2, IconPencil, IconPlus, IconSearch, IconShieldLock, IconTargetArrow, IconTemplate, IconTrash, IconUserPlus, IconUsersGroup, IconX } from '@tabler/icons-react';
-import { AdminOverview, AdminUser, AdminUserDetail, AdminUserStatus, AdminUsersResponse, api, API_URL, ActivityEvent, ActivityPage, CalendarData, Category, Comment, Dashboard, Goal, GoalTemplate, ParticipantProgress, Reminder, Rhythm, Team, TeamDetail, User } from './api';
+import { AdminAdministratorCandidatesResponse, AdminAdministratorDetail, AdminAdministratorsResponse, AdminOverview, AdminUser, AdminUserDetail, AdminUserStatus, AdminUsersResponse, api, API_URL, ActivityEvent, ActivityPage, CalendarData, Category, Comment, Dashboard, Goal, GoalTemplate, ParticipantProgress, Reminder, Rhythm, Team, TeamDetail, User } from './api';
 import type { Notification as NotificationItem } from './api';
 import { DevicePushState, disableDevicePush, enableDevicePush, getDevicePushState } from './push';
 import { Badge as DSBadge, Button as DSButton, Checkbox as DSCheckbox, EmptyState as DSEmptyState, FormField as DSFormField, PageHeader as DSPageHeader, Panel as DSPanel, ProgressBar as DSProgressBar, Select as DSSelect, Spinner as DSSpinner } from './design-system';
 import { useFeedback } from './feedback';
+import { useDialogFocus } from './dialog-focus';
 import { AvatarManager, UserAvatar } from './avatar';
 import { TeamImage, TeamImageManager, TeamImagePicker } from './team-image';
 import { GoalStepDraft, GoalStepsBuilder, sanitizeGoalStepDrafts, StepParticipantOption, toGoalStepDrafts } from './goal-steps-builder';
@@ -279,7 +281,7 @@ function AdminMetricPanel({ title, total, details, labelledBy }: { title: string
 }
 
 function AdminNavigation() {
-  return <nav className="admin-navigation" aria-label="Navegação da administração"><NavLink to="/admin" end>Visão geral</NavLink><NavLink to="/admin/users">Usuários</NavLink></nav>;
+  return <nav className="admin-navigation" aria-label="Navegação da administração"><NavLink to="/admin" end>Visão geral</NavLink><NavLink to="/admin/users">Usuários</NavLink><NavLink to="/admin/administrators">Administradores</NavLink></nav>;
 }
 
 function adminUserStatusLabel(status: AdminUserStatus) { return status === 'active' ? 'Ativo' : 'Desativado'; }
@@ -293,6 +295,111 @@ function AdminUserRow({ item, busy, onStatusChange }: { item: AdminUser; busy: b
     <td data-label="Cadastro"><time dateTime={item.createdAt}>{formatDate(item.createdAt)}</time></td>
     <td data-label="Ações"><div className="admin-user-actions"><NavLink className="ds-button ds-button-secondary" to={`/admin/users/${encodeURIComponent(item.id)}`}>Ver detalhes</NavLink>{item.platformRole === 'USER' && <button className="admin-user-status-action" type="button" disabled={busy} onClick={() => onStatusChange(item)}>{busy ? 'Atualizando…' : item.status === 'active' ? 'Desativar' : 'Reativar'}</button>}</div></td>
   </tr>;
+}
+
+type AdminRoleTarget = 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+
+function AdminAdministratorActions({ item, actorId, canManage, busy, onRoleChange, onStatusChange }: { item: AdminUser; actorId: string; canManage: boolean; busy: boolean; onRoleChange: (item: AdminUser, nextRole: AdminRoleTarget) => void; onStatusChange: (item: AdminUser) => void }) {
+  if (!canManage) return null;
+  if (item.id === actorId) return <span className="admin-self-label">Sua conta</span>;
+  return <>
+    {item.platformRole === 'ADMIN' && <>
+      <button className="admin-user-status-action admin-role-action" type="button" disabled={busy} onClick={() => onRoleChange(item, 'SUPER_ADMIN')}>Promover a superadministrador</button>
+      <button className="admin-user-status-action admin-role-action" type="button" disabled={busy} onClick={() => onRoleChange(item, 'USER')}>Rebaixar a usuário</button>
+    </>}
+    {item.platformRole === 'SUPER_ADMIN' && <button className="admin-user-status-action admin-role-action" type="button" disabled={busy} onClick={() => onRoleChange(item, 'ADMIN')}>Rebaixar a administrador</button>}
+    <button className="admin-user-status-action" type="button" disabled={busy} onClick={() => onStatusChange(item)}>{busy ? 'Atualizando…' : item.status === 'active' ? 'Desativar' : 'Reativar'}</button>
+  </>;
+}
+
+function AdminAdministratorRow({ item, actorId, canManage, busy, onRoleChange, onStatusChange }: { item: AdminUser; actorId: string; canManage: boolean; busy: boolean; onRoleChange: (item: AdminUser, nextRole: AdminRoleTarget) => void; onStatusChange: (item: AdminUser) => void }) {
+  return <tr>
+    <td data-label="Administrador"><div className="admin-user-primary"><strong>{item.name}</strong><small>{item.email}</small></div></td>
+    <td data-label="Papel">{adminUserRoleLabel(item.platformRole)}</td>
+    <td data-label="Status"><span className={`admin-user-status admin-user-status-${item.status}`}>{adminUserStatusLabel(item.status)}</span></td>
+    <td data-label="Ações"><div className="admin-user-actions"><NavLink className="ds-button ds-button-secondary" to={`/admin/administrators/${encodeURIComponent(item.id)}`}>Ver detalhes</NavLink><AdminAdministratorActions item={item} actorId={actorId} canManage={canManage} busy={busy} onRoleChange={onRoleChange} onStatusChange={onStatusChange} /></div></td>
+  </tr>;
+}
+
+function AdminCandidateDialog({ onClose, onAdd }: { onClose: () => void; onAdd: (candidate: AdminUser) => void }) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const [searchInput, setSearchInput] = useState('');
+  const [data, setData] = useState<AdminAdministratorCandidatesResponse>();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  useDialogFocus(onClose, dialogRef);
+  useEffect(() => {
+    const search = searchInput.trim().replace(/\s+/g, ' ');
+    if (search.length < 2) { setData(undefined); setLoading(false); setError(''); return; }
+    const timer = window.setTimeout(() => {
+      setLoading(true); setError('');
+      void api.adminAdministratorCandidates(search).then(setData).catch((err: unknown) => setError(messageOf(err, 'Não foi possível buscar usuários.'))).finally(() => setLoading(false));
+    }, 250);
+    return () => window.clearTimeout(timer);
+  }, [searchInput]);
+  return createPortal(<div className="feedback-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><div ref={dialogRef} className="ds-dialog admin-candidate-dialog" role="dialog" aria-modal="true" aria-labelledby="admin-candidate-title" aria-describedby="admin-candidate-description"><div className="feedback-dialog-icon feedback-dialog-icon-info"><IconShieldLock size={20} stroke={1.9} aria-hidden="true" /></div><div className="ds-dialog-content"><div className="admin-dialog-heading"><div><h2 id="admin-candidate-title">Adicionar administrador</h2><p id="admin-candidate-description">Busque um usuário ativo para conceder acesso administrativo.</p></div><button className="admin-dialog-close" type="button" onClick={onClose} aria-label="Fechar"><IconX size={18} stroke={1.9} aria-hidden="true" /></button></div><label className="ds-form-field admin-candidate-search"><span>Nome ou e-mail</span><input data-dialog-initial-focus name="admin-candidate-search" autoComplete="off" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Buscar usuário…" /></label>{searchInput.trim().length < 2 && <p className="muted admin-candidate-hint">Digite pelo menos 2 caracteres para buscar.</p>}{loading && <p className="muted admin-candidate-hint">Buscando usuários…</p>}{error && <p className="form-error" role="alert">{error}</p>}{!loading && !error && data && data.items.length === 0 && <p className="muted admin-candidate-hint">Nenhum usuário ativo encontrado.</p>}{data && data.items.length > 0 && <div className="admin-candidate-list" aria-label="Usuários disponíveis">{data.items.map((candidate) => <button className="admin-candidate-option" type="button" key={candidate.id} onClick={() => onAdd(candidate)}><span><strong>{candidate.name}</strong><small>{candidate.email}</small></span><IconChevronRight size={18} stroke={1.9} aria-hidden="true" /></button>)}</div>}<div className="ds-dialog-actions"><DSButton variant="ghost" type="button" onClick={onClose}>Cancelar</DSButton></div></div></div></div>, document.body);
+}
+
+function adminRoleChangeCopy(nextRole: AdminRoleTarget) {
+  if (nextRole === 'USER') return { title: 'Remover acesso administrativo?', description: 'A conta deixará de ter privilégios administrativos, mas manterá seus dados e participações.', confirmLabel: 'Rebaixar', tone: 'warning' as const };
+  if (nextRole === 'SUPER_ADMIN') return { title: 'Promover a superadministrador?', description: 'A conta poderá gerenciar administradores e seus privilégios na plataforma.', confirmLabel: 'Promover', tone: 'warning' as const };
+  return { title: 'Rebaixar superadministrador?', description: 'A conta continuará administradora, mas deixará de gerenciar outros administradores.', confirmLabel: 'Rebaixar', tone: 'warning' as const };
+}
+
+function adminStatusChangeCopy(nextStatus: AdminUserStatus) {
+  return nextStatus === 'disabled'
+    ? { title: 'Desativar administrador?', description: 'A conta perderá acesso ao MissionLive e todas as sessões ativas serão encerradas.', confirmLabel: 'Desativar', tone: 'danger' as const }
+    : { title: 'Reativar administrador?', description: 'A conta voltará a poder acessar o MissionLive. Nenhuma sessão será restaurada automaticamente.', confirmLabel: 'Reativar', tone: 'warning' as const };
+}
+
+export function AdminAdministratorsPage({ user }: { user: User }) {
+  const canAccess = isPlatformAdminUser(user);
+  const canManage = user.platformRole === 'SUPER_ADMIN';
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [data, setData] = useState<AdminAdministratorsResponse>();
+  const [error, setError] = useState('');
+  const [busyId, setBusyId] = useState<string>();
+  const [candidateDialogOpen, setCandidateDialogOpen] = useState(false);
+  const { confirm, toast } = useFeedback();
+  useEffect(() => { const timer = window.setTimeout(() => { setSearch(searchInput.trim().replace(/\s+/g, ' ')); setPage(1); }, 300); return () => window.clearTimeout(timer); }, [searchInput]);
+  const load = useCallback(() => { setError(''); setData(undefined); let cancelled = false; void api.adminAdministrators({ page, pageSize: 20, search: search || undefined }).then((next) => { if (cancelled) return; setData(next); if (next.pagination.page !== page) setPage(next.pagination.page); }).catch((err: unknown) => { if (!cancelled) setError(messageOf(err, 'Não foi possível carregar os administradores.')); }); return () => { cancelled = true; }; }, [page, search]);
+  useEffect(() => { if (canAccess) return load(); }, [canAccess, load]);
+  async function changeRole(item: AdminUser, nextRole: AdminRoleTarget) { const copy = adminRoleChangeCopy(nextRole); await confirm({ ...copy, onConfirm: async () => { setBusyId(item.id); try { const result = await api.updateAdminAdministratorRole(item.id, nextRole); toast({ title: result.changed ? 'Papel atualizado.' : 'Nenhuma alteração necessária.', tone: 'success' }); void load(); } catch (err) { throw new Error(messageOf(err, 'Não foi possível atualizar o papel do administrador.')); } finally { setBusyId(undefined); } } }); }
+  async function changeStatus(item: AdminUser) { const nextStatus: AdminUserStatus = item.status === 'active' ? 'disabled' : 'active'; const copy = adminStatusChangeCopy(nextStatus); await confirm({ ...copy, onConfirm: async () => { setBusyId(item.id); try { const result = await api.updateAdminAdministratorStatus(item.id, nextStatus); toast({ title: result.changed ? (nextStatus === 'disabled' ? 'Administrador desativado.' : 'Administrador reativado.') : 'Nenhuma alteração necessária.', tone: 'success' }); void load(); } catch (err) { throw new Error(messageOf(err, 'Não foi possível atualizar o status do administrador.')); } finally { setBusyId(undefined); } } }); }
+  async function addCandidate(candidate: AdminUser) { await confirm({ title: 'Adicionar administrador?', description: `A conta de ${candidate.name} receberá acesso administrativo operacional à plataforma.`, tone: 'warning', confirmLabel: 'Adicionar', onConfirm: async () => { setBusyId(candidate.id); try { await api.updateAdminAdministratorRole(candidate.id, 'ADMIN'); setCandidateDialogOpen(false); toast({ title: 'Administrador adicionado.', tone: 'success' }); void load(); } catch (err) { throw new Error(messageOf(err, 'Não foi possível adicionar o administrador.')); } finally { setBusyId(undefined); } } }); }
+  if (!canAccess) return <Navigate to="/" replace />;
+  const heading = <PageHeading eyebrow="ADMINISTRAÇÃO" title="Administradores" subtitle="Gerencie as contas com privilégios administrativos da plataforma." />;
+  if (error) return <section className="page admin-page">{heading}<AdminNavigation /><ErrorState message={error} onRetry={() => { void load(); }} /></section>;
+  if (!data) return <section className="page admin-page">{heading}<AdminNavigation /><LoadingState /></section>;
+  return <section className="page admin-page admin-users-page">
+    <div className="admin-page-heading-row"><div>{heading}</div>{canManage && <DSButton type="button" onClick={() => setCandidateDialogOpen(true)} startIcon={<IconPlus size={17} stroke={1.9} />}>Adicionar administrador</DSButton>}</div>
+    <AdminNavigation />
+    <div className="panel admin-users-filters" role="group" aria-label="Filtros de administradores"><label className="admin-users-search"><span>Buscar</span><input name="admin-administrator-search" autoComplete="off" value={searchInput} onChange={(event) => setSearchInput(event.target.value)} placeholder="Buscar administrador…" /></label></div>
+    {data.items.length === 0 ? <DSEmptyState title="Nenhum administrador encontrado" description={search ? 'Tente buscar por outro nome ou e-mail.' : 'As contas administrativas aparecerão aqui.'} /> : <div className="panel admin-users-table-shell"><table className="admin-users-table"><caption className="sr-only">Administradores da plataforma</caption><thead><tr><th scope="col">Administrador</th><th scope="col">Papel</th><th scope="col">Status</th><th scope="col">Ações</th></tr></thead><tbody>{data.items.map((item) => <AdminAdministratorRow item={item} actorId={user.id} canManage={canManage} busy={busyId === item.id} onRoleChange={(next, role) => { void changeRole(next, role); }} onStatusChange={(next) => { void changeStatus(next); }} key={item.id} />)}</tbody></table></div>}
+    {data.pagination.totalPages > 0 && <nav className="admin-pagination" aria-label="Paginação de administradores"><DSButton variant="secondary" type="button" disabled={data.pagination.page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))}><IconChevronLeft size={16} stroke={1.9} aria-hidden="true" />Anterior</DSButton><span>Página {data.pagination.page} de {data.pagination.totalPages} · {data.pagination.totalItems} administradores</span><DSButton variant="secondary" type="button" disabled={data.pagination.page >= data.pagination.totalPages} onClick={() => setPage((current) => current + 1)}>Próxima<IconChevronRight size={16} stroke={1.9} aria-hidden="true" /></DSButton></nav>}
+    {candidateDialogOpen && <AdminCandidateDialog onClose={() => setCandidateDialogOpen(false)} onAdd={(candidate) => { void addCandidate(candidate); }} />}
+  </section>;
+}
+
+export function AdminAdministratorDetailPage({ user }: { user: User }) {
+  const canAccess = isPlatformAdminUser(user);
+  const canManage = user.platformRole === 'SUPER_ADMIN';
+  const { userId } = useParams() as { userId: string };
+  const navigate = useNavigate();
+  const [data, setData] = useState<AdminAdministratorDetail>();
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const { confirm, toast } = useFeedback();
+  const load = useCallback(() => { setError(''); return api.adminAdministrator(userId).then(setData).catch((err: unknown) => setError(messageOf(err, 'Não foi possível carregar os detalhes do administrador.'))); }, [userId]);
+  useEffect(() => { if (canAccess) void load(); }, [canAccess, load]);
+  if (!canAccess) return <Navigate to="/" replace />;
+  if (error) return <section className="page narrow admin-page"><NavLink className="back-link" to="/admin/administrators"><IconChevronLeft size={17} stroke={1.9} aria-hidden="true" />Voltar para administradores</NavLink><PageHeading eyebrow="ADMINISTRAÇÃO" title="Detalhes do administrador" subtitle="Informações operacionais seguras da conta." /><AdminNavigation /><ErrorState message={error} onRetry={() => { void load(); }} /></section>;
+  if (!data) return <section className="page narrow admin-page"><NavLink className="back-link" to="/admin/administrators"><IconChevronLeft size={17} stroke={1.9} aria-hidden="true" />Voltar para administradores</NavLink><PageHeading eyebrow="ADMINISTRAÇÃO" title="Detalhes do administrador" subtitle="Informações operacionais seguras da conta." /><AdminNavigation /><LoadingState /></section>;
+  const item = data.user;
+  async function mutate(nextRole?: AdminRoleTarget, nextStatus?: AdminUserStatus) { if (!canManage || item.id === user.id || busy) return; const copy = nextRole ? adminRoleChangeCopy(nextRole) : adminStatusChangeCopy(nextStatus!); await confirm({ ...copy, onConfirm: async () => { setBusy(true); try { const result = nextRole ? await api.updateAdminAdministratorRole(item.id, nextRole) : await api.updateAdminAdministratorStatus(item.id, nextStatus!); if (nextRole === 'USER') navigate('/admin/administrators'); else setData({ user: result.user }); toast({ title: 'Administrador atualizado.', tone: 'success' }); } catch (err) { throw new Error(messageOf(err, 'Não foi possível atualizar o administrador.')); } finally { setBusy(false); } } }); }
+  return <section className="page narrow admin-page admin-user-detail-page"><NavLink className="back-link" to="/admin/administrators"><IconChevronLeft size={17} stroke={1.9} aria-hidden="true" />Voltar para administradores</NavLink><PageHeading eyebrow="ADMINISTRAÇÃO / ADMINISTRADORES" title={item.name} subtitle="Informações operacionais seguras da conta." /><AdminNavigation /><DSPanel className="admin-user-detail-panel"><div className="admin-user-detail-heading"><div><h2>{item.name}</h2><p>{item.email}</p></div><span className={`admin-user-status admin-user-status-${item.status}`}>{adminUserStatusLabel(item.status)}</span></div><dl className="admin-user-detail-grid"><div><dt>Status</dt><dd>{adminUserStatusLabel(item.status)}</dd></div><div><dt>Papel de plataforma</dt><dd>{adminUserRoleLabel(item.platformRole)}</dd></div><div><dt>Cadastro</dt><dd><time dateTime={item.createdAt}>{formatDate(item.createdAt)}</time></dd></div></dl>{item.id === user.id ? <p className="admin-self-label admin-detail-self">Sua conta</p> : canManage && <div className="admin-user-detail-actions"><AdminAdministratorActions item={item} actorId={user.id} canManage busy={busy} onRoleChange={(next, role) => { void mutate(role); }} onStatusChange={(next) => { void mutate(undefined, next.status === 'active' ? 'disabled' : 'active'); }} /></div>}</DSPanel></section>;
 }
 
 export function AdminUsersPage({ user }: { user: User }) {
@@ -414,7 +521,7 @@ export function App() {
   useEffect(() => { if (!mobileSidebarOpen) return; const handleKeyDown = (event: KeyboardEvent) => { if (event.key === 'Escape') setMobileSidebarOpen(false); }; const previousOverflow = document.body.style.overflow; document.body.style.overflow = 'hidden'; document.addEventListener('keydown', handleKeyDown); return () => { document.body.style.overflow = previousOverflow; document.removeEventListener('keydown', handleKeyDown); }; }, [mobileSidebarOpen]);
   useEffect(() => { if (!mobileSidebarOpen && sidebarWasOpen.current) menuButtonRef.current?.focus(); sidebarWasOpen.current = mobileSidebarOpen; }, [mobileSidebarOpen]); useEffect(() => { setMobileSidebarOpen(false); }, [location.pathname]);
   if (user === undefined) return <LoadingState />; if (!user) return <AuthScreen onAuthenticated={(nextUser) => { setUser(nextUser); if (location.pathname.startsWith('/invite/')) navigate(location.pathname); }} />;
-  return <><a className="skip-link" href="#main-content">Pular para o conteúdo</a><div className="app-shell"><Sidebar user={user} open={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} onLogout={() => { void api.logout().finally(() => setUser(null)); setMobileSidebarOpen(false); }} unreadCount={notificationUnreadCount} /><div className="app-main"><header className="topbar mobile-topbar"><button ref={menuButtonRef} className="mobile-menu-button" type="button" aria-label="Abrir menu" aria-controls="app-sidebar" aria-expanded={mobileSidebarOpen} onClick={() => setMobileSidebarOpen(true)}><IconMenu2 size={21} stroke={1.9} aria-hidden="true" /></button><NavLink className="mobile-brand" to="/"><BrandLogo variant="dark" /></NavLink></header><>{!user.onboardingCompletedAt && !location.pathname.startsWith('/invite/') && <OnboardingPrompt onComplete={() => setUser({ ...user, onboardingCompletedAt: new Date().toISOString() })} />}</><main id="main-content"><Routes><Route path="/" element={<DashboardPage user={user} />} /><Route path="/activities" element={<ActivitiesPage />} /><Route path="/goals" element={<GoalsPage />} /><Route path="/goals/new" element={<NewGoalPage />} /><Route path="/goals/:goalId" element={<GoalDetailPage user={user} />} /><Route path="/teams" element={<TeamsPage />} /><Route path="/templates" element={<TemplatesPage />} /><Route path="/calendar" element={<CalendarPage />} /><Route path="/notifications" element={<NotificationsPage unreadCount={notificationUnreadCount} onUnreadCountChange={setNotificationUnreadCount} onRefreshUnreadCount={refreshNotificationUnreadCount} />} /><Route path="/profile" element={<ProfilePage user={user} onUpdated={setUser} />} /><Route path="/admin" element={<AdminPage user={user} />} /><Route path="/admin/users" element={<AdminUsersPage user={user} />} /><Route path="/admin/users/:userId" element={<AdminUserDetailPage user={user} />} /><Route path="/teams/new" element={<NewTeamPage user={user} />} /><Route path="/teams/:teamId" element={<TeamDetailPage />} /><Route path="/invite/:token" element={<InvitePage />} /><Route path="*" element={<DashboardPage user={user} />} /></Routes></main></div></div></>;
+  return <><a className="skip-link" href="#main-content">Pular para o conteúdo</a><div className="app-shell"><Sidebar user={user} open={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} onLogout={() => { void api.logout().finally(() => setUser(null)); setMobileSidebarOpen(false); }} unreadCount={notificationUnreadCount} /><div className="app-main"><header className="topbar mobile-topbar"><button ref={menuButtonRef} className="mobile-menu-button" type="button" aria-label="Abrir menu" aria-controls="app-sidebar" aria-expanded={mobileSidebarOpen} onClick={() => setMobileSidebarOpen(true)}><IconMenu2 size={21} stroke={1.9} aria-hidden="true" /></button><NavLink className="mobile-brand" to="/"><BrandLogo variant="dark" /></NavLink></header><>{!user.onboardingCompletedAt && !location.pathname.startsWith('/invite/') && <OnboardingPrompt onComplete={() => setUser({ ...user, onboardingCompletedAt: new Date().toISOString() })} />}</><main id="main-content"><Routes><Route path="/" element={<DashboardPage user={user} />} /><Route path="/activities" element={<ActivitiesPage />} /><Route path="/goals" element={<GoalsPage />} /><Route path="/goals/new" element={<NewGoalPage />} /><Route path="/goals/:goalId" element={<GoalDetailPage user={user} />} /><Route path="/teams" element={<TeamsPage />} /><Route path="/templates" element={<TemplatesPage />} /><Route path="/calendar" element={<CalendarPage />} /><Route path="/notifications" element={<NotificationsPage unreadCount={notificationUnreadCount} onUnreadCountChange={setNotificationUnreadCount} onRefreshUnreadCount={refreshNotificationUnreadCount} />} /><Route path="/profile" element={<ProfilePage user={user} onUpdated={setUser} />} /><Route path="/admin" element={<AdminPage user={user} />} /><Route path="/admin/users" element={<AdminUsersPage user={user} />} /><Route path="/admin/users/:userId" element={<AdminUserDetailPage user={user} />} /><Route path="/admin/administrators" element={<AdminAdministratorsPage user={user} />} /><Route path="/admin/administrators/:userId" element={<AdminAdministratorDetailPage user={user} />} /><Route path="/teams/new" element={<NewTeamPage user={user} />} /><Route path="/teams/:teamId" element={<TeamDetailPage />} /><Route path="/invite/:token" element={<InvitePage />} /><Route path="*" element={<DashboardPage user={user} />} /></Routes></main></div></div></>;
 }
 
 function GoalsPage() {

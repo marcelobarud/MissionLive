@@ -1415,6 +1415,8 @@ body { overflow-x: hidden; }
   gap: var(--space-5);
   margin: 0 0 var(--space-5);
   border-bottom: var(--border-width) solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 .admin-navigation a {
   position: relative;
@@ -1425,6 +1427,7 @@ body { overflow-x: hidden; }
   font-size: .86rem;
   font-weight: 800;
   text-decoration: none;
+  white-space: nowrap;
 }
 .admin-navigation a:hover, .admin-navigation a.active { color: var(--primary-active); }
 .admin-navigation a.active::after {
@@ -1460,6 +1463,25 @@ body { overflow-x: hidden; }
 .admin-user-actions .ds-button { white-space: nowrap; }
 .admin-user-status-action { display: inline-flex; align-items: center; min-height: 2.75rem; padding: .35rem 0; border: 0; color: var(--primary); background: transparent; cursor: pointer; font: inherit; font-size: .8rem; font-weight: 800; text-decoration: underline; text-underline-offset: .2em; touch-action: manipulation; }
 .admin-user-status-action:disabled { opacity: var(--disabled-opacity); cursor: not-allowed; }
+.admin-page-heading-row { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--section-gap-md); }
+.admin-page-heading-row > div { min-width: 0; flex: 1; }
+.admin-page-heading-row .ds-page-header { margin-bottom: 0; }
+.admin-role-action { max-width: 15rem; text-align: left; }
+.admin-self-label { color: var(--text-secondary); font-size: .78rem; font-weight: 800; }
+.admin-dialog-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-3); }
+.admin-dialog-heading h2 { margin-bottom: 0; }
+.admin-dialog-heading p { margin: var(--space-2) 0 0; }
+.admin-dialog-close { display: inline-grid; place-items: center; flex: 0 0 auto; width: var(--control-height-small); height: var(--control-height-small); padding: .35rem; border: 0; border-radius: var(--radius-sm); color: var(--text-secondary); background: transparent; cursor: pointer; }
+.admin-dialog-close:hover, .admin-dialog-close:focus-visible { color: var(--primary); background: var(--primary-subtle); }
+.admin-candidate-dialog { width: min(100%, 36rem); }
+.admin-candidate-search { margin-top: var(--space-5); }
+.admin-candidate-hint { margin: var(--space-3) 0 0; font-size: .82rem; }
+.admin-candidate-list { display: grid; gap: var(--space-2); max-height: 18rem; margin-top: var(--space-4); overflow: auto; overscroll-behavior: contain; }
+.admin-candidate-option { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-width: 0; padding: var(--space-3); border: var(--border-width) solid var(--border); border-radius: var(--radius-md); color: var(--text-primary); background: var(--surface); cursor: pointer; text-align: left; }
+.admin-candidate-option:hover, .admin-candidate-option:focus-visible { border-color: var(--primary); background: var(--primary-subtle); }
+.admin-candidate-option > span { display: grid; gap: .18rem; min-width: 0; }
+.admin-candidate-option strong, .admin-candidate-option small { overflow-wrap: anywhere; }
+.admin-candidate-option small { color: var(--text-secondary); }
 .admin-pagination { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-top: var(--space-4); color: var(--text-secondary); font-size: .8rem; }
 .admin-pagination .ds-button { display: inline-flex; align-items: center; gap: .35rem; }
 .admin-user-detail-panel, .admin-user-stats-panel { margin-bottom: var(--space-4); }
@@ -1474,6 +1496,8 @@ body { overflow-x: hidden; }
 .admin-user-stats-grid dd { color: var(--primary-active); font-size: 1.6rem; font-variant-numeric: tabular-nums; }
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 @media (max-width: 720px) {
+  .admin-page-heading-row { align-items: stretch; flex-direction: column; }
+  .admin-page-heading-row .ds-button { width: 100%; justify-content: center; }
   .admin-users-filters { grid-template-columns: 1fr; }
   .admin-users-table-shell { overflow: visible; background: transparent; border: 0; box-shadow: none; }
   .admin-users-table, .admin-users-table tbody { display: grid; gap: var(--space-3); }
@@ -1490,6 +1514,8 @@ body { overflow-x: hidden; }
   .admin-user-detail-heading { align-items: flex-start; flex-direction: column; }
   .admin-user-detail-grid, .admin-user-stats-grid { grid-template-columns: 1fr; }
   .admin-user-detail-actions .ds-button { width: 100%; justify-content: center; }
+  .admin-role-action { max-width: none; }
+  .admin-candidate-dialog { max-height: min(90vh, 44rem); }
 }
 
 @media (max-width: 640px) {
