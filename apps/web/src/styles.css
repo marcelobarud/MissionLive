@@ -1453,13 +1453,20 @@ body { overflow-x: hidden; }
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(12rem, .35fr);
   gap: var(--space-4);
-  padding: var(--card-padding-md);
+  padding: 0 0 var(--space-5);
+  border: 0;
+  border-bottom: var(--border-width) solid var(--border);
+  border-radius: 0;
+  background: transparent;
   margin-bottom: var(--space-4);
 }
 .admin-administrators-filters { grid-template-columns: minmax(0, 1fr); }
 .admin-users-filters.admin-administrators-filters { grid-template-columns: minmax(0, 1fr); }
-.admin-users-filters label { display: grid; gap: var(--space-2); min-width: 0; color: var(--text-secondary); font-size: .76rem; font-weight: 800; }
-.admin-users-filters input, .admin-users-filters select { width: 100%; min-width: 0; }
+.admin-users-filters label { display: grid; gap: .4rem; min-width: 0; color: var(--text-secondary); font-size: .74rem; font-weight: 800; }
+.admin-users-search-label { display: flex !important; align-items: center; gap: .35rem !important; min-height: 1.1rem; }
+.admin-users-search-label svg { color: var(--primary); }
+.admin-users-filters input, .admin-users-filters select { width: 100%; min-width: 0; min-height: var(--control-height); padding: var(--space-2) var(--space-3); border: var(--border-width) solid var(--border-strong); border-radius: var(--radius-md); color: var(--text-primary); background: var(--surface-raised); font: inherit; }
+.admin-users-filters input:focus, .admin-users-filters select:focus { border-color: var(--primary); }
 .admin-users-table-shell { overflow: hidden; padding: 0; }
 .admin-users-table { width: 100%; table-layout: fixed; border-collapse: collapse; }
 .admin-users-table th, .admin-users-table td { padding: var(--space-4); border-bottom: var(--border-width) solid var(--border); text-align: left; vertical-align: middle; }
@@ -1530,7 +1537,7 @@ body { overflow-x: hidden; }
   .admin-header-action .ds-button { justify-content: center; }
   .admin-page-heading-row { align-items: stretch; flex-direction: column; }
   .admin-page-heading-row .ds-button { width: 100%; justify-content: center; }
-  .admin-users-filters { grid-template-columns: 1fr; }
+  .admin-users-filters { grid-template-columns: 1fr; padding-bottom: var(--space-4); }
   .admin-user-detail-panel, .admin-user-stats-panel { padding: var(--card-padding-md); }
   .admin-users-table-shell { overflow: visible; background: transparent; border: 0; box-shadow: none; }
   .admin-users-table, .admin-users-table tbody { display: grid; gap: var(--space-3); }
