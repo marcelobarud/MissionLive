@@ -783,3 +783,11 @@ Se uma implementação exigir contrariar uma decisão registrada:
 - O timezone continua independente da localização informada e permanece um identificador IANA válido.
 - Os dados são privados: aparecem no retorno do próprio usuário (`publicUser`/`/auth/me`) e não fazem parte de `publicIdentity` nem dos payloads colaborativos de equipes, metas, atividade, avisos ou convites.
 - O onboarding oferece acesso ao Perfil e a ação “Fazer depois”; essa ação conclui o onboarding sem bloquear o produto nem reapresentar a solicitação a cada login. Rotas de convite continuam livres desse prompt.
+
+### Persistência de sessão
+
+- A sessão é server-side e opaca: o cookie HttpOnly contém o token que é comparado ao hash persistido em `Session.refreshTokenHash`. O frontend não armazena senha, hash, token legível por JavaScript ou refresh token.
+- O login local inicia com “Manter-me conectado” desmarcado. Sem a opção, a sessão backend preserva o TTL normal configurado (`SESSION_TTL_DAYS`, 30 dias no ambiente atual), mas o cookie é de sessão, sem `Expires`/`Max-Age`.
+- Com a opção marcada, a mesma sessão server-side recebe expiração absoluta de 30 dias e o cookie HttpOnly recebe `Expires`/`Max-Age` coerentes. A política fica centralizada em `apps/api/src/auth/session-policy.ts` e não é rolling.
+- Google OAuth preserva a escolha dentro do `state` assinado, mantendo PKCE, validação de state, convites e redirects existentes. A query da autorização apenas inicia a intenção; o callback utiliza somente o valor protegido pelo state.
+- Logout revoga a sessão atual e remove o cookie. Revogação remota, expiração e conta desabilitada continuam sendo validadas pelo `AuthGuard` no próximo request.

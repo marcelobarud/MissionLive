@@ -34,7 +34,7 @@ const json = (body: unknown): RequestInit => ({ method: 'POST', body: JSON.strin
 
 export const api = {
   me: () => request<{ user: User }>('/auth/me'),
-  login: (body: { email: string; password: string }) => request<{ user: User }>('/auth/login', json(body)),
+  login: (body: { email: string; password: string; rememberMe: boolean }) => request<{ user: User }>('/auth/login', json(body)),
   register: (body: { name: string; email: string; password: string }) => request<{ user: User; verificationToken?: string }>('/auth/register', json(body)),
   verifyEmail: (token: string) => request('/auth/verify-email', json({ token })),
   forgotPassword: (email: string) => request<{ accepted: boolean; resetToken?: string }>('/auth/forgot-password', json({ email })),

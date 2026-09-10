@@ -8,6 +8,7 @@ import { publicUser } from './user.serializer';
 import { isValidIanaTimezone } from './timezone';
 import { COUNTRY_CODES, BRAZILIAN_REGION_CODES } from './countries';
 import { isValidCivilDate, normalizePhone } from './profile.validation';
+import { sessionExpiration } from './session-policy';
 
 @Injectable()
 export class AuthService {
@@ -32,15 +33,14 @@ export class AuthService {
     if (!user?.passwordHash || !(await argon2.verify(user.passwordHash, dto.password))) { const current = attempt && attempt.resetAt > now ? attempt : { count: 0, resetAt: now + 15 * 60 * 1000 }; this.loginAttempts.set(email, { count: current.count + 1, resetAt: current.resetAt }); throw new UnauthorizedException('Invalid email or password.'); }
     if (user.status !== 'active') throw new ForbiddenException('User account is disabled.');
     if (!user.emailVerifiedAt) throw new ForbiddenException('Verify your email before signing in.');
-    this.loginAttempts.delete(email); return this.startSession(user);
+    this.loginAttempts.delete(email); return this.startSession(user, dto.rememberMe === true);
   }
 
-  async startSession(user: { id: string; email: string; name: string }) {
+  async startSession(user: { id: string; email: string; name: string }, rememberMe = false) {
     const token = createToken();
-    const ttlDays = Number(this.config.get('SESSION_TTL_DAYS') ?? 30);
-    const expiresAt = new Date(Date.now() + ttlDays * 24 * 60 * 60 * 1000);
+    const expiresAt = sessionExpiration(Date.now(), this.config.get('SESSION_TTL_DAYS'), rememberMe);
     const session = await this.prisma.session.create({ data: { userId: user.id, refreshTokenHash: hashToken(token), expiresAt } });
-    return { user: publicUser(user), token, expiresAt, sessionId: session.id };
+    return { user: publicUser(user), token, expiresAt, sessionId: session.id, rememberMe };
   }
 
   async logout(sessionId: string) { await this.prisma.session.update({ where: { id: sessionId }, data: { revokedAt: new Date() } }); }

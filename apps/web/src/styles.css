@@ -805,6 +805,8 @@ h2 { color: var(--text-primary); font-size: 1.18rem; line-height: 1.22; }
 .auth-card { border: 1px solid var(--border); border-radius: var(--radius-xl); background: var(--surface-raised); box-shadow: var(--shadow-float); }
 .auth-brand { margin-bottom: 3.25rem; }
 .auth-card input { background: var(--surface-subtle); }
+.auth-card .remember-me { display: flex; align-items: center; gap: var(--space-2); min-height: var(--control-height); cursor: pointer; font-weight: 650; }
+.auth-card .remember-me .ds-checkbox { flex: 0 0 auto; }
 .verify-box { background: var(--info-subtle); }
 .onboarding-card { border-color: var(--primary); background: var(--primary-subtle); }
 .share-links a { border-color: var(--border); color: var(--primary); background: var(--surface-raised); }
