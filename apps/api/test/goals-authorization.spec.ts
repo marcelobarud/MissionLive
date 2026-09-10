@@ -12,6 +12,23 @@ describe('GoalsService authorization boundary', () => {
     expect(query.id).toBe('goal-b'); expect(query.OR).toHaveLength(4);
   });
 
+  it('não concede a um ADMIN global acesso a uma meta privada de outro usuário', async () => {
+    const prisma = fakePrisma() as unknown as FakePrisma; const service = new GoalsService(prisma as never); prisma.goal.findFirst.mockResolvedValue(null);
+    await expect(service.get('admin-a', 'goal-owned-by-user-b')).rejects.toBeInstanceOf(NotFoundException);
+    expect(prisma.goal.findFirst.mock.calls[0][0].where.OR).toEqual([
+      { ownerUserId: 'admin-a' },
+      { members: { some: { userId: 'admin-a' } } },
+      { team: { ownerUserId: 'admin-a' } },
+      { team: { members: { some: { userId: 'admin-a' } } } },
+    ]);
+  });
+
+  it('não permite que um ADMIN global exclua permanentemente a meta privada de outro usuário', async () => {
+    const prisma = fakePrisma(); const service = new GoalsService(prisma as never); prisma.goal.findUnique.mockResolvedValue({ ownerUserId: 'user-b' });
+    await expect(service.hardDelete('admin-a', 'goal-owned-by-user-b')).rejects.toBeInstanceOf(ForbiddenException);
+    expect(prisma.$transaction).not.toHaveBeenCalled();
+  });
+
   it('rejects structure updates by a viewer', async () => {
     const prisma = fakePrisma() as unknown as FakePrisma; const service = new GoalsService(prisma as never); prisma.goal.findUnique.mockResolvedValue({ id: 'goal-a', ownerUserId: 'owner', members: [{ userId: 'user-a', role: 'viewer' }], team: null });
     await expect(service.update('user-a', 'goal-a', { name: 'changed', startDate: '2026-01-01', tags: [] })).rejects.toBeInstanceOf(ForbiddenException);

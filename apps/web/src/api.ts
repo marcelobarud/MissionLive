@@ -1,7 +1,8 @@
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export type Avatar = { type: 'preset' | 'upload' | 'google' | null; presetId: string | null; url: string | null };
-export type User = { id: string; email: string; name: string; avatarUrl?: string | null; avatar?: Avatar; timezone?: string; onboardingCompletedAt?: string | null; preferences?: Record<string, boolean | string | number>; phone?: string | null; birthDate?: string | null; countryCode?: string | null; region?: string | null; city?: string | null };
+export type PlatformRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+export type User = { id: string; email: string; name: string; avatarUrl?: string | null; avatar?: Avatar; platformRole?: PlatformRole; timezone?: string; onboardingCompletedAt?: string | null; preferences?: Record<string, boolean | string | number>; phone?: string | null; birthDate?: string | null; countryCode?: string | null; region?: string | null; city?: string | null };
 export type Category = { id: string; name: string };
 export type StepAssignmentMode = 'ALL_PARTICIPANTS' | 'SPECIFIC_PARTICIPANT';
 export type Step = { id: string; title: string; description?: string | null; position: number; assignmentMode?: StepAssignmentMode; assigneeUserId?: string | null; assigneeName?: string | null; assignee?: User | null; assigneeAvailable?: boolean; applicable?: boolean; progresses?: { userId: string; completed: boolean; completedAt?: string | null }[] };

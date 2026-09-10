@@ -6,6 +6,7 @@
     "dev": "nest start --watch",
     "build": "nest build",
     "start": "node dist/src/main.js",
+    "admin:bootstrap": "tsx scripts/admin-bootstrap.ts",
     "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
     "typecheck": "tsc --noEmit",
     "test": "jest --config jest.config.cjs --runInBand",

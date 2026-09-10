@@ -18,9 +18,10 @@ import { CalendarModule } from './calendar/calendar.module';
 import { NotificationsModule } from './notifications/notifications.module';
 import { AvatarsModule } from './avatars/avatars.module';
 import { PushModule } from './push/push.module';
+import { AdminModule } from './admin/admin.module';
 
 @Module({
-  imports: [ConfigModule.forRoot({ isGlobal: true, envFilePath: [resolve(process.cwd(), '.env'), resolve(process.cwd(), '../../.env'), resolve(__dirname, '../../../.env')], validate: validateEnvironment }), PrismaModule, AuthModule, AvatarsModule, GoalsModule, TeamsModule, InvitesModule, DashboardModule, PlansModule, RemindersModule, ActivityModule, CommentsModule, TemplatesModule, CalendarModule, NotificationsModule, PushModule],
+  imports: [ConfigModule.forRoot({ isGlobal: true, envFilePath: [resolve(process.cwd(), '.env'), resolve(process.cwd(), '../../.env'), resolve(__dirname, '../../../.env')], validate: validateEnvironment }), PrismaModule, AuthModule, AdminModule, AvatarsModule, GoalsModule, TeamsModule, InvitesModule, DashboardModule, PlansModule, RemindersModule, ActivityModule, CommentsModule, TemplatesModule, CalendarModule, NotificationsModule, PushModule],
   controllers: [HealthController],
 })
 export class AppModule {}

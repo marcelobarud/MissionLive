@@ -211,13 +211,15 @@ Persistir hash do token, não o token puro.
 - rate limiting em endpoints de autenticação;
 - não registrar senhas, tokens ou segredos em logs.
 
-### Administrador na V1
+### Administração da plataforma na V1
 
-- A V1 não possui administrador global da plataforma no modelo `User`.
-- `admin` é uma role contextual, válida apenas em `goal_members` ou `team_members`.
-- O owner é a autoridade máxima do recurso e não deve ser confundido com uma role de membership.
-- Uma conta administrativa local de desenvolvimento pode ser provisionada para testes, mas continua sujeita ao escopo dos recursos que possui ou dos quais participa.
-- Credenciais locais não devem ser armazenadas neste documento, versionadas no repositório ou reutilizadas em produção.
+- `User.platformRole` é a role global da plataforma, com os valores `USER`, `ADMIN` e `SUPER_ADMIN`; usuários existentes e novas contas começam como `USER`.
+- `platformRole` é independente das roles contextuais `admin`, `editor` e `viewer` de `goal_members` e `team_members`.
+- Administradores da plataforma continuam sendo usuários normais: não recebem ownership global nem bypass de autorização em metas, equipes, galeria, comentários, lembretes ou progresso.
+- O backend é a autoridade para capacidades administrativas. `ADMIN` pode receber capacidades administrativas futuras; somente `SUPER_ADMIN` pode promover ou rebaixar superadministradores.
+- Deve existir pelo menos um superadministrador ativo. O bootstrap inicial é explícito, idempotente e feito por e-mail; nunca ocorre automaticamente na inicialização.
+- Ações administrativas relevantes usam `AdminAuditLog`, sem registrar senhas, tokens ou segredos.
+- Credenciais e e-mails administrativos locais não devem ser armazenados neste documento, versionados no repositório ou reutilizados em produção.
 
 ## 9. Metas
 

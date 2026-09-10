@@ -1,7 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { GoogleOAuthService } from '../src/auth/google-oauth.service';
 
-function config() { return { get: jest.fn((name: string) => ({ SESSION_SECRET: 's'.repeat(32), GOOGLE_CLIENT_ID: 'client-id', GOOGLE_CALLBACK_URL: 'http://localhost:3000/auth/google/callback' } as Record<string, string>)[name]) } as unknown as ConfigService; }
+function config() { return { get: jest.fn((name: string) => ({ SESSION_SECRET: 's'.repeat(32), GOOGLE_CLIENT_ID: 'client-id', GOOGLE_CLIENT_SECRET: 'client-secret', GOOGLE_CALLBACK_URL: 'http://localhost:3000/auth/google/callback' } as Record<string, string>)[name]) } as unknown as ConfigService; }
 
 describe('Google OAuth e sessão persistente', () => {
   it('carrega rememberMe dentro do state assinado e mantém PKCE', () => {
@@ -20,5 +20,31 @@ describe('Google OAuth e sessão persistente', () => {
     payload.rememberMe = true;
     const forged = `${Buffer.from(JSON.stringify(payload)).toString('base64url')}.${signature}`;
     expect(() => (service as unknown as { readState: (value: string) => unknown }).readState(forged)).toThrow('Invalid OAuth state.');
+  });
+
+  it('cria contas Google sem aceitar papel administrativo do cliente', async () => {
+    const fetchMock = jest.fn(); const previousFetch = global.fetch;
+    fetchMock
+      .mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue({ access_token: 'google-access-token' }) })
+      .mockResolvedValueOnce({ ok: true, json: jest.fn().mockResolvedValue({ sub: 'google-user-1', email: 'google@example.com', name: 'Google User', email_verified: true }) });
+    global.fetch = fetchMock as never;
+    const prisma = {
+      account: { findUnique: jest.fn().mockResolvedValue(null) },
+      user: {
+        findUnique: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue({ id: 'user-1', email: 'google@example.com', name: 'Google User', avatarUrl: null, platformRole: 'USER' }),
+      },
+    };
+    const auth = { startSession: jest.fn().mockResolvedValue({ user: { id: 'user-1' } }) };
+    const service = new GoogleOAuthService(config(), prisma as never, auth as never);
+
+    try {
+      await service.callback('authorization-code', service.authorizationUrl(false).state);
+    } finally {
+      global.fetch = previousFetch;
+    }
+
+    expect(prisma.user.create).toHaveBeenCalledWith(expect.objectContaining({ data: expect.not.objectContaining({ platformRole: expect.anything() }) }));
+    expect(auth.startSession).toHaveBeenCalledWith(expect.objectContaining({ platformRole: 'USER' }), false);
   });
 });

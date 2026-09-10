@@ -5,6 +5,16 @@
 3. Execute `npm install`, `npm run db:migrate` e `npm run db:seed`.
 4. Inicie com `npm run dev`.
 
+## Bootstrap do primeiro superadministrador
+
+Depois de cadastrar e verificar a conta que receberá o acesso inicial, execute explicitamente na raiz do repositório:
+
+```powershell
+npm run admin:bootstrap --workspace @missionlive/api -- --email usuario@dominio.com
+```
+
+O comando é idempotente, registra `PLATFORM_SUPER_ADMIN_BOOTSTRAPPED` em `AdminAuditLog` somente quando promove a conta e falha se o usuário não existir. Ele nunca é executado automaticamente durante o startup da API.
+
 O banco SQLite fica em `apps/api/prisma/data/missionlive.db` e é ignorado pelo Git. A API falha no startup se o segredo de sessão estiver ausente ou inseguro fora de testes. O backend procura o `.env` da raiz mesmo quando é iniciado diretamente pelo workspace da API.
 
 O Prisma está fixado em uma versão estável anterior ao advisory de `deepmerge-ts` observado no tooling de configuração. Reavalie a atualização em conjunto com o próximo upgrade major do Prisma.

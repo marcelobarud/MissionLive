@@ -18,6 +18,7 @@ model User {
   passwordHash          String?
   emailVerifiedAt       DateTime?
   status                String                  @default("active")
+  platformRole          String                  @default("USER")
   timezone              String                  @default("UTC")
   createdAt             DateTime                @default(now())
   updatedAt             DateTime                @updatedAt
@@ -47,6 +48,8 @@ model User {
   notifications         Notification[]
   pushSubscriptions     PushSubscription[]
   goalPhotos            GoalPhoto[]             @relation("GoalPhotoAuthor")
+  adminAuditLogsActed    AdminAuditLog[]         @relation("AdminAuditActor")
+  adminAuditLogsTargeted AdminAuditLog[]         @relation("AdminAuditTarget")
   onboardingCompletedAt DateTime?
   preferencesJson       String                  @default("{}")
   phone                 String?
@@ -501,4 +504,19 @@ model PushSubscription {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, revokedAt])
+}
+
+model AdminAuditLog {
+  id           String   @id @default(uuid())
+  actorUserId  String?
+  action       String
+  targetUserId String?
+  metadataJson String?
+  createdAt    DateTime @default(now())
+  actor        User?    @relation("AdminAuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  targetUser   User?    @relation("AdminAuditTarget", fields: [targetUserId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId])
+  @@index([targetUserId])
+  @@index([createdAt])
 }

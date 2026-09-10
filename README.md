@@ -25,6 +25,14 @@ npm run dev
 
 O frontend fica em `http://localhost:5173` e a API em `http://localhost:3000`.
 
+Para configurar o primeiro superadministrador, use o bootstrap explícito por e-mail após o cadastro da conta:
+
+```powershell
+npm run admin:bootstrap --workspace @missionlive/api -- --email usuario@dominio.com
+```
+
+O comando é idempotente e não é executado automaticamente pela API.
+
 O acesso pela rede local é deliberadamente opt-in. Para testar em outro dispositivo, use no `.env`:
 
 ```dotenv
