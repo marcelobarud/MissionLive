@@ -1300,3 +1300,112 @@ body { overflow-x: hidden; }
     padding: max(.75rem, env(safe-area-inset-top)) max(.75rem, env(safe-area-inset-right)) max(.75rem, env(safe-area-inset-bottom)) max(.75rem, env(safe-area-inset-left));
   }
 }
+
+/* Correção responsiva mobile: manter shell, cards e ações dentro do mesmo eixo. */
+@media (max-width: 720px) {
+  /* O header usa o fluxo normal do drawer; logo e fechamento dividem o espaço disponível. */
+  .sidebar { overflow-x: hidden; }
+  .sidebar-header { min-width: 0; align-items: center; gap: var(--space-2); }
+  .sidebar-header .brand { flex: 1 1 auto; min-width: 0; max-width: calc(100% - var(--control-height-small) - var(--space-2)); overflow: hidden; }
+  .sidebar-header .brand-logo { display: block; width: min(10rem, 100%); min-width: 0; }
+  .sidebar-close { flex: 0 0 var(--control-height-small); margin: 0; }
+
+  /* Todas as seções da Home partem do mesmo container e não criam margens laterais próprias. */
+  .home-page > .home-next-step,
+  .home-page > .home-metrics,
+  .home-page > .home-columns,
+  .home-page > .home-secondary,
+  .home-page .home-secondary .dashboard-grid,
+  .home-page .home-secondary .panel { width: 100%; min-width: 0; max-width: 100%; margin-inline: 0; }
+  .home-page > .home-next-step { box-sizing: border-box; }
+  .home-page > .home-columns { gap: 1.5rem; }
+  .home-page > .home-secondary { margin-top: 1.5rem; }
+  .home-page .home-secondary .dashboard-grid { gap: 0; }
+  .home-page .home-secondary .panel { padding-inline: 0; }
+
+  /* No mobile, a linha de passo vira uma grade explícita: campo em cima, ações abaixo. */
+  .goal-step-builder__item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      "number field drag"
+      "number actions actions";
+    align-items: start;
+    gap: .55rem .7rem;
+  }
+  .goal-steps-builder__list .goal-step-builder__item > .goal-step-builder__number { grid-area: number; }
+  .goal-step-builder__field { grid-area: field; width: 100%; }
+  .goal-step-builder__drag { grid-area: drag; justify-self: end; margin: 0; }
+  .goal-step-builder__actions {
+    grid-area: actions;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    width: 100%;
+    min-height: var(--control-height-small);
+    padding-top: .45rem;
+    border-top: 1px solid var(--border-faint);
+    gap: .25rem;
+  }
+  .goal-step-builder__actions .icon-button { flex: 0 0 var(--control-height-small); }
+
+  /* A listagem mantém contexto, progresso e ação em linhas legíveis. */
+  .team-track {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: start;
+    gap: .75rem;
+  }
+  .team-track-copy,
+  .team-track-state { min-width: 0; }
+  .team-track-copy strong,
+  .team-track-copy small { overflow-wrap: anywhere; white-space: normal; }
+  .team-track-state { grid-column: 2 / -1; }
+  .team-track-state > span { align-items: flex-start; flex-wrap: wrap; }
+  .team-track-state .ds-progress,
+  .team-track-state .progress-track { min-width: 5rem; }
+
+  /* O detalhe prioriza identidade e ação principal sem comprimir os controles. */
+  .team-detail-page .detail-heading { align-items: stretch; }
+  .team-detail-page .team-detail-identity { width: 100%; }
+  .team-detail-page .team-detail-identity > div { min-width: 0; }
+  .team-detail-page .team-detail-identity h1 { overflow-wrap: anywhere; }
+  .team-detail-page .detail-heading > .action-group {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr));
+    width: 100%;
+    gap: .55rem;
+  }
+  .team-detail-page .detail-heading > .action-group .button,
+  .team-detail-page .detail-heading > .action-group .text-button { width: 100%; margin: 0; }
+  .team-detail-page > .action-row { display: grid; grid-template-columns: 1fr; gap: .65rem; }
+  .team-detail-page > .action-row > * { width: 100%; margin: 0; }
+}
+
+@media (max-width: 640px) {
+  /* Membro ocupa uma linha; role e ação administrativa compartilham a linha seguinte. */
+  .team-detail-page .members-panel .member-row {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: .6rem .75rem;
+  }
+  .team-detail-page .members-panel .member-identity { grid-column: 1 / -1; }
+  .team-detail-page .members-panel .member-identity strong,
+  .team-detail-page .members-panel .member-identity span { overflow-wrap: anywhere; white-space: normal; }
+  .team-detail-page .members-panel .member-row > select {
+    grid-column: 1;
+    justify-self: stretch;
+    width: 100%;
+  }
+  .team-detail-page .members-panel .member-row > .role-label {
+    grid-column: 1 / -1;
+    justify-self: start;
+  }
+  .team-detail-page .members-panel .member-row > .text-button {
+    grid-column: 2;
+    align-self: center;
+    justify-self: end;
+    width: auto;
+    min-width: 6.5rem;
+    margin: 0;
+  }
+}
