@@ -1252,7 +1252,10 @@ body { overflow-x: hidden; }
 .goal-photo-form input[type='file'] { width: 100%; padding: .55rem 0; }
 .goal-photo-preview { width: 100%; max-height: 14rem; object-fit: contain; border-radius: var(--radius-md); background: var(--surface-subtle); }
 .goal-photo-detail { display: grid; gap: 1rem; overscroll-behavior: contain; }
-.goal-photo-detail > img { width: 100%; max-height: min(60vh, 34rem); object-fit: contain; border-radius: var(--radius-md); background: var(--surface-subtle); }
+.goal-photo-detail { width: 100%; min-width: 0; }
+.goal-photo-detail > img { display: block; width: 100%; max-width: 100%; height: auto; max-height: min(60vh, 34rem); object-fit: contain; border-radius: var(--radius-md); background: var(--surface-subtle); }
+.goal-photo-detail > div { min-width: 0; overflow-wrap: anywhere; }
+.goal-photo-detail > .ds-button { width: 100%; }
 .goal-photo-detail p { margin: 0 0 .55rem; white-space: pre-wrap; }
 .goal-photo-detail small { display: block; margin-top: .25rem; }
 

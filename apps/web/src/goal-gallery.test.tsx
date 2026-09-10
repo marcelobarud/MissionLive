@@ -16,9 +16,11 @@ describe('GoalGallery', () => {
     const view = render(<GoalGallery goal={goal} />);
     await waitFor(() => expect(view.getByAltText('Primeiro marco')).toBeTruthy());
     expect(view.getByAltText('Primeiro marco').getAttribute('loading')).toBe('lazy');
+    expect(view.getByAltText('Primeiro marco').getAttribute('crossorigin')).toBe('use-credentials');
     fireEvent.click(view.getByRole('button', { name: /Primeiro marco/ }));
     expect(view.getByRole('dialog')).toBeTruthy();
     expect(view.getByText('Um avanço importante.')).toBeTruthy();
+    expect(view.getAllByAltText('Primeiro marco')[1].getAttribute('crossorigin')).toBe('use-credentials');
   });
 
   it('opens the add dialog with ordered fields and valid task options', async () => {
