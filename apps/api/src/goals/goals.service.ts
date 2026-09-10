@@ -260,6 +260,7 @@ export class GoalsService {
     if (query.q) filters.push({ OR: [{ name: { contains: query.q } }, { description: { contains: query.q } }, { tagsJson: { contains: query.q } }] });
     if (query.hasDeadline !== undefined) filters.push({ endDate: query.hasDeadline ? { not: null } : null });
     if (query.from || query.to) filters.push({ startDate: { ...(query.from ? { gte: new Date(query.from) } : {}), ...(query.to ? { lte: new Date(query.to) } : {}) } });
+    if (query.deadlineFrom || query.deadlineTo) filters.push({ endDate: { ...(query.deadlineFrom ? { gte: new Date(query.deadlineFrom) } : {}), ...(query.deadlineTo ? { lt: new Date(query.deadlineTo) } : {}) } });
     if (query.context === 'individual') filters.push({ teamId: null, members: { none: {} } });
     if (query.context === 'shared') filters.push({ teamId: null, members: { some: {} } });
     if (query.context === 'team') filters.push({ teamId: { not: null } });

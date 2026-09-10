@@ -32,6 +32,8 @@ export class ListGoalsQueryDto {
   @IsOptional() @Transform(({ value }) => value === true || value === 'true') @IsBoolean() hasDeadline?: boolean;
   @IsOptional() @IsDateString() from?: string;
   @IsOptional() @IsDateString() to?: string;
+  @IsOptional() @IsDateString() deadlineFrom?: string;
+  @IsOptional() @IsDateString() deadlineTo?: string;
   @IsOptional() @IsIn(['recent', 'name', 'deadline', 'progress-desc', 'progress-asc']) sort?: string;
 }
 

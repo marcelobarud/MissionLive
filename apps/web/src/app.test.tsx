@@ -3,7 +3,7 @@ import { renderToString } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import { MemoryRouter, useLocation } from 'react-router-dom';
-import { DeviceNotificationsSection, formatReminderDateTime, goalStepPreview, homeGoalStepsSummary, isReminderTimeInFuture, MissionLiveWelcome, nextReminderMinimum, NotificationsPage, ParticipantProgressSection, reminderParticipants, ReminderPanel, reminderStepsForParticipant, Sidebar, toDateTimeLocal } from './app';
+import { CalendarPage, calendarGoalType, calendarMonthPeriod, DeviceNotificationsSection, formatCalendarDate, formatReminderDateTime, goalStepPreview, homeGoalStepsSummary, isReminderTimeInFuture, MissionLiveWelcome, nextReminderMinimum, NotificationsPage, ParticipantProgressSection, reminderParticipants, ReminderPanel, reminderStepsForParticipant, Sidebar, toDateTimeLocal } from './app';
 import type { Goal, User } from './api';
 import { api } from './api';
 import type { Notification, ParticipantsProgress } from './api';
@@ -22,13 +22,46 @@ const participantProgress: ParticipantsProgress = {
   ],
 };
 
-afterEach(() => vi.restoreAllMocks());
+afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
 
 function LocationProbe() {
   return <span data-testid="location">{useLocation().pathname}</span>;
 }
 
 describe('MissionLive shell', () => {
+  it('calcula limites civis mensais e identifica o tipo da meta', () => {
+    const now = new Date('2026-09-10T12:00:00.000Z');
+    expect(calendarMonthPeriod(0, now)).toMatchObject({ from: '2026-09-01', to: '2026-10-01' });
+    expect(calendarMonthPeriod(1, now)).toMatchObject({ from: '2026-10-01', to: '2026-11-01' });
+    expect(calendarGoalType({ recurrenceType: 'DAILY', team: { id: 'team', name: 'Equipe' }, members: [] })).toBe('Diária');
+    expect(calendarGoalType({ recurrenceType: 'NONE', team: { id: 'team', name: 'Equipe' }, members: [] })).toBe('Equipe');
+    expect(calendarGoalType({ recurrenceType: 'NONE', team: null, members: [{ id: 'member', user: { id: 'member-user', name: 'Membro', email: 'membro@example.com' }, role: 'viewer' }] })).toBe('Compartilhada');
+    expect(calendarGoalType({ recurrenceType: 'NONE', team: null, members: [] })).toBe('Individual');
+    expect(formatCalendarDate('2026-09-30T00:00:00.000Z')).toBe('30/09/2026');
+  });
+
+  it('organiza metas pela data de conclusão e não mistura meses', async () => {
+    vi.spyOn(api, 'calendar').mockResolvedValue({
+      from: '2026-09-01T00:00:00.000Z',
+      to: '2026-10-01T00:00:00.000Z',
+      goals: [
+        { id: 'goal-september', name: 'Entrega de setembro', endDate: '2026-09-30T00:00:00.000Z', startDate: '2026-09-01T00:00:00.000Z', status: 'active', recurrenceType: 'NONE', team: null, members: [], steps: [], tags: [], ownerUserId: 'user-a' },
+        { id: 'goal-october', name: 'Entrega de outubro', endDate: '2026-10-01T00:00:00.000Z', startDate: '2026-09-01T00:00:00.000Z', status: 'active', recurrenceType: 'NONE', team: null, members: [], steps: [], tags: [], ownerUserId: 'user-a' },
+        { id: 'goal-perennial', name: 'Meta perene', endDate: null, startDate: '2026-09-01T00:00:00.000Z', status: 'active', recurrenceType: 'NONE', team: null, members: [], steps: [], tags: [], ownerUserId: 'user-a' },
+      ] as Goal[],
+      reminders: [],
+    });
+    const view = render(<MemoryRouter><CalendarPage now={new Date('2026-09-10T12:00:00.000Z')} /></MemoryRouter>);
+
+    await waitFor(() => expect(view.getByText('Entrega de setembro')).toBeTruthy());
+    expect(api.calendar).toHaveBeenCalledWith('2026-09-01', '2026-10-01');
+    expect(view.queryByText('Entrega de outubro')).toBeNull();
+    expect(view.queryByText('Meta perene')).toBeNull();
+    expect(view.getByText('Data de conclusão')).toBeTruthy();
+    expect(view.getByText('Individual')).toBeTruthy();
+    view.unmount();
+  });
+
   it('formata lembretes com data e hora e valida apenas horários futuros', () => {
     const now = new Date('2026-09-09T12:00:00.000Z');
     expect(formatReminderDateTime('2026-09-09T15:30:00.000Z', 'America/Sao_Paulo')).toBe('09/09/2026 · 12:30');

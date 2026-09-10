@@ -694,7 +694,7 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - feed de atividade persistido, escopado por metas/equipes acessíveis, com eventos de domínio para metas, steps, equipes, convites, comentários e reações; `GET /activity` aceita paginação limitada por `limit`/`offset`, com o Dashboard consumindo 10 itens e o histórico completo em `/activities`;
 - comentários textuais por meta e reações limitadas a 👏, ❤️, 🎉 e 💪, com autorização de membership, moderação contextual, limite de tamanho, rate limit e sem HTML arbitrário;
 - templates oficiais e pessoais, uso com revisão explícita das datas, duplicação sem progresso/membros/convites/comentários/atividade/conclusão;
-- calendário/timeline com inícios, prazos e reminders escopados e indicador de ritmo derivado, sem percentual persistido;
+- calendário/timeline escopado: metas aparecem pelo `endDate` como data de conclusão planejada, em intervalo mensal semiaberto (`>= início` e `< início do próximo mês`) e com tipo Individual/Compartilhada/Equipe/Diária; lembretes pendentes seguem em seção própria do período, sem gerar ocorrências diárias de metas recorrentes;
 - onboarding curto e pulável, perfil com timezone/preferências e dados opcionais privados, consulta/revogação de sessões e notificações internas com leitura e deep links protegidos;
 - ValidationPipe global, Helmet, CORS configurável, filtro global de erros e validação de `SESSION_SECRET` no startup.
 
