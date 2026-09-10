@@ -1539,13 +1539,15 @@ body { overflow-x: hidden; }
 .goal-photo-form { display: grid; gap: .9rem; }
 .goal-photo-form input[type='file'] { width: 100%; padding: .55rem 0; }
 .goal-photo-preview { width: 100%; max-height: 14rem; object-fit: contain; border-radius: var(--radius-md); background: var(--surface-subtle); }
-.goal-photo-detail { display: grid; gap: 1rem; overscroll-behavior: contain; }
-.goal-photo-detail { width: 100%; min-width: 0; }
-.goal-photo-detail > img { display: block; width: 100%; max-width: 100%; height: auto; max-height: min(60vh, 34rem); object-fit: contain; border-radius: var(--radius-md); background: var(--surface-subtle); }
-.goal-photo-detail > div { min-width: 0; overflow-wrap: anywhere; }
-.goal-photo-detail > .ds-button { width: 100%; }
-.goal-photo-detail p { margin: 0 0 .55rem; white-space: pre-wrap; }
-.goal-photo-detail small { display: block; margin-top: .25rem; }
+.goal-photo-detail { display: grid; justify-items: center; gap: var(--space-4); width: 100%; min-width: 0; text-align: center; overscroll-behavior: contain; }
+.goal-photo-detail > img { display: block; width: auto; max-width: 100%; height: auto; max-height: min(60vh, 34rem); margin-inline: auto; object-fit: contain; border: 0; border-radius: 0; box-shadow: none; background: transparent; }
+.goal-photo-detail-info { display: grid; justify-items: center; gap: .35rem; width: min(100%, 32rem); min-width: 0; }
+.goal-photo-detail-info h3 { margin: 0; color: var(--text-primary); font-size: 1.05rem; text-wrap: balance; }
+.goal-photo-detail-info p { max-width: 32rem; margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.goal-photo-detail-meta { display: flex; flex-wrap: wrap; justify-content: center; gap: .25rem .5rem; color: var(--text-secondary); font-size: .8rem; }
+.goal-photo-detail-task { max-width: 100%; color: var(--text-secondary); font-size: .8rem; overflow-wrap: anywhere; }
+.goal-photo-detail-actions { display: flex; justify-content: center; width: min(100%, 32rem); }
+.goal-photo-detail-actions .ds-button { width: 100%; }
 
 /* Dialogs are a viewport-level layer; the layer itself scrolls when the form is taller than the screen. */
 .feedback-backdrop {
