@@ -1,7 +1,7 @@
 export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
 export type Avatar = { type: 'preset' | 'upload' | 'google' | null; presetId: string | null; url: string | null };
-export type User = { id: string; email: string; name: string; avatarUrl?: string | null; avatar?: Avatar; timezone?: string; onboardingCompletedAt?: string | null; preferences?: Record<string, boolean | string | number> };
+export type User = { id: string; email: string; name: string; avatarUrl?: string | null; avatar?: Avatar; timezone?: string; onboardingCompletedAt?: string | null; preferences?: Record<string, boolean | string | number>; phone?: string | null; birthDate?: string | null; countryCode?: string | null; region?: string | null; city?: string | null };
 export type Category = { id: string; name: string };
 export type StepAssignmentMode = 'ALL_PARTICIPANTS' | 'SPECIFIC_PARTICIPANT';
 export type Step = { id: string; title: string; description?: string | null; position: number; assignmentMode?: StepAssignmentMode; assigneeUserId?: string | null; assigneeName?: string | null; assignee?: User | null; assigneeAvailable?: boolean; applicable?: boolean; progresses?: { userId: string; completed: boolean; completedAt?: string | null }[] };
@@ -91,7 +91,7 @@ export const api = {
   useTemplate: (id: string, body: { startDate: string; endDate?: string }) => request<Goal>(`/templates/${id}/use`, json(body)),
   calendar: (from?: string, to?: string) => request<CalendarData>(`/calendar?from=${encodeURIComponent(from ?? '')}&to=${encodeURIComponent(to ?? '')}`),
   rhythm: (goalId: string) => request<Rhythm>(`/goals/${goalId}/rhythm`),
-  updateProfile: (body: { name?: string; avatarUrl?: string; timezone?: string; preferences?: Record<string, boolean | string | number> }) => request<User>('/auth/profile', { method: 'PATCH', body: JSON.stringify(body) }),
+  updateProfile: (body: { name?: string; avatarUrl?: string; timezone?: string; preferences?: Record<string, boolean | string | number>; phone?: string | null; birthDate?: string | null; countryCode?: string | null; region?: string | null; city?: string | null }) => request<User>('/auth/profile', { method: 'PATCH', body: JSON.stringify(body) }),
   setAvatarPreset: (presetId: string) => request<User>('/profile/avatar/preset', { method: 'PATCH', body: JSON.stringify({ presetId }) }),
   uploadAvatar: async (file: File) => { const response = await fetch(`${API_URL}/profile/avatar/upload`, { method: 'POST', body: (() => { const form = new FormData(); form.append('file', file); return form; })(), credentials: 'include' }); if (!response.ok) { const body = await response.json().catch(() => ({})) as { message?: string | string[] }; const message = Array.isArray(body.message) ? body.message.join(', ') : body.message; throw new Error(message || 'Não foi possível enviar a foto.'); } return response.json() as Promise<User>; },
   removeAvatar: () => request<User>('/profile/avatar', { method: 'DELETE' }),

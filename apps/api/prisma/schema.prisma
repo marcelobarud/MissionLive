@@ -49,6 +49,11 @@ model User {
   goalPhotos            GoalPhoto[]             @relation("GoalPhotoAuthor")
   onboardingCompletedAt DateTime?
   preferencesJson       String                  @default("{}")
+  phone                 String?
+  birthDate             String?
+  countryCode           String?
+  region                String?
+  city                  String?
 }
 
 model Account {

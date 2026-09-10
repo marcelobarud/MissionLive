@@ -695,7 +695,7 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - comentários textuais por meta e reações limitadas a 👏, ❤️, 🎉 e 💪, com autorização de membership, moderação contextual, limite de tamanho, rate limit e sem HTML arbitrário;
 - templates oficiais e pessoais, uso com revisão explícita das datas, duplicação sem progresso/membros/convites/comentários/atividade/conclusão;
 - calendário/timeline com inícios, prazos e reminders escopados e indicador de ritmo derivado, sem percentual persistido;
-- onboarding curto e pulável, perfil com timezone/preferências, consulta/revogação de sessões e notificações internas com leitura e deep links protegidos;
+- onboarding curto e pulável, perfil com timezone/preferências e dados opcionais privados, consulta/revogação de sessões e notificações internas com leitura e deep links protegidos;
 - ValidationPipe global, Helmet, CORS configurável, filtro global de erros e validação de `SESSION_SECRET` no startup.
 
 ### Frontend web disponível
@@ -708,7 +708,7 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 - preview e aceite de convite em `/invite/<token>`;
 - recuperação e redefinição de senha em desenvolvimento;
 - páginas de modelos, calendário/timeline e indicador de ritmo no detalhe da meta;
-- onboarding pulável, perfil/preferências, sessões e notificações internas com deep links; o perfil mostra o estado das notificações do navegador e o primeiro reminder pode oferecer ativação contextual sem solicitar permissão automaticamente;
+- onboarding pulável, perfil/preferências, sessões e notificações internas com deep links; o perfil mostra o estado das notificações do navegador e o primeiro reminder pode oferecer ativação contextual sem solicitar permissão automaticamente; o cadastro inicial permanece curto e o perfil permite completar depois telefone, data de nascimento, país, região/UF e cidade;
 - navegação responsiva mobile-first com estados de loading, erro e vazio; o shell autenticado usa sidebar fixa no desktop/tablet e drawer acessível no mobile, sem duplicar a navegação no topo;
 - Design System V1 em `apps/web/src/design-system.tsx`, com Button, IconButton, Input, Textarea, Select, Checkbox, FormField, Card, Panel, Section, PageHeader, EmptyState, Spinner, ProgressBar e Badge;
 - Service Worker em `apps/web/public/sw.js` recebe Web Push, exibe notificações do sistema e aceita somente deep links internos de metas;
@@ -773,3 +773,13 @@ Se uma implementação exigir contrariar uma decisão registrada:
 - O banco guarda apenas `avatarType`, `avatarPresetId` e `avatarFileKey` nullable. A foto original não é persistida; arquivos processados ficam no armazenamento local (`apps/api/var/avatars` ou `AVATAR_STORAGE_DIR`) através da abstração `AvatarStorage`.
 - A alteração e remoção usam exclusivamente o usuário autenticado. A mídia é servida por rota segura, sem aceitar caminho físico ou `userId` no payload.
 - Fotos Google já existentes continuam como fallback quando o usuário remove um preset/upload. Object storage permanece uma evolução futura.
+
+### Dados opcionais de cadastro e perfil
+
+- O modelo `User` persiste `phone`, `birthDate`, `countryCode`, `region` e `city` como campos nullable, sem backfill dos usuários existentes. O cadastro inicial continua exigindo somente nome, e-mail e senha; o preenchimento complementar acontece no Perfil.
+- `phone` é normalizado e persistido em E.164 com `libphonenumber-js`, exclusivamente como dado de perfil. Não há login por telefone, SMS ou MFA nesta decisão.
+- `birthDate` é uma data civil representada como texto `YYYY-MM-DD`, sem deslocamento de timezone, e datas futuras são rejeitadas.
+- `countryCode` usa ISO 3166-1 alpha-2 em uma lista local pesquisável. Para `BR`, `region` persiste uma das 27 UFs; nos demais países, `region` é texto livre limitado. Trocar o país limpa região e cidade incompatíveis.
+- O timezone continua independente da localização informada e permanece um identificador IANA válido.
+- Os dados são privados: aparecem no retorno do próprio usuário (`publicUser`/`/auth/me`) e não fazem parte de `publicIdentity` nem dos payloads colaborativos de equipes, metas, atividade, avisos ou convites.
+- O onboarding oferece acesso ao Perfil e a ação “Fazer depois”; essa ação conclui o onboarding sem bloquear o produto nem reapresentar a solicitação a cada login. Rotas de convite continuam livres desse prompt.

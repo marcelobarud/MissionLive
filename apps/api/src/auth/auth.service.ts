@@ -6,6 +6,8 @@ import { RegisterDto, LoginDto, ResetPasswordDto } from './auth.dto';
 import * as argon2 from 'argon2';
 import { publicUser } from './user.serializer';
 import { isValidIanaTimezone } from './timezone';
+import { COUNTRY_CODES, BRAZILIAN_REGION_CODES } from './countries';
+import { isValidCivilDate, normalizePhone } from './profile.validation';
 
 @Injectable()
 export class AuthService {
@@ -45,7 +47,20 @@ export class AuthService {
   async updateProfile(userId: string, dto: import('./profile.dto').UpdateProfileDto) {
     if (dto.timezone !== undefined && !isValidIanaTimezone(dto.timezone)) throw new BadRequestException('Invalid IANA timezone.');
     const current = await this.prisma.user.findUnique({ where: { id: userId } }); if (!current) throw new UnauthorizedException('User not found.');
-    const user = await this.prisma.user.update({ where: { id: userId }, data: { name: dto.name?.trim(), avatarUrl: dto.avatarUrl, timezone: dto.timezone?.trim(), preferencesJson: dto.preferences ? JSON.stringify(dto.preferences) : undefined } }); return publicUser(user);
+    const requestedCountry = dto.countryCode !== undefined ? dto.countryCode?.trim().toUpperCase() || null : current.countryCode;
+    const countryChanged = dto.countryCode !== undefined && requestedCountry !== current.countryCode;
+    const countryCode = requestedCountry;
+    const region = dto.region !== undefined ? dto.region?.trim() || null : countryChanged ? null : current.region;
+    const city = dto.city !== undefined ? dto.city?.trim() || null : countryChanged ? null : current.city;
+    if (countryCode && !COUNTRY_CODES.has(countryCode)) throw new BadRequestException('Selecione um país válido.');
+    if (dto.birthDate && !isValidCivilDate(dto.birthDate)) throw new BadRequestException('Informe uma data de nascimento válida.');
+    if (countryCode === 'BR' && region && !BRAZILIAN_REGION_CODES.has(region)) throw new BadRequestException('Informe uma UF brasileira válida.');
+    if (city && !countryCode) throw new BadRequestException('Selecione um país para informar a cidade.');
+    const user = await this.prisma.user.update({ where: { id: userId }, data: {
+      name: dto.name?.trim(), avatarUrl: dto.avatarUrl, timezone: dto.timezone?.trim(), preferencesJson: dto.preferences ? JSON.stringify(dto.preferences) : undefined,
+      phone: dto.phone === undefined ? undefined : dto.phone === null ? null : normalizePhone(dto.phone.trim()), birthDate: dto.birthDate === undefined ? undefined : dto.birthDate, countryCode: dto.countryCode === undefined ? undefined : countryCode,
+      region: dto.region === undefined && !countryChanged ? undefined : region, city: dto.city === undefined && !countryChanged ? undefined : city,
+    } }); return publicUser(user);
   }
   async completeOnboarding(userId: string) { const user = await this.prisma.user.update({ where: { id: userId }, data: { onboardingCompletedAt: new Date() } }); return publicUser(user); }
   async sessions(userId: string, currentSessionId: string) { return this.prisma.session.findMany({ where: { userId, revokedAt: null }, select: { id: true, createdAt: true, expiresAt: true }, orderBy: { createdAt: 'desc' } }).then((items) => items.map((item) => ({ ...item, current: item.id === currentSessionId }))); }

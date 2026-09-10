@@ -18,6 +18,6 @@ export function publicIdentity<T extends AvatarFields & { email: string; name: s
   return { id: user.id, email: user.email, name: user.name, avatarUrl: user.avatarUrl, avatar: publicAvatar(user) };
 }
 
-export function publicUser<T extends AvatarFields & { email: string; name: string; timezone?: string; onboardingCompletedAt?: Date | null; preferencesJson?: string }>(user: T) {
-  return { id: user.id, email: user.email, name: user.name, avatarUrl: user.avatarUrl, avatar: publicAvatar(user), timezone: user.timezone, onboardingCompletedAt: user.onboardingCompletedAt?.toISOString() ?? null, preferences: JSON.parse(user.preferencesJson ?? '{}') };
+export function publicUser<T extends AvatarFields & { email: string; name: string; timezone?: string; onboardingCompletedAt?: Date | null; preferencesJson?: string; phone?: string | null; birthDate?: string | null; countryCode?: string | null; region?: string | null; city?: string | null }>(user: T) {
+  return { id: user.id, email: user.email, name: user.name, avatarUrl: user.avatarUrl, avatar: publicAvatar(user), timezone: user.timezone, onboardingCompletedAt: user.onboardingCompletedAt?.toISOString() ?? null, preferences: JSON.parse(user.preferencesJson ?? '{}'), phone: user.phone ?? null, birthDate: user.birthDate ?? null, countryCode: user.countryCode ?? null, region: user.region ?? null, city: user.city ?? null };
 }
