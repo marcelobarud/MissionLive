@@ -1602,3 +1602,56 @@ body { overflow-x: hidden; }
     padding: max(.75rem, env(safe-area-inset-top)) max(.75rem, env(safe-area-inset-right)) max(.75rem, env(safe-area-inset-bottom)) max(.75rem, env(safe-area-inset-left));
   }
 }
+
+/* Ajustes mobile: convites contidos e participantes alinhados à barra. */
+.invite-card,
+.invite-card code,
+.share-links {
+  min-width: 0;
+}
+.invite-card code {
+  display: block;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+.share-links a {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .invite-card {
+    padding: var(--card-padding-md);
+  }
+  .share-links {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .share-links a {
+    justify-content: center;
+    min-height: var(--control-height-small);
+  }
+  .team-track-state > span {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: .25rem;
+    min-width: 0;
+  }
+  .team-track-state .ds-progress,
+  .team-track-state .progress-track {
+    width: 100%;
+    min-width: 0;
+  }
+  .team-track-state small {
+    width: 100%;
+    text-align: right;
+  }
+}
+
+@media (max-width: 420px) {
+  .share-links {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
