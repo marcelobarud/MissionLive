@@ -62,7 +62,7 @@ function feedbackError(error: unknown, fallback: string) {
   return error instanceof Error && error.message ? error.message : fallback;
 }
 
-function DialogShell({ title, description, tone = 'info', children, onClose }: { title: string; description?: string; tone?: FeedbackTone; children: ReactNode; onClose: () => void }) {
+function DialogShell({ title, description, tone = 'info', className, children, onClose }: { title: string; description?: string; tone?: FeedbackTone; className?: string; children: ReactNode; onClose: () => void }) {
   const titleId = useId();
   const descriptionId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -111,12 +111,12 @@ function DialogShell({ title, description, tone = 'info', children, onClose }: {
     };
   }, []);
 
-  return createPortal(<div className="feedback-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><div className="ds-dialog" ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={description ? descriptionId : undefined}><div className={`feedback-dialog-icon feedback-dialog-icon-${tone}`}>{dialogIcon(tone)}</div><div className="ds-dialog-content"><h2 id={titleId}>{title}</h2>{description && <p id={descriptionId}>{description}</p>}{children}</div></div></div>, document.body);
+  return createPortal(<div className="feedback-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose(); }}><div className={className ? `ds-dialog ${className}` : 'ds-dialog'} ref={dialogRef} role="dialog" aria-modal="true" aria-labelledby={titleId} aria-describedby={description ? descriptionId : undefined}><div className={`feedback-dialog-icon feedback-dialog-icon-${tone}`}>{dialogIcon(tone)}</div><div className="ds-dialog-content"><h2 id={titleId}>{title}</h2>{description && <p id={descriptionId}>{description}</p>}{children}</div></div></div>, document.body);
 }
 
-export function Dialog({ open, title, description, tone = 'info', onClose, children }: { open: boolean; title: string; description?: string; tone?: FeedbackTone; onClose: () => void; children: ReactNode }) {
+export function Dialog({ open, title, description, tone = 'info', className, onClose, children }: { open: boolean; title: string; description?: string; tone?: FeedbackTone; className?: string; onClose: () => void; children: ReactNode }) {
   if (!open) return null;
-  return <DialogShell title={title} description={description} tone={tone} onClose={onClose}>{children}</DialogShell>;
+  return <DialogShell title={title} description={description} tone={tone} className={className} onClose={onClose}>{children}</DialogShell>;
 }
 
 export function ConfirmDialog({ open, options, onCancel, onConfirm }: { open: boolean; options: DialogOptions; onCancel: () => void; onConfirm: () => Promise<void> }) {

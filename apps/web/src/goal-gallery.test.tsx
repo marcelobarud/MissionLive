@@ -18,7 +18,7 @@ describe('GoalGallery', () => {
     expect(view.getByAltText('Primeiro marco').getAttribute('loading')).toBe('lazy');
     expect(view.getByAltText('Primeiro marco').getAttribute('crossorigin')).toBe('use-credentials');
     fireEvent.click(view.getByRole('button', { name: /Primeiro marco/ }));
-    expect(view.getByRole('dialog')).toBeTruthy();
+    expect(view.getByRole('dialog').className).toContain('photo-dialog');
     expect(view.getByRole('heading', { name: 'Primeiro marco' })).toBeTruthy();
     expect(view.getByText('Um avanço importante.')).toBeTruthy();
     expect(view.getAllByAltText('Primeiro marco')[1].getAttribute('crossorigin')).toBe('use-credentials');

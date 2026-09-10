@@ -1813,3 +1813,13 @@ body { overflow-x: hidden; }
     grid-column: 1 / -1;
   }
 }
+
+/* Photo dialog: keep the icon/title header while giving the body the full modal axis. */
+.ds-dialog.photo-dialog { grid-template-columns: auto minmax(0, 1fr); row-gap: var(--space-4); }
+.ds-dialog.photo-dialog .ds-dialog-content { display: contents; }
+.ds-dialog.photo-dialog .ds-dialog-content > h2 { grid-column: 2; align-self: center; }
+.ds-dialog.photo-dialog .goal-photo-detail { grid-column: 1 / -1; }
+
+@media (max-width: 520px) {
+  .ds-dialog.photo-dialog { grid-template-columns: auto minmax(0, 1fr); column-gap: var(--space-3); row-gap: var(--space-4); }
+}
