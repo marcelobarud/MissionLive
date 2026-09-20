@@ -35,6 +35,21 @@ Copie os valores gerados para `VAPID_PUBLIC_KEY` e `VAPID_PRIVATE_KEY` no `.env`
 
 O frontend registra o Service Worker sem solicitar permissão. A permissão só é pedida após o usuário clicar em “Ativar notificações”.
 
-## Acesso opcional pela rede local
+## Acesso pela rede local
 
-O padrão escuta somente no loopback. Para abrir o ambiente em um telefone na mesma rede, configure explicitamente `API_HOST=0.0.0.0`, `VITE_DEV_HOST=0.0.0.0`, `VITE_API_URL=http://<IP_LOCAL>:3000` e inclua `http://<IP_LOCAL>:5173` em `CORS_ORIGINS`. `WEB_ORIGIN` continua sendo uma origem única e canônica para links de convite. Não versione IPs, secrets nem regras locais do firewall.
+O frontend e o backend usam portas internas padronizadas, mas o navegador não acessa mais a API diretamente. O frontend usa o caminho relativo `/api` e o Vite encaminha esse caminho para `API_PROXY_TARGET`. Por isso, não é necessário trocar o IP da máquina no `VITE_API_URL`, nem configurar redirecionamentos diferentes para cada dispositivo.
+
+Para usar no desktop e em um telefone na mesma rede, mantenha no `.env`:
+
+```text
+PORT=3000
+API_HOST=0.0.0.0
+API_PROXY_TARGET=http://127.0.0.1:3000
+VITE_DEV_HOST=0.0.0.0
+VITE_DEV_PORT=5173
+VITE_API_URL=/api
+```
+
+O app pode ser aberto em `http://localhost:5173`, `http://127.0.0.1:5173` ou `http://<IP_LOCAL>:5173`. Se a porta 5173 estiver ocupada, o Vite escolherá a próxima porta disponível; o proxy continuará funcionando sem alteração no código ou no endereço da API. O backend permanece acessível internamente em `http://127.0.0.1:3000` e não deve ser usado diretamente pelo navegador durante o desenvolvimento web.
+
+`WEB_ORIGIN` continua sendo uma origem canônica para links de convite e integrações OAuth. Não versione IPs, secrets nem regras locais do firewall.

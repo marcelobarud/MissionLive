@@ -1,4 +1,6 @@
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+// Em desenvolvimento, o Vite encaminha /api para o backend. Isso mantém a
+// origem do navegador estável mesmo quando o app é aberto por outro IP ou porta.
+export const API_URL = import.meta.env.VITE_API_URL || '/api';
 
 export type Avatar = { type: 'preset' | 'upload' | 'google' | null; presetId: string | null; url: string | null };
 export type PlatformRole = 'USER' | 'ADMIN' | 'SUPER_ADMIN';

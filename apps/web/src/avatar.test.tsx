@@ -59,7 +59,7 @@ describe('user avatars', () => {
   it('loads uploaded avatars through the API CORS boundary', () => {
     const html = renderToString(<UserAvatar user={{ name: 'Ana', avatar: { type: 'upload', presetId: null, url: '/media/avatars/user/file.webp' } }} />);
     expect(html).toContain('crossorigin="anonymous"');
-    expect(html).toContain('http://localhost:3000/media/avatars/user/file.webp');
+    expect(html).toContain('/api/media/avatars/user/file.webp');
   });
 
   it('preserves the Google avatar fallback', () => {

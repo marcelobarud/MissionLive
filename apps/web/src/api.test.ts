@@ -6,13 +6,13 @@ describe('API_URL', () => {
     vi.resetModules();
   });
 
-  it('uses localhost by default', async () => {
+  it('uses the same-origin proxy by default', async () => {
     vi.stubEnv('VITE_API_URL', '');
     const { API_URL } = await import('./api');
-    expect(API_URL).toBe('http://localhost:3000');
+    expect(API_URL).toBe('/api');
   });
 
-  it('uses the explicit API URL for opt-in LAN access', async () => {
+  it('preserves an explicit API URL for deployed environments', async () => {
     vi.stubEnv('VITE_API_URL', 'http://192.0.2.20:3000');
     const { API_URL } = await import('./api');
     expect(API_URL).toBe('http://192.0.2.20:3000');

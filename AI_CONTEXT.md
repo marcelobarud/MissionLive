@@ -690,6 +690,17 @@ Não depender de comportamento específico do SQLite que quebre no PostgreSQL.
 
 ## 21. Estado atual da implementação
 
+### Topologia local do frontend e backend
+
+No desenvolvimento local, o navegador acessa a API por meio do proxy same-origin do Vite:
+
+- frontend: `/`;
+- API no navegador: `/api`;
+- destino interno do proxy: `API_PROXY_TARGET`, por padrão `http://127.0.0.1:3000`;
+- backend: `PORT=3000`, escutando em `API_HOST`.
+
+`VITE_API_URL` deve permanecer `/api` no desenvolvimento. Não configurar IP local ou porta do backend diretamente no frontend. Essa decisão permite abrir o app por localhost, endereço da rede local ou outra porta escolhida pelo Vite sem alterar endpoints, CORS ou código da aplicação.
+
 ### API/backend disponível
 
 - autenticação local com cadastro, verificação de e-mail, login, logout, sessões em cookie HttpOnly e recuperação de senha por token exposto apenas no desenvolvimento;
