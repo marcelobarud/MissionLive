@@ -6,6 +6,7 @@ import { WebThreads } from './web-threads';
 type Plan = {
   name: string;
   price: string;
+  period?: string;
   description: string;
   features: string[];
   cta: string;
@@ -19,15 +20,16 @@ const plans: Plan[] = [
     name: 'Free',
     price: 'R$ 0',
     description: 'Para começar a organizar o que importa, no seu ritmo.',
-    features: ['Metas individuais', 'Passos e progresso visível', 'Acesso ao app'],
+    features: ['Crie e acompanhe metas', 'Organize seus próximos passos', 'Visualize seu progresso'],
     cta: 'Começar grátis',
     href: '/register',
   },
   {
     name: 'Pro',
-    price: 'R$ 15,90 / mês',
-    description: 'Uma visão mais completa para planos que crescem com você.',
-    features: ['Tudo do plano Free', 'Metas compartilhadas e de equipe', 'Lembretes e acompanhamento'],
+    price: 'R$ 15,90',
+    period: '/ mês',
+    description: 'Uma camada de possibilidades para planos que crescem com você.',
+    features: ['Tudo do Free', 'Recursos Pro adicionais', 'Novas possibilidades em definição'],
     cta: 'Em breve',
     disabled: true,
     featured: true,
@@ -70,10 +72,10 @@ function LandingProductPreview() {
   return <div className="landing-product-preview" aria-label="Prévia ilustrativa do aplicativo MissionLive. Dados de demonstração.">
     <div className="landing-product-sidebar"><span className="landing-product-mark">M</span><span className="landing-product-line is-active" /><span className="landing-product-line" /><span className="landing-product-line" /><span className="landing-product-line" /></div>
     <div className="landing-product-content">
-      <div className="landing-product-heading"><div><span className="landing-preview-label">INÍCIO</span><h3>O que está em movimento</h3></div><span className="landing-product-avatar">A</span></div>
-      <div className="landing-product-next"><div><span className="landing-preview-label">PRÓXIMO PASSO</span><strong>Revisar a proposta do projeto</strong><small>Meta de equipe · 2 de 5 passos</small></div><span className="landing-product-percent">40%</span></div>
-      <div className="landing-product-grid"><div><span className="landing-preview-label">METAS ABERTAS</span><strong>04</strong></div><div><span className="landing-preview-label">CONCLUÍDAS</span><strong>08</strong></div><div><span className="landing-preview-label">PROGRESSO ATIVO</span><strong>64%</strong></div></div>
-      <div className="landing-product-list"><div><span className="landing-product-list-dot" /><span>Planejar a semana</span><strong>80%</strong></div><div><span className="landing-product-list-dot" /><span>Preparar a apresentação</span><strong>55%</strong></div><div><span className="landing-product-list-dot" /><span>Organizar viagem</span><strong>25%</strong></div></div>
+      <div className="landing-product-heading"><div><span className="landing-preview-label">INÍCIO</span><h3>Olá, Ana.</h3></div><span className="landing-product-avatar">A</span></div>
+      <div className="landing-product-next"><div className="landing-product-next-copy"><span className="landing-preview-label">PRÓXIMO PASSO</span><strong>Revisar a proposta do projeto</strong><small>Meta de equipe · 2 de 5 passos</small></div><span className="landing-product-percent">40%</span><div className="landing-product-progress" aria-hidden="true"><span /></div></div>
+      <div className="landing-product-grid"><div><span className="landing-preview-label">METAS ABERTAS</span><strong>02</strong></div><div><span className="landing-preview-label">CONCLUÍDAS</span><strong>01</strong></div><div><span className="landing-preview-label">PROGRESSO ATIVO</span><strong>64%</strong></div></div>
+      <div className="landing-product-lower-grid"><div className="landing-product-list"><div className="landing-product-list-heading"><span>Metas ativas</span><strong>Ver todas</strong></div><div><span className="landing-product-list-dot" /><span>Planejar uma viagem</span><strong>100%</strong></div><div><span className="landing-product-list-dot" /><span>Preparar a apresentação</span><strong>55%</strong></div></div><div className="landing-product-activity"><div className="landing-product-list-heading"><span>Movimentos recentes</span><strong>05</strong></div><p>Admin concluiu um passo</p><p>Meta atualizada há pouco</p></div></div>
     </div>
   </div>;
 }
@@ -121,18 +123,18 @@ export function LandingPage() {
       <section className="landing-hero" aria-labelledby="landing-hero-title">
         <WebThreads paused={motionPaused} />
         <div className="landing-container landing-hero-inner">
-          <div className="landing-hero-copy"><p className="landing-kicker">METAS CLARAS. PROGRESSO VISÍVEL.</p><h1 id="landing-hero-title">Transforme metas em progresso visível.</h1><p className="landing-hero-description">Organize objetivos, acompanhe cada passo e avance sozinho ou junto com outras pessoas — com clareza para o que vem agora.</p><div className="landing-actions"><LandingButton href="/register">Começar gratuitamente <IconArrowUpRight size={17} stroke={1.9} aria-hidden="true" /></LandingButton><LandingButton href="/login" variant="secondary">Acessar o aplicativo</LandingButton></div><div className="landing-hero-utility"><p className="landing-hero-note">Sem cobrança nesta etapa demonstrativa.</p><button className="landing-motion-toggle" type="button" aria-pressed={motionPaused} onClick={() => setMotionPaused((paused) => !paused)}>{motionPaused ? <IconPlayerPlay size={14} stroke={2} aria-hidden="true" /> : <IconPlayerPause size={14} stroke={2} aria-hidden="true" />}{motionPaused ? 'Retomar linhas' : 'Pausar linhas'}</button></div></div>
+          <div className="landing-hero-copy"><p className="landing-kicker">METAS CLARAS. PROGRESSO VISÍVEL.</p><h1 id="landing-hero-title">Transforme metas em progresso visível.</h1><p className="landing-hero-description">Organize objetivos, acompanhe cada passo e avance sozinho ou junto com outras pessoas — com clareza para o que vem agora.</p><div className="landing-actions"><LandingButton href="/register">Começar gratuitamente <IconArrowUpRight size={17} stroke={1.9} aria-hidden="true" /></LandingButton><LandingButton href="/login" variant="secondary">Acessar o aplicativo</LandingButton></div><div className="landing-hero-utility"><button className="landing-motion-toggle" type="button" aria-pressed={motionPaused} onClick={() => setMotionPaused((paused) => !paused)}>{motionPaused ? <IconPlayerPlay size={14} stroke={2} aria-hidden="true" /> : <IconPlayerPause size={14} stroke={2} aria-hidden="true" />}{motionPaused ? 'Retomar linhas' : 'Pausar linhas'}</button></div></div>
           <LandingGoalPreview />
         </div>
       </section>
 
       <section className="landing-section landing-resources" id="recursos" aria-labelledby="resources-title"><div className="landing-container"><div className="landing-section-intro"><p className="landing-kicker">UM LUGAR PARA AVANÇAR</p><h2 id="resources-title">Do que você quer fazer ao que já está acontecendo.</h2><p>MissionLive deixa a próxima ação à vista e o restante organizado. Cada meta tem um caminho que você consegue acompanhar.</p></div><div className="landing-feature-list"><LandingFeature icon={<IconTargetArrow size={24} stroke={1.8} />} title="Metas individuais">Dê forma a planos pessoais sem transformar organização em mais uma tarefa.</LandingFeature><LandingFeature icon={<IconUsersGroup size={24} stroke={1.8} />} title="Compartilhadas e de equipe">Convide as pessoas certas e mantenha o progresso de cada participante claro.</LandingFeature><LandingFeature icon={<IconChecklist size={24} stroke={1.8} />} title="Passos que orientam">Quebre objetivos em checklists simples e saiba o que já saiu do papel.</LandingFeature><LandingFeature icon={<IconBell size={24} stroke={1.8} />} title="Acompanhamento calmo">Use lembretes e sinais de progresso para retomar sem perder o ritmo.</LandingFeature></div></div></section>
 
-      <section className="landing-section landing-how" id="como-funciona" aria-labelledby="how-title"><div className="landing-container"><div className="landing-section-intro"><p className="landing-kicker">COMO FUNCIONA</p><h2 id="how-title">Um caminho simples para seguir em frente.</h2></div><div className="landing-steps"><LandingStep index="01" title="Crie sua meta">Comece pelo que você quer realizar, com contexto e prazo quando fizer sentido.</LandingStep><LandingStep index="02" title="Organize seus passos">Transforme a intenção em ações pequenas que cabem na sua semana.</LandingStep><LandingStep index="03" title="Evolua acompanhado">Veja seu avanço e, quando quiser, convide pessoas para caminhar com você.</LandingStep></div></div></section>
+      <section className="landing-section landing-how" id="como-funciona" aria-labelledby="how-title"><div className="landing-container"><div className="landing-section-intro"><p className="landing-kicker">COMO FUNCIONA</p><h2 id="how-title">Um caminho simples para seguir em frente.</h2></div><div className="landing-steps"><LandingStep index="01" title="Crie sua meta">Comece pelo que você quer realizar, com contexto e prazo quando fizer sentido.</LandingStep><LandingStep index="02" title="Defina seus próximos passos">Transforme a intenção em ações pequenas que cabem na sua semana.</LandingStep><LandingStep index="03" title="Acompanhe o progresso">Veja o avanço com clareza e compartilhe o caminho quando fizer sentido.</LandingStep></div></div></section>
 
       <section className="landing-section landing-preview-section" aria-labelledby="preview-title"><div className="landing-container landing-preview-layout"><div className="landing-section-intro"><p className="landing-kicker">A EXPERIÊNCIA NO DIA A DIA</p><h2 id="preview-title">Clareza para o próximo passo. Contexto para o caminho inteiro.</h2><p>Uma visão objetiva para retomar metas, conferir o andamento e manter cada pessoa alinhada sem ruído.</p><Link className="landing-text-link" to="/register">Comece a explorar <IconArrowUpRight size={17} stroke={1.9} aria-hidden="true" /></Link></div><LandingProductPreview /></div></section>
 
-      <section className="landing-section landing-plans" id="planos" aria-labelledby="plans-title"><div className="landing-container"><div className="landing-section-intro"><p className="landing-kicker">PLANOS</p><h2 id="plans-title">Comece leve. Cresça quando fizer sentido.</h2><p>Os planos abaixo são demonstrativos nesta primeira versão — sem cobrança ou contratação.</p></div><div className="landing-plan-grid">{plans.map((plan) => <article className={`landing-plan${plan.featured ? ' is-featured' : ''}`} key={plan.name}><div className="landing-plan-heading"><div><h3>{plan.name}</h3><p>{plan.description}</p></div>{plan.featured && <span className="landing-plan-badge">EM BREVE</span>}</div><strong className="landing-plan-price">{plan.price}</strong><ul>{plan.features.map((feature) => <li key={feature}><IconCheck size={17} stroke={2.2} aria-hidden="true" />{feature}</li>)}</ul>{plan.disabled ? <button className="landing-button landing-button-plan-disabled" type="button" disabled>{plan.cta}</button> : <LandingButton href={plan.href ?? '/register'} variant={plan.featured ? 'secondary' : 'primary'}>{plan.cta}</LandingButton>}</article>)}</div></div></section>
+      <section className="landing-section landing-plans" id="planos" aria-labelledby="plans-title"><div className="landing-container"><div className="landing-section-intro"><p className="landing-kicker">PLANOS</p><h2 id="plans-title">Comece leve. Cresça quando fizer sentido.</h2></div><div className="landing-plan-grid">{plans.map((plan) => <article className={`landing-plan${plan.featured ? ' is-featured' : ''}`} key={plan.name}><div className="landing-plan-heading"><div><h3>{plan.name}</h3><p>{plan.description}</p></div>{plan.featured && <span className="landing-plan-badge">EM BREVE</span>}</div><strong className="landing-plan-price"><span>{plan.price}</span>{plan.period && <small>{plan.period}</small>}</strong><ul>{plan.features.map((feature) => <li key={feature}><IconCheck size={17} stroke={2.2} aria-hidden="true" />{feature}</li>)}</ul>{plan.disabled ? <button className="landing-button landing-button-plan-disabled" type="button" disabled>{plan.cta}</button> : <LandingButton href={plan.href ?? '/register'} variant={plan.featured ? 'secondary' : 'primary'}>{plan.cta}</LandingButton>}</article>)}</div></div></section>
 
       <section className="landing-final-cta" aria-labelledby="final-cta-title"><div className="landing-container landing-final-cta-inner"><div><p className="landing-kicker">SEU PRÓXIMO PASSO</p><h2 id="final-cta-title">Comece a transformar seus objetivos em progresso.</h2></div><LandingButton href="/register" variant="secondary">Criar minha conta <IconArrowUpRight size={17} stroke={1.9} aria-hidden="true" /></LandingButton></div></section>
     </main>

@@ -12,6 +12,7 @@
   "dependencies": {
     "@tabler/icons-react": "^3.46.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "ogl": "^1.0.11",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "react-easy-crop": "6.2.3",
