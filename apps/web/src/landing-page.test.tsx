@@ -23,16 +23,8 @@ describe('LandingPage', () => {
     expect(view.queryByText(/primeira versão|etapa demonstrativa|sem cobrança ou contratação/i)).not.toBeInTheDocument();
     expect(view.getAllByRole('link', { name: /Começar gratuitamente/ })[0]).toHaveAttribute('href', '/register');
     expect(view.getByRole('button', { name: 'Em breve' })).toBeDisabled();
-    expect(view.getByRole('button', { name: 'Pausar linhas' })).toHaveAttribute('aria-pressed', 'false');
-  });
-
-  it('pausa e retoma o movimento visual pelo controle de acessibilidade', () => {
-    const view = render(<MemoryRouter><LandingPage /></MemoryRouter>);
-    const motionButton = view.getByRole('button', { name: 'Pausar linhas' });
-    fireEvent.click(motionButton);
-    expect(view.getByRole('button', { name: 'Retomar linhas' })).toHaveAttribute('aria-pressed', 'true');
-    fireEvent.click(view.getByRole('button', { name: 'Retomar linhas' }));
-    expect(view.getByRole('button', { name: 'Pausar linhas' })).toHaveAttribute('aria-pressed', 'false');
+    expect(view.container.querySelector('.landing-product-mark')).toHaveAttribute('src', '/brand/missionlive-symbol.svg');
+    expect(view.queryByRole('button', { name: /Pausar linhas|Retomar linhas/ })).not.toBeInTheDocument();
   });
 
   it('abre o menu público no mobile e devolve o foco ao gatilho ao fechar com Escape', () => {

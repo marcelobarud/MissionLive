@@ -30,12 +30,11 @@ export interface WebThreadsProps {
   mouseStrength?: number;
   backgroundColor?: string;
   lightMode?: boolean;
-  paused?: boolean;
   className?: string;
 }
 
 type UniformValue = { value: number | boolean | Float32Array };
-type WebThreadsContext = { program: { uniforms: Record<string, UniformValue> }; setPaused: (paused: boolean) => void };
+type WebThreadsContext = { program: { uniforms: Record<string, UniformValue> } };
 
 const ctxMap = new WeakMap<HTMLDivElement, WebThreadsContext>();
 const FAN_MODE: Record<FanMode, number> = { center: 0, left: 1, right: 2 };
@@ -143,7 +142,8 @@ void main() {
     vec3 hue = mapped / max(max(mapped.r, mapped.g), max(mapped.b, 1e-4));
     vec3 chroma = pow(clamp(hue, 0.0, 1.0), vec3(0.78));
     vec3 pigment = mix(chroma, vec3(0.08), 0.12);
-    vec3 ink = mix(vec3(0.9), pigment, 0.82 + coverage * 0.18);
+    vec3 baseInk = vec3(0.16, 0.35, 0.29);
+    vec3 ink = mix(baseInk, pigment, 0.48 + coverage * 0.22);
     fragColor = vec4(mix(uBackgroundColor, ink, coverage), 1.0);
   } else {
     fragColor = vec4(outRgb, alpha);
@@ -153,7 +153,7 @@ void main() {
 export const WebThreads: FC<WebThreadsProps> = ({
   color1 = '#335f53',
   color2 = '#52645d',
-  color3 = '#d8e3dd',
+  color3 = '#6f9989',
   speed = 0.055,
   threadCount = 5,
   frequency = 5,
@@ -165,7 +165,7 @@ export const WebThreads: FC<WebThreadsProps> = ({
   falloff = 0.62,
   thickness = 1.1,
   brightness = 0.34,
-  opacity = 0.38,
+  opacity = 0.32,
   mirror = true,
   shimmer = false,
   grain = false,
@@ -174,19 +174,11 @@ export const WebThreads: FC<WebThreadsProps> = ({
   mouseStrength = 0,
   backgroundColor = '#f1f4f1',
   lightMode = false,
-  paused = false,
   className = '',
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const pausedRef = useRef(paused);
   const reducedMotionRef = useRef(false);
   const mouseRef = useRef({ enabled: mouseInteraction, strength: mouseStrength });
-
-  useEffect(() => {
-    pausedRef.current = paused;
-    const context = containerRef.current ? ctxMap.get(containerRef.current) : undefined;
-    context?.setPaused(paused);
-  }, [paused]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -254,7 +246,7 @@ export const WebThreads: FC<WebThreadsProps> = ({
     canvas.addEventListener('mouseleave', onMouseLeave);
 
     const loop = (time: number) => {
-      if (pausedRef.current || reducedMotionRef.current || !isVisible || !isPageVisible) { raf = 0; return; }
+      if (reducedMotionRef.current || !isVisible || !isPageVisible) { raf = 0; return; }
       uniforms.iTime.value = time * 0.001;
       currentMouse[0] += 0.05 * (targetMouse[0] - currentMouse[0]);
       currentMouse[1] += 0.05 * (targetMouse[1] - currentMouse[1]);
@@ -269,17 +261,12 @@ export const WebThreads: FC<WebThreadsProps> = ({
       raf = requestAnimationFrame(loop);
     };
     const tryStart = () => {
-      if (!pausedRef.current && !reducedMotionRef.current && isVisible && isPageVisible && raf === 0) raf = requestAnimationFrame(loop);
+      if (!reducedMotionRef.current && isVisible && isPageVisible && raf === 0) raf = requestAnimationFrame(loop);
     };
     const tryStop = () => {
       if (raf !== 0) { cancelAnimationFrame(raf); raf = 0; }
     };
-    const setPaused = (nextPaused: boolean) => {
-      pausedRef.current = nextPaused;
-      if (nextPaused) tryStop();
-      else tryStart();
-    };
-    ctxMap.set(container, { program: { uniforms }, setPaused });
+    ctxMap.set(container, { program: { uniforms } });
 
     const intersectionObserver = new IntersectionObserver(([entry]) => {
       isVisible = entry.isIntersecting;

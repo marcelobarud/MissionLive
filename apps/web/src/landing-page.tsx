@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { IconArrowUpRight, IconBell, IconCheck, IconChecklist, IconMenu2, IconPlayerPause, IconPlayerPlay, IconTargetArrow, IconUsersGroup, IconX } from '@tabler/icons-react';
+import { IconArrowUpRight, IconBell, IconCheck, IconChecklist, IconMenu2, IconTargetArrow, IconUsersGroup, IconX } from '@tabler/icons-react';
 import { WebThreads } from './web-threads';
 
 type Plan = {
@@ -70,7 +70,7 @@ function LandingStep({ index, title, children }: { index: string; title: string;
 
 function LandingProductPreview() {
   return <div className="landing-product-preview" aria-label="Prévia ilustrativa do aplicativo MissionLive. Dados de demonstração.">
-    <div className="landing-product-sidebar"><span className="landing-product-mark">M</span><span className="landing-product-line is-active" /><span className="landing-product-line" /><span className="landing-product-line" /><span className="landing-product-line" /></div>
+    <div className="landing-product-sidebar"><img className="landing-product-mark" src="/brand/missionlive-symbol.svg" alt="" width="32" height="32" decoding="async" /><span className="landing-product-line is-active" /><span className="landing-product-line" /><span className="landing-product-line" /><span className="landing-product-line" /></div>
     <div className="landing-product-content">
       <div className="landing-product-heading"><div><span className="landing-preview-label">INÍCIO</span><h3>Olá, Ana.</h3></div><span className="landing-product-avatar">A</span></div>
       <div className="landing-product-next"><div className="landing-product-next-copy"><span className="landing-preview-label">PRÓXIMO PASSO</span><strong>Revisar a proposta do projeto</strong><small>Meta de equipe · 2 de 5 passos</small></div><span className="landing-product-percent">40%</span><div className="landing-product-progress" aria-hidden="true"><span /></div></div>
@@ -82,7 +82,6 @@ function LandingProductPreview() {
 
 export function LandingPage() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [motionPaused, setMotionPaused] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const closeMenu = () => setMenuOpen(false);
 
@@ -121,9 +120,9 @@ export function LandingPage() {
 
     <main id="landing-content">
       <section className="landing-hero" aria-labelledby="landing-hero-title">
-        <WebThreads paused={motionPaused} />
+        <WebThreads />
         <div className="landing-container landing-hero-inner">
-          <div className="landing-hero-copy"><p className="landing-kicker">METAS CLARAS. PROGRESSO VISÍVEL.</p><h1 id="landing-hero-title">Transforme metas em progresso visível.</h1><p className="landing-hero-description">Organize objetivos, acompanhe cada passo e avance sozinho ou junto com outras pessoas — com clareza para o que vem agora.</p><div className="landing-actions"><LandingButton href="/register">Começar gratuitamente <IconArrowUpRight size={17} stroke={1.9} aria-hidden="true" /></LandingButton><LandingButton href="/login" variant="secondary">Acessar o aplicativo</LandingButton></div><div className="landing-hero-utility"><button className="landing-motion-toggle" type="button" aria-pressed={motionPaused} onClick={() => setMotionPaused((paused) => !paused)}>{motionPaused ? <IconPlayerPlay size={14} stroke={2} aria-hidden="true" /> : <IconPlayerPause size={14} stroke={2} aria-hidden="true" />}{motionPaused ? 'Retomar linhas' : 'Pausar linhas'}</button></div></div>
+          <div className="landing-hero-copy"><p className="landing-kicker">METAS CLARAS. PROGRESSO VISÍVEL.</p><h1 id="landing-hero-title">Transforme metas em progresso visível.</h1><p className="landing-hero-description">Organize objetivos, acompanhe cada passo e avance sozinho ou junto com outras pessoas — com clareza para o que vem agora.</p><div className="landing-actions"><LandingButton href="/register">Começar gratuitamente <IconArrowUpRight size={17} stroke={1.9} aria-hidden="true" /></LandingButton><LandingButton href="/login" variant="secondary">Acessar o aplicativo</LandingButton></div></div>
           <LandingGoalPreview />
         </div>
       </section>
