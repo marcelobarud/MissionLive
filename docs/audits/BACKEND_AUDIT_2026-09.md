@@ -439,3 +439,55 @@ Nenhum schema, migration, dependência, frontend, Calendar, Reminders, Activity,
 ### Validação da Fase 2E.1
 
 Após a implementação: API **34 suítes / 226 testes** e frontend **14 arquivos / 75 testes**; lint, typecheck e build globais passaram, com apenas o aviso informativo já existente do Vite sobre um chunk acima de 500 kB. `prisma validate` passou, `prisma migrate status` confirmou **16 migrations** aplicadas e o schema atualizado, e API `/health`, página frontend e proxy `/api/health` responderam HTTP 200. O frontend permaneceu sem alterações.
+
+## Atualização após Fase 2E.2 — Paginação de Goals
+
+### Classificação P2-PERF
+
+| Área | Situação após a 2E.2 |
+|---|---|
+| Goals | **CORRIGIDO para listagem/hidratação ilimitada.** `GET /goals` entrega páginas limitadas; em `progress-desc/asc`, a classificação global ainda exige leitura leve do conjunto filtrado, sem hidratar todos os Goals completos. |
+| Dashboard | **CORRIGIDO**, conforme o read model da Fase 2E.1; permanece independente do envelope paginado. |
+| Calendar | **CORRIGIDO pelo guardrail de 366 dias**, preservado; a consulta interna segue retornando `Goal[]` e não é truncada pela paginação pública. |
+| Reminders | **CORRIGIDO**, conforme os guardrails da Fase 2D. |
+| Activity | **CORRIGIDO/MITIGADO**, com `offset` limitado a 10.000 conforme a Fase 2D. |
+
+### Contrato, filtros e autorização
+
+Antes, `GET /goals` retornava `Goal[]`, carregava o conjunto autorizado completo com relações para a serialização e só então ordenava por progresso em memória. Agora retorna `{ items, pagination }`, com `page` mínimo 1 e padrão 1, `pageSize` padrão 12 e limitado a 50, `totalItems` e `totalPages`. Página solicitada acima da última é ajustada para a última página válida; sem resultados, o contrato é `page: 1`, `totalPages: 0` e `items: []`.
+
+Busca, status, categoria, contexto, prazo, intervalos de início/fim e sort continuam server-side e são aplicados antes da paginação. O mesmo `where` combina esses filtros com `goalAccessWhere(userId)` para a contagem, candidatos de progresso e registros da página; assim, `totalItems` também respeita owner, membership direta, owner da equipe e membership da equipe. O controller mantém `GET /goals`, sem endpoint ou query genérica adicional.
+
+Para `recent`, `name` e `deadline`, a consulta usa `count` e paginação `skip/take` no banco antes da hidratação das relações. As ordenações preservam `updatedAt DESC`, `name ASC` e `endDate ASC`, respectivamente, com `id ASC` como desempate determinístico; metas sem prazo mantêm o comportamento prévio do banco.
+
+### Ordenação por progresso e hidratação
+
+Para `progress-desc/asc`, o serviço seleciona globalmente apenas os campos necessários: IDs, `updatedAt`, owner/memberships de usuário, participantes da equipe, recorrência/timezone, assignment dos steps e progresso comum do viewer. `goalProgressForViewer` reutiliza as regras compartilhadas de participantes e aplicabilidade; steps não aplicáveis não entram no denominador. O serviço ordena o conjunto filtrado pelo percentual e, em empates, por `updatedAt DESC` e `id ASC`; somente os IDs da página são então carregados com relações completas e serializados no formato de Goal já usado pela aplicação.
+
+Em Goals `DAILY`, o cálculo ignora progresso comum e consulta a ocorrência da data local atual derivada de `recurrenceTimezone`, junto apenas do `GoalDailyStepProgress` do viewer. A classificação usa essa ocorrência e as mesmas regras de assignment, preservando a semântica serializada da 2E.1.
+
+O sort por progresso continua com trabalho linear no número de Goals autorizados e nos steps mínimos necessários para avaliá-los. Com 500 candidatos, esse custo linear foi mantido deliberadamente: a leitura é mínima e a hidratação completa continua limitada a `pageSize` (12 por padrão ou até 50), sem alegar custo constante ou adicionar cache/read model prematuramente. Otimizações adicionais ficam condicionadas a métricas reais.
+
+### Calendar e consumidores internos
+
+`CalendarService` não consome a nova resposta pública. Passa a chamar `GoalsService.listForCalendar(userId, start, end)`, caminho nomeado e específico que usa o predicado de autorização/filtros compartilhado, preserva retorno `Goal[]` e mantém o intervalo previamente validado de até 366 dias. Um cenário SQLite com 500 metas no intervalo confirma que o Calendar não perde registros por um `pageSize` implícito. Dashboard segue usando `DashboardReadService` e a hidratação por IDs da Fase 2E.1. A busca por chamadas internas à listagem encontrou o controller como consumidor de `GoalsService.list`; o Calendar foi isolado no caminho próprio, sem criar `listAll()` genérico. Templates e demais consumidores não foram alterados.
+
+### Frontend
+
+`api.goals` agora recebe `GoalsQuery` tipado e retorna `GoalsPage`; filtros booleanos, incluindo `hasDeadline=false`, são serializados corretamente. Página e filtros são refletidos na query string e restaurados em links diretos; as atualizações usam replace para não acumular uma entrada de histórico por interação. A página Metas conserva cards, grid, busca com debounce, filtros e estados existentes, exibe 12 itens por consulta e apresenta `Anterior`, `Página X de Y` e `Próxima` somente quando há mais de uma página. Os botões são controles reais com estado `disabled`, rótulos acessíveis e região `aria-live`. Toda mudança de busca/filtro/sort e a ação Limpar filtros retorna a página a 1; cleanup das requisições ignora respostas obsoletas, e uma página ajustada pelo backend sincroniza URL e dados sem ciclo extra de fetch.
+
+### Escala, escopo e validação
+
+O teste estrutural de 500 Goals comprova hidratação completa limitada à página tanto para sort no banco quanto para progress sort; no caso padrão, no máximo 12 Goals completos são serializados. O fixture confirma também autorização da contagem, filtros, limites de página, ordenações através da fronteira entre páginas, empates, assignment, ocorrência DAILY e o retorno integral do Calendar. Os testes de interface cobrem navegação, controles desabilitados/ocultos, reset de filtros e sort, debounce, resposta ajustada, cleanup/cancelamento, EmptyState e erro.
+
+Revisão manual da tela Metas no navegador local confirmou a grade e os filtros no desktop e em viewport mobile de 390×844, sem overflow horizontal; o menu mobile recolhe para fora da área útil. O usuário de desenvolvimento possui apenas três metas visíveis, então a paginação não aparece nessa base; os estados de múltiplas páginas e a ação seguinte/anterior são exercitados pelos testes de interface e integração, sem inserir dados de teste no banco de desenvolvimento.
+
+Não houve mudança em schema, migrations, dependências, DashboardReadService, Templates, Reminders, Activity, Multer, provider PostgreSQL, convites, OAuth ou Plans. Multer permanece **P1-DEP-01 — OPEN / UPSTREAM BLOCKED (tooling)**; PostgreSQL e concorrência de convites continuam sem validação nesta fase.
+
+### Baseline e validação final da Fase 2E.2
+
+Antes das alterações, a baseline estava verde: API **34 suítes / 226 testes**, frontend **14 arquivos / 75 testes**, lint, typecheck e builds; `prisma validate` passou, as **16 migrations** estavam aplicadas, e `/health`, frontend e `/api/health` respondiam HTTP 200.
+
+Após as alterações: regressão focada em Goals, autorização, DAILY, Calendar e Dashboard passou com **7 suítes / 54 testes**; API completa passou com **35 suítes / 247 testes** e frontend com **15 arquivos / 84 testes**. Lint, typecheck e builds de API/web passaram. `prisma validate` passou e `prisma migrate status` confirmou as mesmas **16 migrations** aplicadas e schema atualizado. API `/health`, frontend `/` e proxy `/api/health` responderam HTTP 200. O Vite manteve o aviso informativo de chunk principal acima de 500 kB (791,99 kB), sem falha no build.
+
+A inspeção manual da tela Metas em desktop e viewport mobile 390×844 confirmou filtros utilizáveis e ausência de overflow horizontal. O banco local apresenta três Goals para o usuário de teste, portanto os controles de múltiplas páginas não aparecem nessa sessão manual; botões, transições entre páginas e estados são cobertos por testes frontend automatizados, e nenhum dado foi inserido no banco local.
