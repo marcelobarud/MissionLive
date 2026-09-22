@@ -36,13 +36,15 @@ O comando é idempotente e não é executado automaticamente pela API.
 O acesso pela rede local é deliberadamente opt-in. Para testar em outro dispositivo, use no `.env`:
 
 ```dotenv
+PORT=3000
 API_HOST=0.0.0.0
+API_PROXY_TARGET=http://127.0.0.1:3000
 VITE_DEV_HOST=0.0.0.0
-VITE_API_URL=http://<IP_LOCAL>:3000
-CORS_ORIGINS=http://localhost:5173,http://<IP_LOCAL>:5173
+VITE_DEV_PORT=5173
+VITE_API_URL=/api
 ```
 
-Mantenha `WEB_ORIGIN` como a URL canônica única usada nos convites. Regras de firewall são configuração da máquina e não fazem parte do repositório.
+O navegador acessa a API pelo caminho same-origin `/api`; o proxy do Vite encaminha as requisições para `API_PROXY_TARGET` (por padrão, `http://127.0.0.1:3000`). Abra o frontend em `http://localhost:5173` ou `http://<IP_LOCAL>:5173`; não aponte `VITE_API_URL` diretamente para a porta da API. No uso local, o backend fica em `http://127.0.0.1:3000`. Mantenha `WEB_ORIGIN` como a URL canônica única usada nos convites. Regras de firewall são configuração da máquina e não fazem parte do repositório.
 
 Para habilitar Google OAuth, configure os placeholders correspondentes no `.env`; consulte `docs/auth/google-oauth.md`. Nenhuma credencial é necessária para o fluxo local: em desenvolvimento o token de verificação aparece na resposta de cadastro.
 

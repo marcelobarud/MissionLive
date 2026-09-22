@@ -258,3 +258,31 @@ Experimentos foram feitos em worktrees descartáveis. Um override de raiz restri
 O teste de compatibilidade também encontrou uma diferença concreta: Multer `2.4.0` reporta campo de arquivo inesperado como `Unexpected file field`, enquanto o transformador do Nest 11.2.3 e 11.2.5 compara a mensagem antiga `Unexpected field`; os três testes de campo incorreto retornaram 500 no experimento. Uma adaptação mínima do filtro global, baseada em `MulterError` e códigos, recuperou 400 para erros multipart e 413 para tamanho, sem expor detalhes, e permitiu passar a suíte. Ela não foi trazida à branch porque a resolução da dependência não atende ao requisito de tooling atual; deverá acompanhar uma futura adoção explícita do override.
 
 Validação no worktree experimental com a adaptação: 26 suítes e 170 testes da API aprovados; typecheck, lint e build aprovados; Prisma validate aprovado; audit de produção da API sem advisories. O `migrate status` contra SQLite temporário terminou com erro genérico do Schema Engine, sem detalhe, e não foi tratado como evidência sobre as migrations do projeto. O health check do backend local em execução respondeu HTTP 200. Nenhuma mudança de código, dependência, lockfile, schema ou migration foi mantida na branch. Reabrir quando o projeto aprovar um baseline de npm compatível com a correção de workspaces (e a respectiva compatibilidade de Node), ou quando Nest 11 atualizar oficialmente sua dependência/transformação para Multer corrigido.
+
+## Atualização após Fase 2B — 22/09/2026
+
+Esta seção registra cobertura e documentação adicionadas depois da baseline 2A.1. As contagens originais e o `audit-results.json` permanecem snapshots históricos: o JSON ainda descreve a auditoria de 31/08/2026 e 37 handlers, não a superfície atual.
+
+| Área | Cobertura adicionada |
+|---|---|
+| Invites — 13 testes | Preview sem dados privados; convites expirados/revogados/inválidos; token persistido como hash, role server-side e validade de 24 horas; autorização de criação; bloqueio de compartilhamento direto de meta de equipe; aceite de meta/equipe, membership e redemption no callback transacional; idempotência, capacidade e revogação pelo criador. |
+| Notifications — 4 testes | Listagem e contagem limitadas ao usuário; leitura individual sem acesso a IDs de outro usuário; leitura em massa limitada aos próprios avisos não lidos. |
+| Comments — 6 testes | Listagem condicionada ao acesso à meta e filtro por goal; criação; edição/remoção por autor e moderação por owner/admin; reação permitida, remoção/toggle e bloqueio de acesso externo; janela existente de 30 gravações por usuário testada sem espera real. |
+| Templates — 6 testes | Templates oficiais e pessoais escopados; criação a partir de meta acessível; preservação de categoria/tags/steps; uso de modelo oficial com datas; exclusão apenas do modelo pessoal do owner. |
+| Teams — 6 testes | Listagem/detalhe escopados; criação e edição; fronteiras editor/admin/owner; proteção da propriedade; remoção de membros e recálculo das metas ativas; exclusão somente pelo owner. |
+| Dashboard — 2 testes | Agregações derivadas apenas da lista escopada recebida de GoalsService e estado vazio. |
+
+As seis suítes somam 37 casos adicionados. As verificações de convites confirmam a sequência dentro do callback de `$transaction` por mocks; não substituem testes de banco concorrentes. SQLite não comprova isolamento/concorrência PostgreSQL.
+
+### Achado de confiabilidade — P2-TEMPLATE-01
+
+`TemplatesService.use` cria a meta por `GoalsService.create` e adiciona cada step em chamadas subsequentes a `GoalsService.addStep`, sem uma transação externa envolvendo o fluxo inteiro. Se uma inclusão de step falhar após a criação da meta, a operação pode deixar uma meta parcial. A cobertura protegeu o caminho feliz sem codificar a falha como comportamento desejado; a correção de atomicidade fica pendente para fase própria.
+
+### Documentação, limpeza e pendências
+
+- README e `docs/operation/local.md` agora seguem a topologia `/api` via proxy Vite, registram `API_PROXY_TARGET` e documentam `GOAL_PHOTO_STORAGE_DIR`/`apps/api/var/goal-photos`. O storage real não foi lido, movido ou removido.
+- Nenhum código de produção foi removido: os candidatos previamente encontrados estão protegidos por esta fase ou dependem de decisão adicional. Google OAuth, `jose`/`zod`, Plans/Subscription, Multer, provider/migrations PostgreSQL, timezone e abstrações de storage permaneceram inalterados.
+- Não houve alteração de regra de produto, contrato de API, frontend, schema, migration ou dependência.
+- `P1-DEP-01` continua `OPEN / UPSTREAM BLOCKED (tooling)`. PostgreSQL e concorrência real dos convites continuam sem validação por falta de ambiente/credenciais apropriados. O rate limiter permanece local ao processo para uma instância.
+- A auditoria JSON de 31/08/2026 não foi reescrita; uma auditoria de segurança atualizada continua necessária antes de produção.
+- Validação final: **API: 31 suítes / 204 testes; frontend: 14 arquivos / 75 testes; typecheck e lint globais aprovados; build global aprovado**. O bundle do frontend gerou apenas o aviso informativo do Vite para um chunk acima de 500 kB. `prisma validate` passou; `prisma migrate status` encontrou 16 migrations, todas aplicadas e schema atualizado. API `/health`, página frontend e proxy `/api/health` responderam HTTP 200. Nenhum schema, migration ou dado foi alterado.

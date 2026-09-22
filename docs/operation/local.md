@@ -23,6 +23,8 @@ Fotos de perfil são processadas pela API e armazenadas localmente em `apps/api/
 
 Imagens de equipe seguem a mesma estratégia em `apps/api/var/uploads/teams` (ou `TEAM_IMAGE_STORAGE_DIR`). Elas são servidas apenas pela rota autenticada da equipe.
 
+Fotos das metas ficam em armazenamento local separado da galeria, por padrão em `apps/api/var/goal-photos`; `GOAL_PHOTO_STORAGE_DIR` pode apontar para outro diretório local. O banco guarda referências, não os binários. Esses arquivos não são versionados pelo Git. Não apague, mova ou limpe manualmente essa pasta: fotos existentes podem depender desses arquivos para continuar disponíveis.
+
 ## Web Push local
 
 Avisos internos funcionam sem configuração de push. Para ativar Web Push no desenvolvimento, gere um par VAPID local sem versionar as chaves:
