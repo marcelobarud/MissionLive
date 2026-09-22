@@ -391,3 +391,51 @@ Não foi implementada paginação de Goals nem redesign/read model do Dashboard 
 ### Validação da Fase 2D
 
 Os testes focados de Calendar, Activity e Reminders passaram com **21 testes**; a suíte de regressão ampliada (Calendar, Reminders, Activity, Dashboard e Goals authorization) passou com **8 suítes / 54 testes**. No gate integral, a API passou com **32 suítes / 223 testes** e o frontend com **14 arquivos / 75 testes**; lint, typecheck e build globais passaram, com apenas o aviso informativo já existente do Vite sobre um chunk acima de 500 kB. `prisma validate` passou, `prisma migrate status` confirmou **16 migrations** aplicadas e o schema atualizado, e `/health`, a página frontend e `/api/health` responderam HTTP 200.
+
+## Atualização após Fase 2E.1 — Dashboard Read Model
+
+### Situação e arquitetura
+
+**Dashboard — CORRIGIDO para leitura integral de Goals.** `DashboardService.summary()` deixou de chamar `GoalsService.list(userId)`. A fachada pública delega para `DashboardReadService`, que combina consultas analíticas pequenas com uma hidratação em lote limitada aos cards realmente exibidos. **Goals — OPEN:** `GET /goals` continua sem paginação e será tratado na **Fase 2E.2 — Paginação de Goals**.
+
+Antes, o Dashboard carregava e serializava todo o universo autorizado de metas, incluindo categoria, membros, equipe, steps, progresso e assignees, para depois calcular todas as métricas e aplicar `slice(0, 5)` nas listas. Isso fazia o custo das listas crescer junto com todas as relações de Goals.
+
+Depois, o read model usa:
+
+- cinco `count` filtrados pelo predicado de acesso para `total`, `completed`, `open`, `thisMonth` e `thisYear`;
+- uma seleção escalar de categoria, `customCategory`, `teamId` e `_count.members` para os breakdowns;
+- uma seleção somente de `completedAt` dentro das seis janelas mensais para a timeline;
+- três buscas de IDs, cada uma com `take: 5`, para upcoming, overdue e recent, mantendo deadline/updatedAt como ordenação principal e acrescentando `id` como desempate estável;
+- uma leitura mínima de metas ativas, participantes, assignment dos steps e progresso do viewer para calcular média e nearly complete;
+- uma busca separada de `GoalDailyOccurrence` e `GoalDailyStepProgress` para metas DAILY, usando a data local de cada timezone;
+- uma hidratação em lote por IDs com a serialização existente de `GoalsService`, sem fazer `get` individual por card.
+
+A união das quatro coleções (`upcoming`, `overdue`, `nearly complete`, `recent`) tem teto teórico de **20 Goals completos**; sobreposição normalmente reduz esse número. A hidratação reaplica `goalAccessWhere(userId, ids)`, portanto IDs derivados internamente continuam sujeitos a owner, membership direta, owner de equipe e membership de equipe.
+
+### Autorização e progresso
+
+O predicado server-side foi extraído para `apps/api/src/goals/goal-access.ts` e é compartilhado pelo `GoalsService` e pelo read model. As regras de participantes e assignment (`ALL_PARTICIPANTS`, `SPECIFIC_PARTICIPANT`, assignee e participante válido) foram extraídas para `apps/api/src/goals/goal-progress.ts`, mantendo Goals como fonte semântica sem criar uma autorização paralela.
+
+Para metas normais, a leitura traz somente o progresso do usuário autenticado e considera a aplicabilidade do step ao calcular os steps concluídos. O percentual é calculado por meta e depois é feita a média entre todas as metas ativas, preservando o arredondamento e o denominador de steps usado pelo Dashboard anterior. Metas sem steps continuam com progresso zero; `nearlyCompleteGoals` exige pelo menos um step e percentual mínimo de 75%.
+
+Para metas DAILY, `GoalStepProgress` comum não é usado no cálculo. O read model determina `localDateAt(now, recurrenceTimezone)`, busca a ocorrência correspondente e usa somente `GoalDailyStepProgress` do viewer. A hidratação final também passa pela serialização diária existente, preservando `completedToday`, `occurrenceLocalDate` e `progressSummary`.
+
+### Contrato e evidências
+
+O controller e a resposta de `GET /dashboard` permanecem iguais: `counts`, breakdowns, timeline e as quatro coleções de Goals mantêm os mesmos nomes e formato. O frontend não foi alterado; seus cards continuam recebendo as metas serializadas necessárias para nome, prazo, contexto e progresso.
+
+No SQLite de desenvolvimento, a leitura antiga observava aproximadamente 3–5 consultas em um caso simples e 8 em um caso compartilhado/de equipe/DAILY, sempre com hidratação completa do universo acessível. A leitura nova observada para os 15 usuários executou 12–28 consultas direcionadas, dependendo de listas e ocorrência, mas hidratou no máximo as metas finais; o usuário com cinco metas acessíveis hidratou cinco. O número de consultas não é tratado como SLA: o ganho é limitar relações transferidas e impedir que centenas de Goals completos sejam carregados.
+
+### Testes da Fase 2E.1
+
+- teste estrutural da fachada prova que `DashboardService` não chama `GoalsService.list`;
+- fixture de contrato cobre counts, taxa, média por meta, categorias, contextos, timeline, deadlines, nearly complete, recent e estado vazio;
+- teste estrutural com 500 Goals prova que a hidratação final não passa de 20 IDs;
+- integração SQLite isolada cobre owner, usuário externo, membership direta, membership/owner de equipe, meta inacessível, assignment específico, meta DAILY com progresso comum conflitante e ocorrência atual;
+- regressões existentes de Goals authorization e daily goals permanecem verdes.
+
+Nenhum schema, migration, dependência, frontend, Calendar, Reminders, Activity, Templates, Multer ou PostgreSQL foi alterado. A próxima etapa provável é **Fase 2E.2 — Paginação de Goals**; ela não foi iniciada nesta fase.
+
+### Validação da Fase 2E.1
+
+Após a implementação: API **34 suítes / 226 testes** e frontend **14 arquivos / 75 testes**; lint, typecheck e build globais passaram, com apenas o aviso informativo já existente do Vite sobre um chunk acima de 500 kB. `prisma validate` passou, `prisma migrate status` confirmou **16 migrations** aplicadas e o schema atualizado, e API `/health`, página frontend e proxy `/api/health` responderam HTTP 200. O frontend permaneceu sem alterações.
