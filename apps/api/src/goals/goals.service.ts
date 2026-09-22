@@ -12,6 +12,7 @@ const EDITABLE_ROLES = new Set(['admin', 'editor']);
 const MANAGE_ROLES = new Set(['admin']);
 const MEMBER_ROLES = new Set(['admin', 'editor', 'viewer']);
 export const STEP_ASSIGNMENT_MODES = ['ALL_PARTICIPANTS', 'SPECIFIC_PARTICIPANT'] as const;
+export const MAX_GOAL_PHOTO_BYTES = 5 * 1024 * 1024;
 export type StepAssignmentMode = (typeof STEP_ASSIGNMENT_MODES)[number];
 
 type ProgressRecord = { userId: string; goalStepId?: string; completed: boolean; completedAt?: Date | null };
@@ -404,7 +405,7 @@ export class GoalsService {
   }
 
   private async processPhoto(file: Express.Multer.File) {
-    if (!file?.buffer || !file.size || file.size > 5 * 1024 * 1024) throw new BadRequestException('A foto deve ter no máximo 5 MB.');
+    if (!file?.buffer || !file.size || file.size > MAX_GOAL_PHOTO_BYTES) throw new BadRequestException('A foto deve ter no máximo 5 MB.');
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.mimetype)) throw new BadRequestException('Envie uma imagem JPEG, PNG ou WebP.');
     try {
       const metadata = await sharp(file.buffer, { failOn: 'error', animated: true }).metadata();

@@ -1,11 +1,10 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
 import { Response } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { AuthenticatedRequest } from '../auth/auth.types';
 import { CreateTeamDto, CreateTeamWithGoalDto, UpdateTeamDto, UpdateMemberRoleDto } from './teams.dto';
 import { MAX_TEAM_IMAGE_BYTES, TeamsService } from './teams.service';
+import { singleImageUploadInterceptor } from '../common/multipart-image-upload';
 
 @Controller('teams') @UseGuards(AuthGuard)
 export class TeamsController {
@@ -13,7 +12,7 @@ export class TeamsController {
   @Get() list(@Req() req: AuthenticatedRequest) { return this.teams.list(req.user.id); }
   @Post() create(@Req() req: AuthenticatedRequest, @Body() dto: CreateTeamDto) { return this.teams.create(req.user.id, dto); }
   @Post('with-goal') createWithGoal(@Req() req: AuthenticatedRequest, @Body() dto: CreateTeamWithGoalDto) { return this.teams.createWithGoal(req.user.id, dto); }
-  @Post(':teamId/image') @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_TEAM_IMAGE_BYTES, files: 1 } }))
+  @Post(':teamId/image') @UseInterceptors(singleImageUploadInterceptor(MAX_TEAM_IMAGE_BYTES))
   uploadImage(@Req() req: AuthenticatedRequest, @Param('teamId') teamId: string, @UploadedFile() file: Express.Multer.File) { return this.teams.uploadImage(req.user.id, teamId, file); }
   @Get(':teamId/image')
   async image(@Req() req: AuthenticatedRequest, @Param('teamId') teamId: string, @Res() response: Response) { const content = await this.teams.readImage(req.user.id, teamId); response.set({ 'Content-Type': 'image/webp', 'Cache-Control': 'private, no-cache', 'Cross-Origin-Resource-Policy': 'same-site', 'X-Content-Type-Options': 'nosniff' }); return response.send(content); }

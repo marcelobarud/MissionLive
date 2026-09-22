@@ -1,11 +1,10 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Req, Res, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
 import { Response } from 'express';
 import { AuthGuard } from '../auth/auth.guard';
 import { AuthenticatedRequest } from '../auth/auth.types';
 import { AvatarsService, MAX_AVATAR_BYTES } from './avatars.service';
 import { SetAvatarPresetDto } from './avatars.dto';
+import { singleImageUploadInterceptor } from '../common/multipart-image-upload';
 
 @Controller()
 export class AvatarsController {
@@ -14,7 +13,7 @@ export class AvatarsController {
   @Patch('profile/avatar/preset') @UseGuards(AuthGuard)
   preset(@Req() request: AuthenticatedRequest, @Body() body: SetAvatarPresetDto) { return this.avatars.setPreset(request.user.id, body.presetId); }
 
-  @Post('profile/avatar/upload') @UseGuards(AuthGuard) @UseInterceptors(FileInterceptor('file', { storage: memoryStorage(), limits: { fileSize: MAX_AVATAR_BYTES, files: 1 } }))
+  @Post('profile/avatar/upload') @UseGuards(AuthGuard) @UseInterceptors(singleImageUploadInterceptor(MAX_AVATAR_BYTES))
   upload(@Req() request: AuthenticatedRequest, @UploadedFile() file: Express.Multer.File) { return this.avatars.upload(request.user.id, file); }
 
   @Delete('profile/avatar') @UseGuards(AuthGuard)
