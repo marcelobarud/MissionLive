@@ -1515,6 +1515,9 @@ body { overflow-x: hidden; }
 .admin-candidate-option small { color: var(--text-secondary); }
 .admin-pagination { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-top: var(--space-4); color: var(--text-secondary); font-size: .8rem; }
 .admin-pagination .ds-button { display: inline-flex; align-items: center; gap: .35rem; }
+.goals-pagination { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); margin-top: var(--space-4); color: var(--text-secondary); font-size: .82rem; }
+.goals-pagination > span { font-variant-numeric: tabular-nums; }
+.goals-pagination .ds-button { min-width: 7rem; justify-content: center; }
 .admin-user-detail-panel, .admin-user-stats-panel { margin-bottom: var(--space-4); padding: var(--card-padding-lg); }
 .admin-user-stats-panel .section-heading { margin-top: 0; }
 .admin-user-detail-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--space-4); padding-bottom: var(--space-5); border-bottom: var(--border-width) solid var(--border); }
@@ -1552,6 +1555,9 @@ body { overflow-x: hidden; }
   .admin-pagination { align-items: stretch; flex-wrap: wrap; }
   .admin-pagination > span { order: -1; width: 100%; text-align: center; }
   .admin-pagination .ds-button { flex: 1 1 8rem; justify-content: center; }
+  .goals-pagination { flex-wrap: wrap; }
+  .goals-pagination > span { order: -1; width: 100%; text-align: center; }
+  .goals-pagination > .ds-button { flex: 1 1 8rem; }
   .admin-user-detail-heading { align-items: flex-start; flex-direction: column; }
   .admin-user-detail-grid, .admin-user-stats-grid { grid-template-columns: 1fr; }
   .admin-user-detail-actions .ds-button { width: 100%; justify-content: center; }

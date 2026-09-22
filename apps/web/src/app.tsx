@@ -2,7 +2,7 @@ import { FormEvent, KeyboardEvent as ReactKeyboardEvent, ReactNode, Suspense, la
 import { createPortal } from 'react-dom';
 import { Navigate, NavLink, Route, Routes, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { IconAlarm, IconArchive, IconArrowDown, IconArrowUp, IconBell, IconBrandTelegram, IconBrandWhatsapp, IconCalendar, IconChevronDown, IconChevronLeft, IconChevronRight, IconChevronUp, IconCircle, IconCircleCheck, IconHome, IconLogout, IconMail, IconMenu2, IconPencil, IconPlus, IconSearch, IconShieldLock, IconTargetArrow, IconTemplate, IconTrash, IconUserPlus, IconUsersGroup, IconX } from '@tabler/icons-react';
-import { AdminAdministratorCandidatesResponse, AdminAdministratorDetail, AdminAdministratorsResponse, AdminOverview, AdminUser, AdminUserDetail, AdminUserStatus, AdminUsersResponse, api, API_URL, ActivityEvent, ActivityPage, CalendarData, Category, Comment, Dashboard, Goal, GoalTemplate, ParticipantProgress, Reminder, Rhythm, Team, TeamDetail, User } from './api';
+import { AdminAdministratorCandidatesResponse, AdminAdministratorDetail, AdminAdministratorsResponse, AdminOverview, AdminUser, AdminUserDetail, AdminUserStatus, AdminUsersResponse, api, API_URL, ActivityEvent, ActivityPage, CalendarData, Category, Comment, Dashboard, Goal, GoalTemplate, GoalsPage as GoalsPageResponse, GoalsQuery, ParticipantProgress, Reminder, Rhythm, Team, TeamDetail, User } from './api';
 import type { Notification as NotificationItem } from './api';
 import { DevicePushState, disableDevicePush, enableDevicePush, getDevicePushState } from './push';
 import { Badge as DSBadge, Button as DSButton, Checkbox as DSCheckbox, EmptyState as DSEmptyState, FormField as DSFormField, PageHeader as DSPageHeader, Panel as DSPanel, ProgressBar as DSProgressBar, Select as DSSelect, Spinner as DSSpinner } from './design-system';
@@ -530,16 +530,63 @@ export function App() {
   return <><a className="skip-link" href="#main-content">Pular para o conteúdo</a><div className="app-shell"><Sidebar user={user} open={mobileSidebarOpen} onClose={() => setMobileSidebarOpen(false)} onLogout={() => { void api.logout().finally(() => setUser(null)); setMobileSidebarOpen(false); }} unreadCount={notificationUnreadCount} /><div className="app-main"><header className="topbar mobile-topbar"><button ref={menuButtonRef} className="mobile-menu-button" type="button" aria-label="Abrir menu" aria-controls="app-sidebar" aria-expanded={mobileSidebarOpen} onClick={() => setMobileSidebarOpen(true)}><IconMenu2 size={21} stroke={1.9} aria-hidden="true" /></button><NavLink className="mobile-brand" to="/"><BrandLogo variant="dark" /></NavLink></header><>{!user.onboardingCompletedAt && !location.pathname.startsWith('/invite/') && <OnboardingPrompt onComplete={() => setUser({ ...user, onboardingCompletedAt: new Date().toISOString() })} />}</><main id="main-content"><Routes><Route path="/" element={<DashboardPage user={user} />} /><Route path="/activities" element={<ActivitiesPage />} /><Route path="/goals" element={<GoalsPage />} /><Route path="/goals/new" element={<NewGoalPage />} /><Route path="/goals/:goalId" element={<GoalDetailPage user={user} />} /><Route path="/teams" element={<TeamsPage />} /><Route path="/templates" element={<TemplatesPage />} /><Route path="/calendar" element={<CalendarPage />} /><Route path="/notifications" element={<NotificationsPage unreadCount={notificationUnreadCount} onUnreadCountChange={setNotificationUnreadCount} onRefreshUnreadCount={refreshNotificationUnreadCount} />} /><Route path="/profile" element={<ProfilePage user={user} onUpdated={setUser} />} /><Route path="/admin" element={<AdminPage user={user} />} /><Route path="/admin/users" element={<AdminUsersPage user={user} />} /><Route path="/admin/users/:userId" element={<AdminUserDetailPage user={user} />} /><Route path="/admin/administrators" element={<AdminAdministratorsPage user={user} />} /><Route path="/admin/administrators/:userId" element={<AdminAdministratorDetailPage user={user} />} /><Route path="/teams/new" element={<NewTeamPage user={user} />} /><Route path="/teams/:teamId" element={<TeamDetailPage />} /><Route path="/invite/:token" element={<InvitePage />} /><Route path="*" element={<DashboardPage user={user} />} /></Routes></main></div></div></>;
 }
 
-function GoalsPage() {
-  const [goals, setGoals] = useState<Goal[]>();
+export function GoalsPage() {
+  const [goalsPage, setGoalsPage] = useState<GoalsPageResponse>();
   const [categories, setCategories] = useState<Category[]>([]);
   const [error, setError] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
-  const [q, setQ] = useState(''); const [status, setStatus] = useState(''); const [context, setContext] = useState(''); const [categoryId, setCategoryId] = useState(''); const [hasDeadline, setHasDeadline] = useState(''); const [sort, setSort] = useState('recent');
+  const [searchParams, setSearchParams] = useSearchParams();
+  const requestedPage = Number(searchParams.get('page'));
+  const page = Number.isSafeInteger(requestedPage) && requestedPage > 0 ? requestedPage : 1;
+  const q = searchParams.get('q') ?? '';
+  const statusValue = searchParams.get('status') ?? '';
+  const status: GoalsQuery['status'] | '' = ['active', 'completed', 'cancelled', 'archived'].includes(statusValue) ? statusValue as GoalsQuery['status'] : '';
+  const contextValue = searchParams.get('context') ?? '';
+  const context: GoalsQuery['context'] | '' = ['individual', 'shared', 'team'].includes(contextValue) ? contextValue as GoalsQuery['context'] : '';
+  const categoryId = searchParams.get('categoryId') ?? '';
+  const deadlineValue = searchParams.get('hasDeadline') ?? '';
+  const hasDeadline = deadlineValue === 'true' || deadlineValue === 'false' ? deadlineValue : '';
+  const sortValue = searchParams.get('sort') ?? '';
+  const sort: NonNullable<GoalsQuery['sort']> = ['recent', 'name', 'deadline', 'progress-desc', 'progress-asc'].includes(sortValue) ? sortValue as NonNullable<GoalsQuery['sort']> : 'recent';
+  const skipAdjustedPageRequest = useRef<string | null>(null);
+  const changeFilter = (key: string, value: string) => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (value) nextParams.set(key, value); else nextParams.delete(key);
+    nextParams.delete('page');
+    setSearchParams(nextParams, { replace: true });
+  };
+  const changePage = (nextPage: number) => {
+    const nextParams = new URLSearchParams(searchParams);
+    if (nextPage <= 1) nextParams.delete('page'); else nextParams.set('page', String(nextPage));
+    setSearchParams(nextParams, { replace: true });
+  };
   useEffect(() => { api.categories().then(setCategories).catch(() => setCategories([])); }, []);
-  useEffect(() => { setGoals(undefined); setError(''); const timer = window.setTimeout(() => { api.goals({ q: q || undefined, status: status || undefined, context: context || undefined, categoryId: categoryId || undefined, hasDeadline: hasDeadline || undefined, sort }).then(setGoals).catch((err: unknown) => setError(messageOf(err, 'Erro ao carregar metas.'))); }, 180); return () => window.clearTimeout(timer); }, [q, status, context, categoryId, hasDeadline, sort, reloadToken]);
-  const clearFilters = () => { setQ(''); setStatus(''); setContext(''); setCategoryId(''); setHasDeadline(''); setSort('recent'); };
-  if (error) return <section className="page goals-page"><ErrorState message={error} onRetry={() => { setError(''); setGoals(undefined); setReloadToken((token) => token + 1); }} /></section>;
-  if (!goals) return <LoadingState />;
-  return <section className="page goals-page"><PageHeading eyebrow="SUAS METAS" title="Metas" subtitle="Tudo que você quer colocar em movimento." action="+ Nova meta" href="/goals/new" /><div className="panel filters-panel" role="group" aria-label="Filtros de metas"><label className="goal-search-filter"><span className="goal-search-label"><IconSearch size={16} stroke={1.9} aria-hidden="true" /><span>Buscar</span></span><input value={q} onChange={(event) => setQ(event.target.value)} placeholder="Nome, descrição ou tag" /></label><label>Status<select value={status} onChange={(event) => setStatus(event.target.value)}><option value="">Todos</option><option value="active">Ativas</option><option value="completed">Concluídas</option><option value="archived">Arquivadas</option><option value="cancelled">Canceladas</option></select></label><label>Contexto<select value={context} onChange={(event) => setContext(event.target.value)}><option value="">Todos</option><option value="individual">Individual</option><option value="shared">Compartilhada</option><option value="team">Equipe</option></select></label><label>Categoria<select value={categoryId} onChange={(event) => setCategoryId(event.target.value)}><option value="">Todas</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label><label>Prazo<select value={hasDeadline} onChange={(event) => setHasDeadline(event.target.value)}><option value="">Todos</option><option value="true">Com prazo</option><option value="false">Sem prazo</option></select></label><label>Ordenar<select value={sort} onChange={(event) => setSort(event.target.value)}><option value="recent">Mais recentes</option><option value="name">Nome</option><option value="deadline">Prazo</option><option value="progress-desc">Maior progresso</option><option value="progress-asc">Menor progresso</option></select></label>{(q || status || context || categoryId || hasDeadline || sort !== 'recent') && <button className="filter-reset" type="button" onClick={clearFilters}>Limpar filtros</button>}</div>{goals.length === 0 ? <EmptyState title="Nenhuma meta encontrada" body="Ajuste os filtros ou comece uma nova meta." action="Criar uma meta" href="/goals/new" /> : <div className="goal-grid">{goals.map((goal) => <GoalCard goal={goal} key={goal.id} />)}</div>}</section>;
+  useEffect(() => {
+    const requestKey = JSON.stringify([page, q, status, context, categoryId, hasDeadline, sort]);
+    if (skipAdjustedPageRequest.current === requestKey) { skipAdjustedPageRequest.current = null; return; }
+    setGoalsPage(undefined); setError('');
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      const query: GoalsQuery = { q: q || undefined, status: status || undefined, context: context || undefined, categoryId: categoryId || undefined, hasDeadline: hasDeadline === '' ? undefined : hasDeadline === 'true', sort, page, pageSize: 12 };
+      void api.goals(query).then((next) => {
+        if (cancelled) return;
+        setGoalsPage(next);
+        if (next.pagination.page !== page) {
+          skipAdjustedPageRequest.current = JSON.stringify([next.pagination.page, q, status, context, categoryId, hasDeadline, sort]);
+          const nextParams = new URLSearchParams(searchParams);
+          if (next.pagination.page <= 1) nextParams.delete('page'); else nextParams.set('page', String(next.pagination.page));
+          setSearchParams(nextParams, { replace: true });
+        }
+      }).catch((err: unknown) => { if (!cancelled) setError(messageOf(err, 'Erro ao carregar metas.')); });
+    }, 180);
+    return () => { window.clearTimeout(timer); cancelled = true; };
+  }, [q, status, context, categoryId, hasDeadline, sort, page, reloadToken, searchParams, setSearchParams]);
+  const clearFilters = () => {
+    const nextParams = new URLSearchParams(searchParams);
+    for (const key of ['q', 'status', 'context', 'categoryId', 'hasDeadline', 'sort', 'page']) nextParams.delete(key);
+    setSearchParams(nextParams, { replace: true });
+  };
+  if (error) return <section className="page goals-page"><ErrorState message={error} onRetry={() => { setError(''); setGoalsPage(undefined); setReloadToken((token) => token + 1); }} /></section>;
+  if (!goalsPage) return <LoadingState />;
+  return <section className="page goals-page"><PageHeading eyebrow="SUAS METAS" title="Metas" subtitle="Tudo que você quer colocar em movimento." action="+ Nova meta" href="/goals/new" /><div className="panel filters-panel" role="group" aria-label="Filtros de metas"><label className="goal-search-filter"><span className="goal-search-label"><IconSearch size={16} stroke={1.9} aria-hidden="true" /><span>Buscar</span></span><input value={q} onChange={(event) => changeFilter('q', event.target.value)} placeholder="Nome, descrição ou tag" /></label><label>Status<select value={status} onChange={(event) => changeFilter('status', event.target.value)}><option value="">Todos</option><option value="active">Ativas</option><option value="completed">Concluídas</option><option value="archived">Arquivadas</option><option value="cancelled">Canceladas</option></select></label><label>Contexto<select value={context} onChange={(event) => changeFilter('context', event.target.value)}><option value="">Todos</option><option value="individual">Individual</option><option value="shared">Compartilhada</option><option value="team">Equipe</option></select></label><label>Categoria<select value={categoryId} onChange={(event) => changeFilter('categoryId', event.target.value)}><option value="">Todas</option>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></label><label>Prazo<select value={hasDeadline} onChange={(event) => changeFilter('hasDeadline', event.target.value)}><option value="">Todos</option><option value="true">Com prazo</option><option value="false">Sem prazo</option></select></label><label>Ordenar<select value={sort} onChange={(event) => changeFilter('sort', event.target.value === 'recent' ? '' : event.target.value)}><option value="recent">Mais recentes</option><option value="name">Nome</option><option value="deadline">Prazo</option><option value="progress-desc">Maior progresso</option><option value="progress-asc">Menor progresso</option></select></label>{(q || status || context || categoryId || hasDeadline || sort !== 'recent') && <button className="filter-reset" type="button" onClick={clearFilters}>Limpar filtros</button>}</div>{goalsPage.items.length === 0 ? <EmptyState title="Nenhuma meta encontrada" body="Ajuste os filtros ou comece uma nova meta." action="Criar uma meta" href="/goals/new" /> : <><div className="goal-grid">{goalsPage.items.map((goal) => <GoalCard goal={goal} key={goal.id} />)}</div>{goalsPage.pagination.totalPages > 1 && <nav className="goals-pagination" aria-label="Paginação de metas"><DSButton variant="secondary" type="button" disabled={goalsPage.pagination.page <= 1} aria-label="Página anterior" onClick={() => changePage(Math.max(1, page - 1))}>Anterior</DSButton><span aria-live="polite">Página {goalsPage.pagination.page} de {goalsPage.pagination.totalPages}</span><DSButton variant="secondary" type="button" disabled={goalsPage.pagination.page >= goalsPage.pagination.totalPages} aria-label="Próxima página" onClick={() => changePage(page + 1)}>Próxima</DSButton></nav>}</>}</section>;
 }

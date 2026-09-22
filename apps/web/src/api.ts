@@ -13,6 +13,21 @@ export type ParticipantProgressStep = Pick<Step, 'id' | 'title' | 'position' | '
 export type ParticipantProgress = { userId: string; name: string; avatarUrl?: string | null; avatar?: Avatar; role: string; completedSteps: number; totalSteps: number; percentage: number; completed: boolean; status: 'not-started' | 'in-progress' | 'nearly-complete' | 'completed'; steps: ParticipantProgressStep[] };
 export type ParticipantsProgress = { totalParticipants: number; participantsCompleted: number; collectiveCompletedSteps: number; collectiveTotalSteps: number; collectivePercentage: number; unavailableSteps?: number; participants: ParticipantProgress[] };
 export type Goal = { id: string; ownerUserId: string; owner?: User; name: string; description?: string | null; status: string; startDate: string; endDate?: string | null; recurrenceType?: 'NONE' | 'DAILY'; recurrenceTimezone?: string | null; completedToday?: boolean; occurrenceLocalDate?: string | null; completionMode?: string | null; completionOverrideReason?: string | null; customCategory?: string | null; category?: Category | null; team?: { id: string; name: string; ownerUserId?: string; owner?: User; members?: { id: string; user: User; role: string }[] } | null; tags: string[]; steps: Step[]; members?: { id: string; user: User; role: string }[]; progressSummary?: ProgressSummary; participantsProgress?: ParticipantsProgress };
+export type GoalsQuery = {
+  page?: number;
+  pageSize?: number;
+  q?: string;
+  status?: 'active' | 'completed' | 'cancelled' | 'archived';
+  categoryId?: string;
+  context?: 'individual' | 'shared' | 'team';
+  hasDeadline?: boolean;
+  from?: string;
+  to?: string;
+  deadlineFrom?: string;
+  deadlineTo?: string;
+  sort?: 'recent' | 'name' | 'deadline' | 'progress-desc' | 'progress-asc';
+};
+export type GoalsPage = { items: Goal[]; pagination: { page: number; pageSize: number; totalItems: number; totalPages: number } };
 export type Team = { id: string; ownerUserId: string; owner?: User; name: string; description?: string | null; imageUrl?: string | null; accessRole?: string; members: { id: string; user: User; role: string }[]; goals: { id: string; name: string; status: string }[] };
 export type TeamDetail = Omit<Team, 'goals'> & { goals: Goal[] };
 export type Dashboard = { counts: { completed: number; open: number; thisMonth: number; thisYear: number; total: number; completionRate: number; activeProgress: number }; categoryBreakdown: { label: string; count: number }[]; contextBreakdown: { label: string; count: number }[]; upcomingDeadlines: Goal[]; overdueGoals: Goal[]; nearlyCompleteGoals: Goal[]; completionTimeline: { label: string; count: number }[]; recentGoals: Goal[] };
@@ -63,7 +78,7 @@ export const api = {
   adminAdministratorCandidates: (search: string) => request<AdminAdministratorCandidatesResponse>(`/admin/administrators/candidates?search=${encodeURIComponent(search)}`),
   updateAdminAdministratorRole: (id: string, platformRole: PlatformRole) => request<{ user: AdminUser; changed: boolean }>(`/admin/administrators/${encodeURIComponent(id)}/role`, { method: 'PATCH', body: JSON.stringify({ platformRole }) }),
   updateAdminAdministratorStatus: (id: string, status: AdminUserStatus) => request<AdminUserStatusResponse>(`/admin/administrators/${encodeURIComponent(id)}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
-  goals: (query: Record<string, string | undefined> = {}) => { const params = new URLSearchParams(); for (const [key, value] of Object.entries(query)) if (value) params.set(key, value); const suffix = params.toString() ? `?${params.toString()}` : ''; return request<Goal[]>(`/goals${suffix}`); },
+  goals: (query: GoalsQuery = {}) => { const params = new URLSearchParams(); for (const [key, value] of Object.entries(query)) if (value !== undefined && value !== '') params.set(key, String(value)); const suffix = params.toString() ? `?${params.toString()}` : ''; return request<GoalsPage>(`/goals${suffix}`); },
   goal: (id: string) => request<Goal>(`/goals/${id}`),
   createGoal: (body: Record<string, unknown>) => request<Goal>('/goals', json(body)),
   updateGoal: (id: string, body: Record<string, unknown>) => request<Goal>(`/goals/${id}`, { method: 'PATCH', body: JSON.stringify(body) }),
