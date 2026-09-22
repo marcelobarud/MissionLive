@@ -300,3 +300,26 @@ A suíte `templates-atomicity.integration.spec.ts` usa um arquivo SQLite tempor�
 ### Validação da Fase 2C
 
 Na baseline antes das mudanças: API **31 suítes / 204 testes** e frontend **14 arquivos / 75 testes**. Após a implementação: API **32 suítes / 209 testes** e frontend **14 arquivos / 75 testes**; lint, typecheck e build globais passaram, `prisma validate` passou, `prisma migrate status` confirmou as 16 migrations aplicadas e o schema atualizado, e API `/health`, frontend e proxy `/api/health` responderam HTTP 200. O build do frontend manteve somente o aviso informativo já existente sobre um chunk acima de 500 kB.
+
+## Atualização após Fase 2C.1 — 22/09/2026
+
+O risco residual da Fase 2C era a divergência entre o commit de Goal/GoalSteps e a resposta HTTP: como Activity era gravada depois do commit, uma falha de `ActivityService.record()` podia retornar erro com a meta já persistida e induzir uma repetição da operação.
+
+A investigação confirmou que `ActivityService.record()` possui somente persistência e consultas Prisma: cria `ActivityEvent`, consulta Goal/Team para calcular recipients e cria `Notification`. Não há Web Push, chamada HTTP, filesystem, timer ou outro efeito externo nesse método. A estratégia escolhida foi, portanto, torná-lo transaction-aware com um parâmetro opcional `Prisma.TransactionClient`. Sem esse parâmetro, todos os consumidores existentes preservam o comportamento anterior usando `PrismaService`.
+
+No uso de template, o boundary final agora inclui, na mesma transaction Prisma e usando o mesmo client:
+
+- criação do Goal;
+- criação dos GoalSteps;
+- um `goal_created`;
+- um `step_created` por passo, na ordem original;
+- um `template_used`;
+- Notifications derivadas de cada evento.
+
+`GoalsService` continua sendo a fonte das regras de criação e dos eventos de Goal/Step. `TemplatesService` fornece apenas o callback transacional que registra `template_used`, preservando a semântica do domínio sem mover a autorização ou duplicar validações. A busca final da representação da meta ocorre somente depois do commit. Activity não foi convertida em obrigatoriamente transacional para os outros fluxos.
+
+Foi adicionado um cenário de integração com SQLite/Prisma real que cria um trigger de falha em `ActivityEvent` durante a transaction. O fluxo já havia sido validado para falha no primeiro, intermediário e último passo; agora também é validado quando a persistência de Activity falha depois de Goal e parte dos passos já terem sido escritas. Em todos os casos, Goal, GoalSteps, ActivityEvents e Notifications retornam às contagens anteriores. O caminho de sucesso continua validando os cinco eventos esperados, as notificações, os dados da meta, a ordem dos passos e a resposta final. Nenhum retry, fila, outbox, side effect externo, schema ou migration foi adicionado.
+
+### Validação da Fase 2C.1
+
+Após a implementação: API **32 suítes / 210 testes** e frontend **14 arquivos / 75 testes**; lint, typecheck e build globais passaram, `prisma validate` passou, `prisma migrate status` confirmou as 16 migrations aplicadas e o schema atualizado, e API `/health`, frontend e proxy `/api/health` responderam HTTP 200. O build do frontend manteve somente o aviso informativo já existente sobre um chunk acima de 500 kB.
