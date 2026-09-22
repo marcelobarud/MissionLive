@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { GoalsService } from '../goals/goals.service';
@@ -16,9 +16,14 @@ type ParticipantSource = {
 type ReminderStep = { id: string; title: string; assignmentMode: string; assigneeUserId: string | null };
 type DailyGoalContext = { recurrenceType?: string | null; recurrenceTimezone?: string | null; startDate: Date | string; endDate?: Date | string | null };
 
+export const REMINDER_PROCESS_BATCH_SIZE = 100;
+export const REMINDER_MAX_BATCHES_PER_RUN = 5;
+
 @Injectable()
 export class RemindersService implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(RemindersService.name);
   private poller?: NodeJS.Timeout;
+  private processingDue = false;
 
   constructor(private readonly prisma: PrismaService, private readonly goals: GoalsService, private readonly notifications: NotificationsService, private readonly push: PushService) {}
 
@@ -153,9 +158,23 @@ export class RemindersService implements OnModuleInit, OnModuleDestroy {
   }
 
   async processDue(now = new Date()) {
-    const candidates = await this.prisma.reminder.findMany({ where: { status: 'pending', remindAt: { lte: now } }, select: { id: true } });
-    for (const candidate of candidates) {
-      try { await this.processOne(candidate.id, now); } catch { /* One reminder must not prevent the others from being processed. */ }
+    if (this.processingDue) return;
+    this.processingDue = true;
+    try {
+      const attemptedIds: string[] = [];
+      for (let batch = 0; batch < REMINDER_MAX_BATCHES_PER_RUN; batch += 1) {
+        const where: Prisma.ReminderWhereInput = { status: 'pending', remindAt: { lte: now } };
+        if (attemptedIds.length) where.id = { notIn: attemptedIds };
+        const candidates = await this.prisma.reminder.findMany({ where, select: { id: true }, orderBy: [{ remindAt: 'asc' }, { id: 'asc' }], take: REMINDER_PROCESS_BATCH_SIZE });
+        if (!candidates.length) break;
+        attemptedIds.push(...candidates.map((candidate) => candidate.id));
+        for (const candidate of candidates) {
+          try { await this.processOne(candidate.id, now); } catch { this.logger.warn(`Falha ao processar lembrete ${candidate.id}; ele permanecerá para o próximo ciclo.`); }
+        }
+        if (candidates.length < REMINDER_PROCESS_BATCH_SIZE) break;
+      }
+    } finally {
+      this.processingDue = false;
     }
   }
 
