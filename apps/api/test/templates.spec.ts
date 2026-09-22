@@ -40,13 +40,12 @@ describe('TemplatesService', () => {
   });
 
   it('uses an official template with reviewed dates and creates the template steps in order', async () => {
-    const { service, goals, activity } = setup();
+    const { service, goals } = setup();
     goals.get.mockResolvedValue({ id: 'new-goal', steps: [] });
     await service.use('user-a', 'official:trip', { startDate: '2026-10-01', endDate: '2026-10-10' });
-    expect(goals.createWithInitialSteps).toHaveBeenCalledWith('user-a', expect.objectContaining({ name: 'Planejar uma viagem', startDate: '2026-10-01', endDate: '2026-10-10', tags: [], teamId: undefined }), ['Definir destino', 'Estimar orçamento', 'Reservar transporte']);
+    expect(goals.createWithInitialSteps).toHaveBeenCalledWith('user-a', expect.objectContaining({ name: 'Planejar uma viagem', startDate: '2026-10-01', endDate: '2026-10-10', tags: [], teamId: undefined }), ['Definir destino', 'Estimar orçamento', 'Reservar transporte'], expect.any(Function));
     expect(goals.create).not.toHaveBeenCalled();
     expect(goals.addStep).not.toHaveBeenCalled();
-    expect(activity.record).toHaveBeenCalledWith('user-a', 'template_used', { goalId: 'new-goal' }, { templateId: 'official:trip' });
   });
 
   it('scopes personal template use and deletion to its owner', async () => {

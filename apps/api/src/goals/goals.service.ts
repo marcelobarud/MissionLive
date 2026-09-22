@@ -38,7 +38,11 @@ export class GoalsService {
   private readonly logger = new Logger(GoalsService.name);
   constructor(private readonly prisma: PrismaService, @Optional() private readonly activity?: ActivityService, @Optional() @Inject(GOAL_PHOTO_STORAGE) private readonly photoStorage?: GoalPhotoStorage) {}
 
-  private async record(actorUserId: string, eventType: string, resource: { goalId?: string; teamId?: string; targetUserId?: string }, metadata?: Record<string, string | number | boolean>) { await this.activity?.record(actorUserId, eventType, resource, metadata); }
+  private async record(actorUserId: string, eventType: string, resource: { goalId?: string; teamId?: string; targetUserId?: string }, metadata?: Record<string, string | number | boolean>, client?: Prisma.TransactionClient) {
+    if (!this.activity) return;
+    if (client) await this.activity.record(actorUserId, eventType, resource, metadata, client);
+    else await this.activity.record(actorUserId, eventType, resource, metadata);
+  }
 
   private isDaily(goal: { recurrenceType?: string | null }) { return goal.recurrenceType === 'DAILY'; }
 
@@ -306,18 +310,18 @@ export class GoalsService {
     return this.get(userId, goal.id);
   }
 
-  async createWithInitialSteps(userId: string, dto: CreateGoalDto, stepTitles: string[]) {
+  async createWithInitialSteps(userId: string, dto: CreateGoalDto, stepTitles: string[], withinTransaction?: (goalId: string, client: Prisma.TransactionClient) => Promise<void>) {
     const data = await this.goalCreationData(userId, dto);
     const goal = await this.prisma.$transaction(async (tx) => {
       const createdGoal = await tx.goal.create({ data });
+      await this.record(userId, 'goal_created', { goalId: createdGoal.id, teamId: createdGoal.teamId ?? undefined }, undefined, tx);
       for (const [position, title] of stepTitles.entries()) {
         await tx.goalStep.create({ data: { goalId: createdGoal.id, title: title.trim(), position } });
+        await this.record(userId, 'step_created', { goalId: createdGoal.id }, undefined, tx);
       }
+      await withinTransaction?.(createdGoal.id, tx);
       return createdGoal;
     });
-
-    await this.record(userId, 'goal_created', { goalId: goal.id, teamId: goal.teamId ?? undefined });
-    for (let position = 0; position < stepTitles.length; position += 1) await this.record(userId, 'step_created', { goalId: goal.id });
     return { id: goal.id };
   }
 

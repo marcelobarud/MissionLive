@@ -9,6 +9,7 @@ import { TemplatesService } from '../src/templates/templates.service';
 
 const databaseFileName = `template-atomicity-${process.pid}-${randomUUID()}.db`;
 const databaseUrl = `file:./data/${databaseFileName}`;
+const apiRoot = path.resolve(__dirname, '..');
 const databasePath = path.join(apiRoot, 'prisma', 'data', databaseFileName);
 const failingTitle = 'falha controlada';
 
@@ -90,6 +91,33 @@ describe('TemplatesService atomicity (SQLite integration)', () => {
     const remainingGoals = await prisma.goal.findMany({ where: { ownerUserId: ownerId }, select: { id: true } });
     expect(remainingGoals).toHaveLength(0);
     expect(await prisma.goalStep.count()).toBe(stepCountBefore);
+    expect(await prisma.activityEvent.count({ where: { actorUserId: ownerId } })).toBe(0);
+    expect(await prisma.notification.count({ where: { userId: memberId } })).toBe(0);
+  });
+
+  it('reverte tudo quando a persistência de Activity falha dentro da transaction', async () => {
+    const { ownerId, memberId, team, template } = await createFixture(['Primeiro', 'Segundo', 'Terceiro']);
+    const goalsBefore = await prisma.goal.count();
+    const stepsBefore = await prisma.goalStep.count();
+    const triggerName = 'fail_template_activity_insert';
+
+    await prisma.$executeRawUnsafe(`
+      CREATE TRIGGER "${triggerName}"
+      BEFORE INSERT ON "ActivityEvent"
+      WHEN NEW."eventType" = 'step_created'
+      BEGIN
+        SELECT RAISE(ABORT, 'Falha controlada ao inserir ActivityEvent');
+      END
+    `);
+
+    try {
+      await expect(service.use(ownerId, template.id, { startDate: '2026-10-01', teamId: team.id })).rejects.toThrow();
+    } finally {
+      await prisma.$executeRawUnsafe(`DROP TRIGGER "${triggerName}"`);
+    }
+
+    expect(await prisma.goal.count()).toBe(goalsBefore);
+    expect(await prisma.goalStep.count()).toBe(stepsBefore);
     expect(await prisma.activityEvent.count({ where: { actorUserId: ownerId } })).toBe(0);
     expect(await prisma.notification.count({ where: { userId: memberId } })).toBe(0);
   });
