@@ -323,3 +323,71 @@ Foi adicionado um cenário de integração com SQLite/Prisma real que cria um tr
 ### Validação da Fase 2C.1
 
 Após a implementação: API **32 suítes / 210 testes** e frontend **14 arquivos / 75 testes**; lint, typecheck e build globais passaram, `prisma validate` passou, `prisma migrate status` confirmou as 16 migrations aplicadas e o schema atualizado, e API `/health`, frontend e proxy `/api/health` responderam HTTP 200. O build do frontend manteve somente o aviso informativo já existente sobre um chunk acima de 500 kB.
+
+## Atualização após Fase 2D — 22/09/2026
+
+Esta atualização aplica guardrails operacionais de baixo risco, sem alteração de schema, migration, dependência, frontend ou contrato de resposta. A classificação desta rodada é:
+
+| Área | Situação após Fase 2D |
+|---|---|
+| Calendar | **CORRIGIDO** — janela máxima de 366 dias validada no DTO e no serviço. |
+| Reminders | **CORRIGIDO** — lote determinístico, teto por ciclo, isolamento por item e proteção contra sobreposição. |
+| Activity | **CORRIGIDO/MITIGADO** — `offset` limitado a 10.000 pelo DTO, mantendo `nextOffset` e o formato da resposta. |
+| Goals | **OPEN** — a listagem continua sem paginação; a análise de cardinalidade está registrada abaixo. |
+| Dashboard | **OPEN** — continua derivando o resumo a partir da lista completa; read model permanece como proposta futura. |
+
+### Calendar
+
+`CalendarQueryDto` agora valida `from` e `to` como datas ISO antes do serviço. `CalendarService` mantém o default de 31 dias e rejeita intervalo invertido, datas inválidas e intervalos maiores que **366 dias**. O limite cobre o maior intervalo natural de um ano civil, inclusive ano bissexto, e continua compatível com o uso atual mensal do frontend. A resposta `{ from, to, goals, reminders }` não foi alterada.
+
+Testes cobrem default, intervalo de 366 dias, rejeição do 367º dia e datas inválidas.
+
+### Reminders
+
+`RemindersService.processDue` passou a buscar lembretes pendentes vencidos em ordem determinística (`remindAt ASC, id ASC`) com lote de **100** itens e no máximo **5 lotes por ciclo** — teto de **500 tentativas por execução**. IDs já tentados não são buscados novamente no mesmo ciclo; portanto, uma falha individual não impede o restante do lote e o item continua pendente para o ciclo seguinte. O claim `pending → processing`, a transação por lembrete, o envio de push após commit e o isolamento de falhas foram preservados.
+
+Uma flag local impede execuções sobrepostas na mesma instância e é liberada em `finally`, inclusive quando a consulta inicial falha. O limite é deliberadamente local ao processo: coordenação entre réplicas continua dependente de uma decisão operacional futura. O log de falha registra somente o identificador interno do lembrete e a consequência operacional, sem payload, token ou dados do usuário.
+
+Testes cobrem lote menor que o limite, lote cheio, backlog acima de 500, ordem/teto, falha isolada, claim perdido, push com falha, sobreposição e liberação da trava após erro de infraestrutura.
+
+### Activity
+
+`ActivityListQueryDto.offset` agora aceita somente inteiros de 0 a **10.000**. O serviço continua usando `skip: offset`, `take: limit + 1` e retorna os mesmos `items`, `hasMore` e `nextOffset`; a alteração é apenas um limite defensivo contra paginações arbitrariamente profundas.
+
+### Análise de cardinalidade de Goals e Dashboard
+
+#### Forma atual e evidência medida
+
+`GoalsService.list` executa uma busca de `Goal` autorizada por owner/membership/team e carrega, no mesmo fluxo, categoria, membros diretos com usuário, equipe com membros, steps ordenados, progresso do usuário por step e usuário responsável pelo step. Depois, se houver metas diárias, executa uma segunda busca de ocorrências atuais com `stepProgresses`. A serialização ainda calcula o progresso em memória e pode ordenar por progresso em memória.
+
+`DashboardService.summary` chama `GoalsService.list(userId)` sem filtros e calcula em memória contagens, progresso médio, distribuições por categoria/contexto, timeline de seis meses e as listas limitadas de próximos vencimentos, atrasadas, quase concluídas e metas recentes. As cinco listas exibidas são limitadas depois de todos os dados terem sido carregados; isso não limita a consulta original.
+
+Leitura somente no SQLite de desenvolvimento, sem criação ou alteração de dados, encontrou **13 goals, 24 steps, 11 progress rows, 10 memberships diretas, 4 team memberships, 1 ocorrência diária e 1 progresso diário**. Há 15 usuários no banco. Para um usuário com metas simples, a chamada observada fez 3–5 consultas SQL; para um usuário com metas compartilhadas/de equipe e uma meta diária, fez 8 consultas. O dashboard reutiliza essa mesma carga e não adiciona uma consulta de agregação própria; seu custo adicional atual é CPU/memória do processamento completo.
+
+#### Crescimento aproximado
+
+Como referência indicativa, repetindo as médias do banco de desenvolvimento (**~1,85 step por goal, ~0,85 progress row por goal e ~0,77 membership direta por goal**), a parte relacionada da carga tende a crescer assim:
+
+| Goals acessíveis | Steps | Progressos filtrados do viewer | Memberships diretas |
+|---:|---:|---:|---:|
+| 10 | ~18 | ~9 | ~8 |
+| 100 | ~185 | ~85 | ~77 |
+| 500 | ~923 | ~423 | ~385 |
+
+Esses valores são extrapolação de cardinalidade, não benchmark de latência. Em metas compartilhadas, também crescem membros da meta; em metas de equipe, membros da equipe podem ser reutilizados por várias metas; em qualquer caso, cada step pode carregar dados de assignee. Se todas as metas fossem diárias, a consulta adicional poderia carregar aproximadamente uma ocorrência atual por meta e seus progressos diários, adicionando mais uma relação linear ao volume de steps. O maior vetor de crescimento é, portanto, `goals → steps → progresses`, seguido por memberships/equipe/assignees e ocorrências diárias.
+
+#### Proposta futura, sem implementação nesta fase
+
+Manter o contrato atual do dashboard, mas substituir a carga completa por um read model/serviço de resumo que:
+
+- use contagens e agregações filtradas por autorização para `total`, status, período, categoria e contexto;
+- busque separadamente somente os cinco itens de cada lista de vencimento, atraso, quase conclusão e recentes;
+- use uma consulta leve para a timeline de seis meses;
+- deixe a lista detalhada de Goals com paginação explícita, incluindo ordenação estável e cursor/offset definido;
+- preserve as mesmas regras de owner, membership, team membership e roles, sem confiar em filtros do frontend.
+
+Não foi implementada paginação de Goals nem redesign/read model do Dashboard nesta rodada. Ambos permanecem **OPEN** e exigem decisão de contrato, benchmark com volume representativo e testes de autorização antes de mudança.
+
+### Validação da Fase 2D
+
+Os testes focados de Calendar, Activity e Reminders passaram com **21 testes**; a suíte de regressão ampliada (Calendar, Reminders, Activity, Dashboard e Goals authorization) passou com **8 suítes / 54 testes**. No gate integral, a API passou com **32 suítes / 223 testes** e o frontend com **14 arquivos / 75 testes**; lint, typecheck e build globais passaram, com apenas o aviso informativo já existente do Vite sobre um chunk acima de 500 kB. `prisma validate` passou, `prisma migrate status` confirmou **16 migrations** aplicadas e o schema atualizado, e `/health`, a página frontend e `/api/health` responderam HTTP 200.
