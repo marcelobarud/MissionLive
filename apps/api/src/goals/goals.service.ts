@@ -6,6 +6,8 @@ import { ActivityService } from '../activity/activity.service';
 import { publicAvatar, publicIdentity } from '../auth/user.serializer';
 import { isValidTimezone, localDateAt, storedDateKey } from '../common/timezone';
 import { GOAL_PHOTO_STORAGE, GoalPhotoStorage } from './goal-photo-storage';
+import { goalAccessWhere } from './goal-access';
+import { assignmentMode as resolveAssignmentMode, participantIds as collectParticipantIds, stepAppliesTo as doesStepApply, stepHasUnavailableAssignee as hasUnavailableAssignee } from './goal-progress';
 import sharp from 'sharp';
 
 const EDITABLE_ROLES = new Set(['admin', 'editor']);
@@ -85,10 +87,6 @@ export class GoalsService {
     if (!complete && occurrence.completedAt) await client.goalDailyOccurrence.update({ where: { id: occurrence.id }, data: { completedAt: null, completionMode: null, completedByUserId: null, completionOverrideReason: null } });
   }
 
-  private accessWhere(userId: string, goalId?: string) {
-    return { ...(goalId ? { id: goalId } : {}), OR: [{ ownerUserId: userId }, { members: { some: { userId } } }, { team: { ownerUserId: userId } }, { team: { members: { some: { userId } } } }] };
-  }
-
   private parseTags(tags: string[] | undefined) {
     const output: string[] = [];
     const normalized = new Set<string>();
@@ -133,26 +131,19 @@ export class GoalsService {
   }
 
   private participantIds(goal: ParticipantSource) {
-    const participantIds = new Set<string>([goal.ownerUserId]);
-    for (const member of goal.members ?? []) participantIds.add(member.userId);
-    if (goal.team) {
-      participantIds.add(goal.team.ownerUserId);
-      for (const member of goal.team.members ?? []) participantIds.add(member.userId);
-    }
-    return participantIds;
+    return collectParticipantIds(goal);
   }
 
   private assignmentMode(step: Pick<GoalStepRecord, 'assignmentMode'>): StepAssignmentMode {
-    return step.assignmentMode === 'SPECIFIC_PARTICIPANT' ? 'SPECIFIC_PARTICIPANT' : 'ALL_PARTICIPANTS';
+    return resolveAssignmentMode(step) as StepAssignmentMode;
   }
 
   private stepAppliesTo(step: Pick<GoalStepRecord, 'assignmentMode' | 'assigneeUserId'>, userId: string, participantIds: Set<string>) {
-    if (!participantIds.has(userId)) return false;
-    return this.assignmentMode(step) === 'ALL_PARTICIPANTS' || step.assigneeUserId === userId;
+    return doesStepApply(step, userId, participantIds);
   }
 
   private stepHasUnavailableAssignee(step: Pick<GoalStepRecord, 'assignmentMode' | 'assigneeUserId'>, participantIds: Set<string>) {
-    return this.assignmentMode(step) === 'SPECIFIC_PARTICIPANT' && (!step.assigneeUserId || !participantIds.has(step.assigneeUserId));
+    return hasUnavailableAssignee(step, participantIds);
   }
 
   private serializeStep(step: GoalStepRecord, participantIds: Set<string>, userId?: string) {
@@ -274,6 +265,17 @@ export class GoalsService {
     throw new ForbiddenException('You do not have access to this goal.');
   }
 
+  private async listGoals(userId: string, filters: Prisma.GoalWhereInput[], orderBy: Prisma.GoalOrderByWithRelationInput | Prisma.GoalOrderByWithRelationInput[] = { updatedAt: 'desc' }) {
+    return this.prisma.goal.findMany({ where: { AND: [goalAccessWhere(userId), ...filters] }, include: { category: true, team: { include: { members: true } }, members: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } } } }, steps: { orderBy: { position: 'asc' }, include: { progresses: { where: { userId } }, assigneeUser: { select: { id: true, name: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } } } } }, orderBy });
+  }
+
+  private async serializeGoals(userId: string, goals: Awaited<ReturnType<GoalsService['listGoals']>>, sort?: string) {
+    const dailyOccurrences = await this.currentDailyOccurrences(goals);
+    const serialized = goals.map((goal) => this.serialize(goal, userId, dailyOccurrences.get(goal.id)));
+    if (sort === 'progress-desc' || sort === 'progress-asc') serialized.sort((a, b) => { const aValue = a.progressSummary?.totalSteps ? Math.round(a.progressSummary.completedSteps / a.progressSummary.totalSteps * 100) : 0; const bValue = b.progressSummary?.totalSteps ? Math.round(b.progressSummary.completedSteps / b.progressSummary.totalSteps * 100) : 0; return sort === 'progress-desc' ? bValue - aValue : aValue - bValue; });
+    return serialized;
+  }
+
   async list(userId: string, query: ListGoalsQueryDto = {}) {
     const filters: Prisma.GoalWhereInput[] = [];
     if (query.status) filters.push({ status: query.status });
@@ -285,15 +287,19 @@ export class GoalsService {
     if (query.context === 'individual') filters.push({ teamId: null, members: { none: {} } });
     if (query.context === 'shared') filters.push({ teamId: null, members: { some: {} } });
     if (query.context === 'team') filters.push({ teamId: { not: null } });
-    const goals = await this.prisma.goal.findMany({ where: { AND: [this.accessWhere(userId), ...filters] }, include: { category: true, team: { include: { members: true } }, members: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } } } }, steps: { orderBy: { position: 'asc' }, include: { progresses: { where: { userId } }, assigneeUser: { select: { id: true, name: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } } } } }, orderBy: query.sort === 'name' ? { name: 'asc' } : query.sort === 'deadline' ? { endDate: 'asc' } : { updatedAt: 'desc' } });
-    const dailyOccurrences = await this.currentDailyOccurrences(goals);
-    const serialized = goals.map((goal) => this.serialize(goal, userId, dailyOccurrences.get(goal.id)));
-    if (query.sort === 'progress-desc' || query.sort === 'progress-asc') serialized.sort((a, b) => { const aValue = a.progressSummary?.totalSteps ? Math.round(a.progressSummary.completedSteps / a.progressSummary.totalSteps * 100) : 0; const bValue = b.progressSummary?.totalSteps ? Math.round(b.progressSummary.completedSteps / b.progressSummary.totalSteps * 100) : 0; return query.sort === 'progress-desc' ? bValue - aValue : aValue - bValue; });
-    return serialized;
+    const orderBy = query.sort === 'name' ? { name: 'asc' as const } : query.sort === 'deadline' ? { endDate: 'asc' as const } : { updatedAt: 'desc' as const };
+    const goals = await this.listGoals(userId, filters, orderBy);
+    return this.serializeGoals(userId, goals, query.sort);
+  }
+
+  async getAccessibleByIds(userId: string, goalIds: string[]) {
+    if (!goalIds.length) return [];
+    const goals = await this.listGoals(userId, [{ id: { in: [...new Set(goalIds)] } }]);
+    return this.serializeGoals(userId, goals);
   }
 
   async get(userId: string, goalId: string) {
-    const goal = await this.prisma.goal.findFirst({ where: this.accessWhere(userId, goalId), include: { category: true, owner: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } }, team: { include: { owner: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } }, members: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } } } } } }, members: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } } } }, steps: { orderBy: { position: 'asc' }, include: { progresses: true, assigneeUser: { select: { id: true, name: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } } } } } });
+    const goal = await this.prisma.goal.findFirst({ where: goalAccessWhere(userId, goalId), include: { category: true, owner: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } }, team: { include: { owner: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } }, members: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } } } } } }, members: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } } } }, steps: { orderBy: { position: 'asc' }, include: { progresses: true, assigneeUser: { select: { id: true, name: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } } } } } });
     if (!goal) throw new NotFoundException('Goal not found.');
     const detailParticipants = goal.team || goal.members.length > 0;
     const steps = goal.steps.map((step) => ({ ...step, progresses: detailParticipants ? step.progresses : step.progresses.filter((progress) => progress.userId === userId) }));
