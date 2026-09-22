@@ -233,3 +233,16 @@ Nenhuma documentação normativa foi alterada.
 ## Limites desta entrega
 
 Esta fase produziu apenas o relatório. Não houve remoção funcional, mudança de regra/API, edição de schema/migration, atualização de dependência, alteração do frontend ou operação sobre arquivos de fotos. O próximo passo é revisar e aprovar explicitamente itens para a Fase 2.
+
+## Atualização após Fase 2A — 22/09/2026
+
+Esta atualização registra apenas as correções P1 tentadas após o baseline acima; as contagens e observações das seções anteriores descrevem a auditoria original.
+
+| Achado | Situação atual |
+|---|---|
+| P1-SEC-01 — cardinalidade e expiração do limitador de login | Corrigido no processo: mantém 10 tentativas por e-mail em 15 minutos, guarda somente hashes SHA-256 de chave fixa, limita o Map a 10.000 entradas e remove expiradas por acesso e por rotina a cada 60 segundos. O limite de cardinalidade falha fechado para novas chaves. Ainda é local ao processo; rate limiting compartilhado deverá ser decidido antes de operar múltiplas réplicas. |
+| P1-DEP-01 — Multer runtime | Aberto. A instalação continua resolvendo `multer@2.2.0`; `npm audit --workspace=@missionlive/api --omit=dev` continua reportando 3 vulnerabilidades high no grafo runtime relacionadas à cadeia Nest/Multer e quatro advisories Multer listados no baseline. Tentativas de override não alteraram a árvore instalada, então o override não foi mantido nem a dependência foi considerada corrigida. |
+
+Como defesa complementar, os três FileInterceptors agora compartilham limites explícitos: arquivo único de até 5 MiB por rota, até três campos de texto, um arquivo, nomes de campo até 100 bytes e campos de até 8 KiB. Isso limita a entrada multipart, mas não elimina os advisories do Multer enquanto a versão instalada permanecer 2.2.0.
+
+Foram adicionados testes unitários/de integração para o rate limiter e testes HTTP com parser Nest/Multer real para uploads válidos, limites, campos de arquivo incorretos, multipart malformado, autenticação e interrupção do cliente. Estado após a alteração: 25 suítes e 167 testes da API aprovados; typecheck, lint e build aprovados. Nenhum schema, migration, contrato de API ou frontend foi alterado nesta Fase 2A.
