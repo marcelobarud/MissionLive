@@ -1,6 +1,5 @@
 import { useEffect, useRef, type FC } from 'react';
 import { Mesh, Program, Renderer, Triangle } from 'ogl';
-import './web-threads.css';
 
 // Adapted from React Bits Web Threads (MIT + Commons Clause): https://reactbits.dev/backgrounds/web-threads
 

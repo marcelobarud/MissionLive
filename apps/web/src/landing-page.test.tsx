@@ -5,11 +5,16 @@ import { MemoryRouter } from 'react-router-dom';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { LandingPage } from './landing-page';
 
-vi.mock('./web-threads', () => ({ WebThreads: () => <canvas aria-hidden="true" data-testid="web-threads" /> }));
+vi.mock('./web-threads', () => ({ WebThreads: () => <div aria-hidden="true" className="web-threads-container" data-testid="web-threads" /> }));
 
 afterEach(() => cleanup());
 
 describe('LandingPage', () => {
+  it('mantém o Web Threads como uma camada direta do Hero', () => {
+    const view = render(<MemoryRouter><LandingPage /></MemoryRouter>);
+    expect(view.container.querySelector('.landing-hero > .web-threads-container')).toBeInTheDocument();
+  });
+
   it('apresenta a proposta, os recursos, a prévia e os planos', () => {
     const view = render(<MemoryRouter><LandingPage /></MemoryRouter>);
     expect(view.getByRole('heading', { level: 1, name: 'Transforme metas em progresso visível.' })).toBeTruthy();
