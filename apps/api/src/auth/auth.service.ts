@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, ForbiddenException, HttpException, HttpStatus, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, OnModuleDestroy, OnModuleInit, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../prisma/prisma.service';
 import { hashToken, createToken } from './token.util';
@@ -9,11 +9,15 @@ import { isValidIanaTimezone } from './timezone';
 import { COUNTRY_CODES, BRAZILIAN_REGION_CODES } from './countries';
 import { isValidCivilDate, normalizePhone } from './profile.validation';
 import { sessionExpiration } from './session-policy';
+import { LoginAttemptLimiter } from './login-attempt-limiter';
 
 @Injectable()
-export class AuthService {
-  private readonly loginAttempts = new Map<string, { count: number; resetAt: number }>();
+export class AuthService implements OnModuleInit, OnModuleDestroy {
+  private readonly loginAttempts = new LoginAttemptLimiter();
   constructor(private readonly prisma: PrismaService, private readonly config: ConfigService) {}
+
+  onModuleInit() { this.loginAttempts.startCleanup(); }
+  onModuleDestroy() { this.loginAttempts.stopCleanup(); }
 
   private localToken(token: string) { return this.config.get('NODE_ENV') !== 'production' ? token : undefined; }
 
@@ -27,13 +31,12 @@ export class AuthService {
   }
 
   async login(dto: LoginDto) {
-    const email = dto.email.trim().toLowerCase(); const now = Date.now(); const attempt = this.loginAttempts.get(email);
-    if (attempt && attempt.resetAt > now && attempt.count >= 10) throw new HttpException('Too many login attempts. Try again later.', HttpStatus.TOO_MANY_REQUESTS);
+    const email = dto.email.trim().toLowerCase(); this.loginAttempts.assertCanAttempt(email);
     const user = await this.prisma.user.findUnique({ where: { email } });
-    if (!user?.passwordHash || !(await argon2.verify(user.passwordHash, dto.password))) { const current = attempt && attempt.resetAt > now ? attempt : { count: 0, resetAt: now + 15 * 60 * 1000 }; this.loginAttempts.set(email, { count: current.count + 1, resetAt: current.resetAt }); throw new UnauthorizedException('Invalid email or password.'); }
+    if (!user?.passwordHash || !(await argon2.verify(user.passwordHash, dto.password))) { this.loginAttempts.recordFailure(email); throw new UnauthorizedException('Invalid email or password.'); }
     if (user.status !== 'active') throw new ForbiddenException('User account is disabled.');
     if (!user.emailVerifiedAt) throw new ForbiddenException('Verify your email before signing in.');
-    this.loginAttempts.delete(email); return this.startSession(user, dto.rememberMe === true);
+    this.loginAttempts.clear(email); return this.startSession(user, dto.rememberMe === true);
   }
 
   async startSession(user: { id: string; email: string; name: string }, rememberMe = false) {
