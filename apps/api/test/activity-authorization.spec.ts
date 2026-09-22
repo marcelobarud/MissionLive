@@ -1,3 +1,7 @@
+import 'reflect-metadata';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
+import { ActivityListQueryDto, MAX_ACTIVITY_OFFSET } from '../src/activity/activity.dto';
 import { ActivityService } from '../src/activity/activity.service';
 
 describe('ActivityService authorization boundary', () => {
@@ -20,5 +24,18 @@ describe('ActivityService authorization boundary', () => {
     expect(page.hasMore).toBe(true);
     expect(page.nextOffset).toBe(4);
     expect(prisma.activityEvent.findMany.mock.calls[0][0].skip).toBe(2);
+  });
+
+  it.each([0, 17, MAX_ACTIVITY_OFFSET])('accepts offset %s and preserves the requested limit', async (offset) => {
+    const prisma = { activityEvent: { findMany: jest.fn().mockResolvedValue([]) } };
+    const service = new ActivityService(prisma as never);
+    await service.list('user-a', { limit: 50, offset });
+    expect(prisma.activityEvent.findMany.mock.calls[0][0]).toEqual(expect.objectContaining({ skip: offset, take: 51 }));
+  });
+
+  it('rejects an offset above the defensive ceiling through DTO validation', async () => {
+    const dto = plainToInstance(ActivityListQueryDto, { limit: '50', offset: String(MAX_ACTIVITY_OFFSET + 1) });
+    const errors = await validate(dto);
+    expect(errors.map((error) => error.property)).toContain('offset');
   });
 });
