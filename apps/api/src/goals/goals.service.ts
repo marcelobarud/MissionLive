@@ -7,7 +7,7 @@ import { publicAvatar, publicIdentity } from '../auth/user.serializer';
 import { isValidTimezone, localDateAt, storedDateKey } from '../common/timezone';
 import { GOAL_PHOTO_STORAGE, GoalPhotoStorage } from './goal-photo-storage';
 import { goalAccessWhere } from './goal-access';
-import { assignmentMode as resolveAssignmentMode, participantIds as collectParticipantIds, stepAppliesTo as doesStepApply, stepHasUnavailableAssignee as hasUnavailableAssignee } from './goal-progress';
+import { assignmentMode as resolveAssignmentMode, goalProgressForViewer, participantIds as collectParticipantIds, stepAppliesTo as doesStepApply, stepHasUnavailableAssignee as hasUnavailableAssignee } from './goal-progress';
 import sharp from 'sharp';
 
 const EDITABLE_ROLES = new Set(['admin', 'editor']);
@@ -60,19 +60,33 @@ export class GoalsService {
     return localDate >= startDate && (!endDate || localDate <= endDate);
   }
 
-  private async currentDailyOccurrences(goals: Array<{ id: string; recurrenceType?: string | null; recurrenceTimezone?: string | null }>) {
+  private async currentDailyOccurrences(userId: string, goals: Array<{ id: string; recurrenceType?: string | null; recurrenceTimezone?: string | null }>, viewerOnly = false) {
     const targets = goals.filter((goal) => this.isDaily(goal)).map((goal) => ({ goalId: goal.id, localDate: localDateAt(new Date(), this.dailyTimezone(goal)) }));
     const occurrences = new Map<string, DailyOccurrenceRecord>();
     if (!targets.length) return occurrences;
-    const rows = await this.prisma.goalDailyOccurrence.findMany({ where: { OR: targets }, include: { stepProgresses: true } });
-    for (const row of rows) occurrences.set(row.goalId, row as DailyOccurrenceRecord);
+    for (let offset = 0; offset < targets.length; offset += 400) {
+      const rows = await this.prisma.goalDailyOccurrence.findMany({
+        where: { OR: targets.slice(offset, offset + 400) },
+        select: {
+          id: true,
+          goalId: true,
+          localDate: true,
+          completedAt: true,
+          completionMode: true,
+          completedByUserId: true,
+          completionOverrideReason: true,
+          stepProgresses: viewerOnly ? { where: { userId }, select: { goalStepId: true, userId: true, completed: true } } : true,
+        },
+      });
+      for (const row of rows) occurrences.set(row.goalId, row as DailyOccurrenceRecord);
+    }
     return occurrences;
   }
 
-  private dailyGoalWithProgress<T extends { recurrenceType?: string | null; steps: GoalStepRecord[] }>(goal: T, occurrence?: DailyOccurrenceRecord) {
+  private dailyGoalWithProgress<T extends { recurrenceType?: string | null; steps: Array<{ id: string; progresses?: ProgressRecord[] }> }>(goal: T, occurrence?: DailyOccurrenceRecord): T {
     if (!this.isDaily(goal)) return goal;
     const progressByStep = new Map((occurrence?.stepProgresses ?? []).map((progress) => [progress.goalStepId, progress]));
-    return { ...goal, steps: goal.steps.map((step) => ({ ...step, progresses: progressByStep.has(step.id) ? [progressByStep.get(step.id)!] : [] })) };
+    return { ...goal, steps: goal.steps.map((step) => ({ ...step, progresses: progressByStep.has(step.id) ? [progressByStep.get(step.id)!] : [] })) } as T;
   }
 
   private async recalculateDailyOccurrence(goalId: string, localDate: string, client: PrismaService | Prisma.TransactionClient = this.prisma) {
@@ -241,14 +255,14 @@ export class GoalsService {
     const participantIds = this.participantIds(hydratedGoal);
     const steps = hydratedGoal.steps.map((step) => this.serializeStep(step as GoalStepRecord, participantIds, viewerUserId));
     const participantCount = participantIds.size;
-    const applicableSteps = viewerUserId ? steps.filter((step) => this.stepAppliesTo(step, viewerUserId, participantIds)) : steps;
-    const completedSteps = viewerUserId ? applicableSteps.filter((step) => step.progresses.some((progress) => progress.userId === viewerUserId && progress.completed)).length : steps.filter((step) => step.progresses.some((progress) => progress.completed)).length;
+    const viewerProgress = viewerUserId ? goalProgressForViewer(hydratedGoal, viewerUserId) : undefined;
+    const completedSteps = viewerProgress?.completedSteps ?? steps.filter((step) => step.progresses.some((progress) => progress.completed)).length;
     const unavailableSteps = steps.filter((step) => !step.assigneeAvailable).length;
     const completedParticipants = participantCount && steps.length && !unavailableSteps
       ? [...participantIds].filter((userId) => steps.filter((step) => this.stepAppliesTo(step, userId, participantIds)).every((step) => step.progresses.some((progress) => progress.userId === userId && progress.completed))).length
       : 0;
     const { tagsJson, ...rest } = hydratedGoal;
-    return sanitizeUserRelations({ ...rest, steps, tags: JSON.parse(tagsJson || '[]') as string[], progressSummary: { completedSteps, totalSteps: viewerUserId ? applicableSteps.length : steps.length, participantCount, completedParticipants, unavailableSteps }, participantsProgress: undefined, ...(this.isDaily(hydratedGoal) ? { completedToday: Boolean(dailyOccurrence?.completedAt), occurrenceLocalDate: dailyOccurrence?.localDate ?? null, completionMode: dailyOccurrence?.completionMode ?? null, completionOverrideReason: dailyOccurrence?.completionOverrideReason ?? null } : {}) });
+    return sanitizeUserRelations({ ...rest, steps, tags: JSON.parse(tagsJson || '[]') as string[], progressSummary: { completedSteps, totalSteps: viewerProgress?.totalSteps ?? steps.length, participantCount, completedParticipants, unavailableSteps }, participantsProgress: undefined, ...(this.isDaily(hydratedGoal) ? { completedToday: Boolean(dailyOccurrence?.completedAt), occurrenceLocalDate: dailyOccurrence?.localDate ?? null, completionMode: dailyOccurrence?.completionMode ?? null, completionOverrideReason: dailyOccurrence?.completionOverrideReason ?? null } : {}) });
   }
 
   private async role(userId: string, goalId: string) {
@@ -265,18 +279,20 @@ export class GoalsService {
     throw new ForbiddenException('You do not have access to this goal.');
   }
 
-  private async listGoals(userId: string, filters: Prisma.GoalWhereInput[], orderBy: Prisma.GoalOrderByWithRelationInput | Prisma.GoalOrderByWithRelationInput[] = { updatedAt: 'desc' }) {
-    return this.prisma.goal.findMany({ where: { AND: [goalAccessWhere(userId), ...filters] }, include: { category: true, team: { include: { members: true } }, members: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } } } }, steps: { orderBy: { position: 'asc' }, include: { progresses: { where: { userId } }, assigneeUser: { select: { id: true, name: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } } } } }, orderBy });
+  private listWhere(userId: string, filters: Prisma.GoalWhereInput[]): Prisma.GoalWhereInput {
+    return { AND: [goalAccessWhere(userId), ...filters] };
   }
 
-  private async serializeGoals(userId: string, goals: Awaited<ReturnType<GoalsService['listGoals']>>, sort?: string) {
-    const dailyOccurrences = await this.currentDailyOccurrences(goals);
-    const serialized = goals.map((goal) => this.serialize(goal, userId, dailyOccurrences.get(goal.id)));
-    if (sort === 'progress-desc' || sort === 'progress-asc') serialized.sort((a, b) => { const aValue = a.progressSummary?.totalSteps ? Math.round(a.progressSummary.completedSteps / a.progressSummary.totalSteps * 100) : 0; const bValue = b.progressSummary?.totalSteps ? Math.round(b.progressSummary.completedSteps / b.progressSummary.totalSteps * 100) : 0; return sort === 'progress-desc' ? bValue - aValue : aValue - bValue; });
-    return serialized;
+  private async listGoals(userId: string, filters: Prisma.GoalWhereInput[], orderBy: Prisma.GoalOrderByWithRelationInput | Prisma.GoalOrderByWithRelationInput[] = [{ updatedAt: 'desc' }, { id: 'asc' }], window?: { skip: number; take: number }) {
+    return this.prisma.goal.findMany({ where: this.listWhere(userId, filters), ...(window ?? {}), include: { category: true, team: { include: { members: true } }, members: { include: { user: { select: { id: true, name: true, email: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } } } }, steps: { orderBy: { position: 'asc' }, include: { progresses: { where: { userId } }, assigneeUser: { select: { id: true, name: true, avatarUrl: true, avatarType: true, avatarPresetId: true, avatarFileKey: true } } } } }, orderBy });
   }
 
-  async list(userId: string, query: ListGoalsQueryDto = {}) {
+  private async serializeGoals(userId: string, goals: Awaited<ReturnType<GoalsService['listGoals']>>, knownDailyOccurrences?: Map<string, DailyOccurrenceRecord>) {
+    const dailyOccurrences = knownDailyOccurrences ?? await this.currentDailyOccurrences(userId, goals);
+    return goals.map((goal) => this.serialize(goal, userId, dailyOccurrences.get(goal.id)));
+  }
+
+  private goalFilters(query: Partial<Pick<ListGoalsQueryDto, 'status' | 'categoryId' | 'q' | 'hasDeadline' | 'from' | 'to' | 'deadlineFrom' | 'deadlineTo' | 'context'>>): Prisma.GoalWhereInput[] {
     const filters: Prisma.GoalWhereInput[] = [];
     if (query.status) filters.push({ status: query.status });
     if (query.categoryId) filters.push({ categoryId: query.categoryId });
@@ -287,14 +303,73 @@ export class GoalsService {
     if (query.context === 'individual') filters.push({ teamId: null, members: { none: {} } });
     if (query.context === 'shared') filters.push({ teamId: null, members: { some: {} } });
     if (query.context === 'team') filters.push({ teamId: { not: null } });
-    const orderBy = query.sort === 'name' ? { name: 'asc' as const } : query.sort === 'deadline' ? { endDate: 'asc' as const } : { updatedAt: 'desc' as const };
-    const goals = await this.listGoals(userId, filters, orderBy);
-    return this.serializeGoals(userId, goals, query.sort);
+    return filters;
+  }
+
+  async list(userId: string, query: Partial<ListGoalsQueryDto> = {}) {
+    const filters = this.goalFilters(query);
+    const where = this.listWhere(userId, filters);
+    const requestedPage = Number.isInteger(query.page) ? Math.max(1, query.page!) : 1;
+    const pageSize = Number.isInteger(query.pageSize) ? Math.min(50, Math.max(1, query.pageSize!)) : 12;
+    const totalItems = await this.prisma.goal.count({ where });
+    const totalPages = Math.ceil(totalItems / pageSize);
+    const page = totalPages === 0 ? 1 : Math.min(requestedPage, totalPages);
+    const skip = (page - 1) * pageSize;
+    let goals: Awaited<ReturnType<GoalsService['listGoals']>>;
+
+    if (query.sort === 'progress-desc' || query.sort === 'progress-asc') {
+      if (totalItems === 0) goals = [];
+      else {
+        const candidates = await this.prisma.goal.findMany({
+          where,
+          select: {
+            id: true,
+            updatedAt: true,
+            ownerUserId: true,
+            recurrenceType: true,
+            recurrenceTimezone: true,
+            members: { select: { userId: true } },
+            team: { select: { ownerUserId: true, members: { select: { userId: true } } } },
+            steps: { select: { id: true, assignmentMode: true, assigneeUserId: true, progresses: { where: { userId }, select: { userId: true, completed: true } } } },
+          },
+        });
+        const dailyOccurrences = await this.currentDailyOccurrences(userId, candidates, true);
+        const ranked = candidates.map((candidate) => {
+          const progress = goalProgressForViewer(this.dailyGoalWithProgress(candidate, dailyOccurrences.get(candidate.id)), userId);
+          const percentage = progress.totalSteps ? Math.round(progress.completedSteps / progress.totalSteps * 100) : 0;
+          return { id: candidate.id, updatedAt: candidate.updatedAt, percentage };
+        }).sort((left, right) => {
+          const progressOrder = query.sort === 'progress-desc' ? right.percentage - left.percentage : left.percentage - right.percentage;
+          return progressOrder || right.updatedAt.getTime() - left.updatedAt.getTime() || left.id.localeCompare(right.id);
+        });
+        const pageIds = ranked.slice(skip, skip + pageSize).map((candidate) => candidate.id);
+        const hydrated = pageIds.length ? await this.listGoals(userId, [...filters, { id: { in: pageIds } }]) : [];
+        const hydratedById = new Map(hydrated.map((goal) => [goal.id, goal]));
+        goals = pageIds.flatMap((id) => { const goal = hydratedById.get(id); return goal ? [goal] : []; });
+        const items = await this.serializeGoals(userId, goals);
+        return { items, pagination: { page, pageSize, totalItems, totalPages } };
+      }
+    } else {
+      const orderBy = query.sort === 'name'
+        ? [{ name: 'asc' as const }, { id: 'asc' as const }]
+        : query.sort === 'deadline'
+          ? [{ endDate: 'asc' as const }, { id: 'asc' as const }]
+          : [{ updatedAt: 'desc' as const }, { id: 'asc' as const }];
+      goals = await this.listGoals(userId, filters, orderBy, { skip, take: pageSize });
+    }
+
+    return { items: await this.serializeGoals(userId, goals), pagination: { page, pageSize, totalItems, totalPages } };
+  }
+
+  async listForCalendar(userId: string, from: Date, to: Date) {
+    const filters = this.goalFilters({ deadlineFrom: from.toISOString(), deadlineTo: to.toISOString() });
+    const goals = await this.listGoals(userId, filters, [{ endDate: 'asc' }, { id: 'asc' }]);
+    return this.serializeGoals(userId, goals);
   }
 
   async getAccessibleByIds(userId: string, goalIds: string[]) {
     if (!goalIds.length) return [];
-    const goals = await this.listGoals(userId, [{ id: { in: [...new Set(goalIds)] } }]);
+    const goals = await this.listGoals(userId, [{ id: { in: [...new Set(goalIds)] } }], [{ updatedAt: 'desc' }, { id: 'asc' }]);
     return this.serializeGoals(userId, goals);
   }
 
@@ -303,7 +378,7 @@ export class GoalsService {
     if (!goal) throw new NotFoundException('Goal not found.');
     const detailParticipants = goal.team || goal.members.length > 0;
     const steps = goal.steps.map((step) => ({ ...step, progresses: detailParticipants ? step.progresses : step.progresses.filter((progress) => progress.userId === userId) }));
-    const dailyOccurrence = this.isDaily(goal) ? (await this.currentDailyOccurrences([goal])).get(goal.id) : undefined;
+    const dailyOccurrence = this.isDaily(goal) ? (await this.currentDailyOccurrences(userId, [goal])).get(goal.id) : undefined;
     const displayGoal = this.dailyGoalWithProgress({ ...goal, steps }, dailyOccurrence);
     const serialized = this.serialize(displayGoal, userId, dailyOccurrence);
     return detailParticipants ? { ...serialized, participantsProgress: this.participantProgress(displayGoal) } : serialized;

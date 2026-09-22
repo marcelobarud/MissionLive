@@ -1,5 +1,5 @@
 import { ArrayMaxSize, IsArray, IsBoolean, IsDateString, IsIn, IsInt, IsOptional, IsString, IsUUID, Length, Max, Min } from 'class-validator';
-import { Transform } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 
 export class CreateGoalDto {
   @IsString() @Length(1, 120) name!: string;
@@ -25,6 +25,8 @@ export class ProgressDto { @IsBoolean() completed!: boolean; }
 export class OverrideGoalDto { @IsOptional() @IsString() @Length(0, 500) reason?: string; }
 export class UpdateMemberRoleDto { @IsString() role!: string; }
 export class ListGoalsQueryDto {
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) page = 1;
+  @IsOptional() @Type(() => Number) @IsInt() @Min(1) @Max(50) pageSize = 12;
   @IsOptional() @IsString() @Length(1, 120) q?: string;
   @IsOptional() @IsIn(['active', 'completed', 'cancelled', 'archived']) status?: string;
   @IsOptional() @IsUUID() categoryId?: string;

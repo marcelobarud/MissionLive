@@ -6,6 +6,10 @@ export type GoalParticipantSource = {
 
 export type GoalStepAssignment = { assignmentMode?: string | null; assigneeUserId?: string | null };
 
+export type GoalViewerProgressSource = GoalParticipantSource & {
+  steps: Array<GoalStepAssignment & { progresses?: Array<{ userId: string; completed: boolean }> }>;
+};
+
 export function participantIds(goal: GoalParticipantSource) {
   const ids = new Set<string>([goal.ownerUserId]);
   for (const member of goal.members ?? []) ids.add(member.userId);
@@ -27,4 +31,13 @@ export function stepAppliesTo(step: GoalStepAssignment, userId: string, ids: Set
 
 export function stepHasUnavailableAssignee(step: GoalStepAssignment, ids: Set<string>) {
   return assignmentMode(step) === 'SPECIFIC_PARTICIPANT' && (!step.assigneeUserId || !ids.has(step.assigneeUserId));
+}
+
+export function goalProgressForViewer(goal: GoalViewerProgressSource, userId: string) {
+  const ids = participantIds(goal);
+  const applicableSteps = goal.steps.filter((step) => stepAppliesTo(step, userId, ids));
+  return {
+    completedSteps: applicableSteps.filter((step) => (step.progresses ?? []).some((progress) => progress.userId === userId && progress.completed)).length,
+    totalSteps: applicableSteps.length,
+  };
 }
