@@ -112,6 +112,22 @@ export class GoalsService {
     return { categoryId: dto.categoryId, customCategory };
   }
 
+  private async goalCreationData(userId: string, dto: CreateGoalDto) {
+    const { startDate, endDate } = this.dates(dto); const category = this.category(dto);
+    const recurrenceType = dto.recurrenceType ?? 'NONE';
+    let recurrenceTimezone: string | undefined;
+    if (recurrenceType === 'DAILY') {
+      const creator = await this.prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } });
+      recurrenceTimezone = creator?.timezone?.trim();
+      if (!recurrenceTimezone || !isValidTimezone(recurrenceTimezone)) throw new BadRequestException('Daily goals require a valid IANA timezone.');
+    }
+    if (dto.teamId) {
+      const team = await this.prisma.team.findFirst({ where: { id: dto.teamId, OR: [{ ownerUserId: userId }, { members: { some: { userId, role: { in: ['admin', 'editor'] } } } }] } });
+      if (!team) throw new ForbiddenException('You cannot create goals in this team.');
+    }
+    return { ownerUserId: userId, teamId: dto.teamId, name: dto.name.trim(), description: dto.description?.trim() || undefined, ...category, tagsJson: this.parseTags(dto.tags), startDate, endDate, recurrenceType, recurrenceTimezone };
+  }
+
   private participantIds(goal: ParticipantSource) {
     const participantIds = new Set<string>([goal.ownerUserId]);
     for (const member of goal.members ?? []) participantIds.add(member.userId);
@@ -284,21 +300,25 @@ export class GoalsService {
   }
 
   async create(userId: string, dto: CreateGoalDto) {
-    const { startDate, endDate } = this.dates(dto); const category = this.category(dto);
-    const recurrenceType = dto.recurrenceType ?? 'NONE';
-    let recurrenceTimezone: string | undefined;
-    if (recurrenceType === 'DAILY') {
-      const creator = await this.prisma.user.findUnique({ where: { id: userId }, select: { timezone: true } });
-      recurrenceTimezone = creator?.timezone?.trim();
-      if (!recurrenceTimezone || !isValidTimezone(recurrenceTimezone)) throw new BadRequestException('Daily goals require a valid IANA timezone.');
-    }
-    if (dto.teamId) {
-      const team = await this.prisma.team.findFirst({ where: { id: dto.teamId, OR: [{ ownerUserId: userId }, { members: { some: { userId, role: { in: ['admin', 'editor'] } } } }] } });
-      if (!team) throw new ForbiddenException('You cannot create goals in this team.');
-    }
-    const goal = await this.prisma.goal.create({ data: { ownerUserId: userId, teamId: dto.teamId, name: dto.name.trim(), description: dto.description?.trim() || undefined, ...category, tagsJson: this.parseTags(dto.tags), startDate, endDate, recurrenceType, recurrenceTimezone } });
+    const data = await this.goalCreationData(userId, dto);
+    const goal = await this.prisma.goal.create({ data });
     await this.record(userId, 'goal_created', { goalId: goal.id, teamId: goal.teamId ?? undefined });
     return this.get(userId, goal.id);
+  }
+
+  async createWithInitialSteps(userId: string, dto: CreateGoalDto, stepTitles: string[]) {
+    const data = await this.goalCreationData(userId, dto);
+    const goal = await this.prisma.$transaction(async (tx) => {
+      const createdGoal = await tx.goal.create({ data });
+      for (const [position, title] of stepTitles.entries()) {
+        await tx.goalStep.create({ data: { goalId: createdGoal.id, title: title.trim(), position } });
+      }
+      return createdGoal;
+    });
+
+    await this.record(userId, 'goal_created', { goalId: goal.id, teamId: goal.teamId ?? undefined });
+    for (let position = 0; position < stepTitles.length; position += 1) await this.record(userId, 'step_created', { goalId: goal.id });
+    return { id: goal.id };
   }
 
   async update(userId: string, goalId: string, dto: UpdateGoalDto) {

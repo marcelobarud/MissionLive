@@ -33,8 +33,7 @@ export class TemplatesService {
     const steps: string[] = 'steps' in template ? (template.steps as string[]) : JSON.parse((template as { stepsJson: string }).stepsJson || '[]') as string[];
     const categoryId = 'categoryId' in template ? template.categoryId ?? undefined : undefined;
     const customCategory = 'customCategory' in template ? template.customCategory ?? undefined : undefined;
-    const goal = await this.goals.create(userId, { name: template.name, description: template.description ?? undefined, categoryId, customCategory, tags, startDate: dto.startDate, endDate: dto.endDate, teamId: dto.teamId });
-    for (const title of steps) await this.goals.addStep(userId, goal.id, { title });
+    const goal = await this.goals.createWithInitialSteps(userId, { name: template.name, description: template.description ?? undefined, categoryId, customCategory, tags, startDate: dto.startDate, endDate: dto.endDate, teamId: dto.teamId }, steps);
     await this.activity.record(userId, 'template_used', { goalId: goal.id }, { templateId }); return this.goals.get(userId, goal.id);
   }
   async remove(userId: string, templateId: string) { const template = await this.prisma.goalTemplate.findFirst({ where: { id: templateId, ownerUserId: userId } }); if (!template) throw new ForbiddenException('You cannot remove this template.'); await this.prisma.goalTemplate.delete({ where: { id: templateId } }); return { deleted: true }; }

@@ -7,7 +7,7 @@ const TEMPLATE_ID = '22222222-2222-4222-8222-222222222222';
 function setup() {
   const template = { id: TEMPLATE_ID, ownerUserId: 'user-a', name: 'Meu modelo', description: 'Descrição', categoryId: null, customCategory: 'Casa', tagsJson: '["planejamento"]', stepsJson: '["Etapa 1","Etapa 2"]' };
   const prisma = { goalTemplate: { findMany: jest.fn().mockResolvedValue([template]), create: jest.fn().mockResolvedValue(template), findFirst: jest.fn().mockResolvedValue(template), delete: jest.fn().mockResolvedValue(template) } };
-  const goals = { get: jest.fn().mockResolvedValue({ id: GOAL_ID, tags: ['saúde'], steps: [{ title: 'Avaliar rotina' }] }), create: jest.fn().mockResolvedValue({ id: 'new-goal' }), addStep: jest.fn().mockResolvedValue(undefined) };
+  const goals = { get: jest.fn().mockResolvedValue({ id: GOAL_ID, tags: ['saúde'], steps: [{ title: 'Avaliar rotina' }] }), create: jest.fn().mockResolvedValue({ id: 'new-goal' }), addStep: jest.fn().mockResolvedValue(undefined), createWithInitialSteps: jest.fn().mockResolvedValue({ id: 'new-goal' }) };
   const activity = { record: jest.fn().mockResolvedValue(undefined) };
   return { service: new TemplatesService(prisma as never, goals as never, activity as never), prisma, goals, activity, template };
 }
@@ -43,8 +43,9 @@ describe('TemplatesService', () => {
     const { service, goals, activity } = setup();
     goals.get.mockResolvedValue({ id: 'new-goal', steps: [] });
     await service.use('user-a', 'official:trip', { startDate: '2026-10-01', endDate: '2026-10-10' });
-    expect(goals.create).toHaveBeenCalledWith('user-a', expect.objectContaining({ name: 'Planejar uma viagem', startDate: '2026-10-01', endDate: '2026-10-10', tags: [], teamId: undefined }));
-    expect(goals.addStep.mock.calls.map((call) => call[2].title)).toEqual(['Definir destino', 'Estimar orçamento', 'Reservar transporte']);
+    expect(goals.createWithInitialSteps).toHaveBeenCalledWith('user-a', expect.objectContaining({ name: 'Planejar uma viagem', startDate: '2026-10-01', endDate: '2026-10-10', tags: [], teamId: undefined }), ['Definir destino', 'Estimar orçamento', 'Reservar transporte']);
+    expect(goals.create).not.toHaveBeenCalled();
+    expect(goals.addStep).not.toHaveBeenCalled();
     expect(activity.record).toHaveBeenCalledWith('user-a', 'template_used', { goalId: 'new-goal' }, { templateId: 'official:trip' });
   });
 
